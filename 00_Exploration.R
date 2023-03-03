@@ -24,7 +24,7 @@ library(ggpubr)
 num_table <- 1
 path_d <- paste("C:/Users/Benjamin/Desktop/IWEPS/HFCS_UDB_4_0 _early_diss_ASCII/d",num_table,".csv", sep = "")
 path_h <- paste("C:/Users/Benjamin/Desktop/IWEPS/HFCS_UDB_4_0 _early_diss_ASCII/h",num_table,".csv", sep = "")
-path_p <- paste("C:/Users/Benjamin/Desktop/IWEPS/HFCS_UDB_4_0 _early_diss_ASCII/p",num_table,".csv", sep = "")
+# path_p <- paste("C:/Users/Benjamin/Desktop/IWEPS/HFCS_UDB_4_0 _early_diss_ASCII/p",num_table,".csv", sep = "")
 
 # path <- "C:/Users/Benjamin/Desktop/IWEPS/HFCS_UDB_3_2_ASCII/H1.csv"
 
@@ -47,13 +47,13 @@ data_house
 nrow(data_house)
 
 # Ménage
-data_perso <- read_csv(path_p, 
-                           locale = locale(encoding ="UTF-8"),
-                           show_col_types = FALSE)
-
-data_perso <- as.data.table(data_perso)
-data_perso
-nrow(data_perso)
+# data_perso <- read_csv(path_p, 
+#                            locale = locale(encoding ="UTF-8"),
+#                            show_col_types = FALSE)
+# 
+# data_perso <- as.data.table(data_perso)
+# data_perso
+# nrow(data_perso)
 
 
 data_complete <- merge(data_derivated, data_house, by= c("sa0010", "sa0100"))
@@ -66,6 +66,8 @@ nrow(data_complete)
 # data_complete$HB0800
 # nrow(data_belgique)
 
+######### ATTENTION A PRENDRE LES VARIABLES EN FONCTION DE LA BASE
+
 liste_variables <- c(
   ### Core variables
   
@@ -73,11 +75,13 @@ liste_variables <- c(
   "sa0100", #Pays
   "sa0200", #Année
   "sa0110", #Past household ID
-  "ra0200", #Genre
+  # "ra0200", #Genre
+  "dhgenderh1", #Genre
   # "ra0400", #Pays de naissance
-  "ra0100", #Statut marital
-  "pa0200", #Plus haut niveau d'éducation reçu
-  "hdz0310", #Life satisfaction
+  # "ra0100", #Statut marital
+  # "pa0200", #Plus haut niveau d'éducation reçu
+  "dheduh1", #Plus haut niveau d'éducation reçu
+  # "hdz0310", #Life satisfaction
 
   "hh0100", # any substantial gift or inheritance received 134
   "hh0110", # no of gifts/inheritances received 134
@@ -132,7 +136,6 @@ liste_variables <- c(
 "dhhst",# Housing status 159
 "dhhtype",# Household type ==> Nb d'enfants + âge des gens
 
-"dhlifesatis",# Life satisfaction
 # 
 # "DI1100",# Employee income
 # "DI1100i",# Has employee 
@@ -169,13 +172,15 @@ liste_variables <- c(
 "dnhw",# Net housing wealth ===> Quand on a retiré les prêts à rembourser, ce que le ménage possède VRAIMENT
 "dntop10",# Top 10% net wealth
 
-"doeinherit",# Expecting to receive inheritance in the future
+
+# "dhlifesatis",# Life satisfaction
+# "doeinherit",# Expecting to receive inheritance in the future
 "dogiftinher",# Amount of received gifts and inheritances ====> ATTENTION on peut retirer la résidence principale si elle a déjà été déclarée comme acquise par héritage
 "dohhsqm",# HMR value per square meter
 'hb0800' #property value at the time of its acquisition
 )
 
-# ra0200, ra0100, pa0200, hdz0310, dhlifesatis, doeinherit
+# , ra0100, pa0200, hdz0310, dhlifesatis, doeinheritt
 
 # liste_variables <- c('SA0100', #pays
 #                      'HB0800' #property value at the time of its acquisition
@@ -183,11 +188,13 @@ liste_variables <- c(
 
 data_merged <- data_complete[,..liste_variables]
 
-data_merged[, mean(HB0800, na.rm = TRUE), by = SA0100]
+# data_merged[, mean(HB0800, na.rm = TRUE), by = SA0100]
 
 data_merged
 
 setnames(data_merged,'QHHNUM',"Identifiant_menage")
+
+summary(data_complete$sa0200)
 
 
 
