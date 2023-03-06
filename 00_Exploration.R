@@ -62,10 +62,6 @@ nrow(data_complete)
 
 # data_complete$sa0010
 
-# data_belgique <- data_complete[SA0100 == 'BE',]
-# data_complete$HB0800
-# nrow(data_belgique)
-
 ######### ATTENTION A PRENDRE LES VARIABLES EN FONCTION DE LA BASE
 
 liste_variables <- c(
@@ -128,10 +124,7 @@ liste_variables <- c(
 
 "dhageh1b",# Age of reference person in brackets, Canberra definition ==> Le bas de la tranche d'âge
 
-"dheduh1",# Education of reference person, Canberra definition 158
-
 "dhemph1",# Main labour status of reference person, Canberra definition 158
-"dhgenderh1",# Gender of reference person, Canberra definition 159
 
 "dhhst",# Housing status 159
 "dhhtype",# Household type ==> Nb d'enfants + âge des gens
@@ -192,11 +185,53 @@ data_merged <- data_complete[,..liste_variables]
 
 data_merged
 
-setnames(data_merged,'QHHNUM',"Identifiant_menage")
+setnames(data_merged, "sa0010", "Identifiant_menage")
+setnames(data_merged, "sa0100", "Pays")
+setnames(data_merged, "sa0110", "Past_household_ID")
+setnames(data_merged, "dhgenderh1", "Genre_1H")
+setnames(data_merged, "dheduh1", "Plus_haut_educ")
+setnames(data_merged, "hh0100", "Heritage_recu")
+setnames(data_merged, "hh0110", "Aucun_heritage_recu")
+setnames(data_merged, "da2100", "Atouts_financ_tot")
+setnames(data_merged, "da2100i", "A_des_atouts_financ")
+setnames(data_merged, "da2100sh", "Atouts_financ_fraction")
+setnames(data_merged, "dh0001", "Nb_pers_menage")
+setnames(data_merged, "dhageh1b", "Age")
+setnames(data_merged, "dhemph1", "Statut_pro")
+setnames(data_merged, "dhhst", "Statut_proprio_maison")
+setnames(data_merged, "dhhtype", "Type_menage")
+setnames(data_merged, "ditop10", "Decile_revenu_pays")
+setnames(data_merged, "datop10", "Decile_richesse_brute_pays")
+setnames(data_merged, "dntop10", "Decile_richesse_nette_pays")
+setnames(data_merged, "dnhw", "Richesse_menage")
+setnames(data_merged, "dogiftinher", "Quantite_heritage_recu")
+setnames(data_merged, "dohhsqm", "Valeur_m2_logement")
+setnames(data_merged, "hb0800", "Valeur_logement")
 
-summary(data_complete$sa0200)
+data_merged
+
+data_belgique <- data_merged[Pays == 'BE',]
+nrow(data_belgique)
+data_belgique
+
+data_belgique
+ggplot(data = data_belgique, aes(x = Decile_richesse_nette_pays, y = Decile_richesse_brute_pays)) +
+  geom_bar(stat="identity", position=position_dodge())
 
 
+ggplot(data = data_belgique, aes(x = Quantite_heritage_recu, Richesse_menage)) +
+  geom_point()
 
+  + 
+  labs(title=titre,
+       x= xlabel,
+       y= ylabel) + 
+  scale_y_continuous(limits = c(0, 100), labels = function(y) format(y, scientific = FALSE)) + 
+  scale_fill_discrete() +
+  scale_color_viridis() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
 
+# p
+ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
+print(p)
 
