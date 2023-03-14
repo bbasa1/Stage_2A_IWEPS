@@ -223,6 +223,10 @@ data_belgique
 
 ### Un premier graphe : Le ratio patrimoine/salaire en fnt de l'âge !
 summary(data_merged$Ratio_pat_net_salaire)
+#mec à pbm : Identifiant_menage = 20204065
+sous_data <- data_complete[sa0010 == 20204065,]
+sous_data[,c("sa0010","dodni","di2000", "di1100", "di1200", "di1300", "di1400", "di1500", "di1600", "di1700", "di1800")]
+sous_data
 
 sous_df <- data_merged[, median(Ratio_pat_net_salaire, na.rm = TRUE), by = Age]
 sous_df
