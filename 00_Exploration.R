@@ -46,14 +46,15 @@ data_house <- as.data.table(data_house)
 data_house
 nrow(data_house)
 
-# Ménage
-# data_perso <- read_csv(path_p, 
+# # Ménage
+# data_perso <- read_csv(path_p,
 #                            locale = locale(encoding ="UTF-8"),
 #                            show_col_types = FALSE)
 # 
 # data_perso <- as.data.table(data_perso)
 # data_perso
 # nrow(data_perso)
+### Utilisation de data_perso : merge(data_complete, data_perso, by= "sa0010") ===> Donne environ 2x plus de lignes. Lien par RA0100 le lien à la personne de référence
 
 
 data_complete <- merge(data_derivated, data_house, by= c("sa0010", "sa0100"))
@@ -170,7 +171,8 @@ liste_variables <- c(
 # "doeinherit",# Expecting to receive inheritance in the future
 "dogiftinher",# Amount of received gifts and inheritances ====> ATTENTION on peut retirer la résidence principale si elle a déjà été déclarée comme acquise par héritage
 "dohhsqm",# HMR value per square meter
-'hb0800' #property value at the time of its acquisition
+'hb0800', #property value at the time of its acquisition
+"dodni" #Ratio patrmoine net/salaire ANNUEL = DN3001/DI2000.
 )
 
 # , ra0100, pa0200, hdz0310, dhlifesatis, doeinheritt
@@ -186,6 +188,7 @@ data_merged <- data_complete[,..liste_variables]
 data_merged
 
 setnames(data_merged, "sa0010", "Identifiant_menage")
+setnames(data_merged, "sa0200", "Annee")
 setnames(data_merged, "sa0100", "Pays")
 setnames(data_merged, "sa0110", "Past_household_ID")
 setnames(data_merged, "dhgenderh1", "Genre_1H")
@@ -201,13 +204,13 @@ setnames(data_merged, "dhemph1", "Statut_pro")
 setnames(data_merged, "dhhst", "Statut_proprio_maison")
 setnames(data_merged, "dhhtype", "Type_menage")
 setnames(data_merged, "ditop10", "Decile_revenu_pays")
-setnames(data_merged, "datop10", "Decile_richesse_brute_pays")
-setnames(data_merged, "dntop10", "Decile_richesse_nette_pays")
-setnames(data_merged, "dnhw", "Richesse_menage")
+setnames(data_merged, "datop10", "Decile_patrimoine_brut_pays")
+setnames(data_merged, "dntop10", "Decile_patrimoine_net_pays")
+setnames(data_merged, "dnhw", "Patrimoine_immobilier_menage")
 setnames(data_merged, "dogiftinher", "Quantite_heritage_recu")
 setnames(data_merged, "dohhsqm", "Valeur_m2_logement")
 setnames(data_merged, "hb0800", "Valeur_logement")
-
+setnames(data_merged, "dodni", "Ratio_pat_net_salaire")
 data_merged
 
 data_belgique <- data_merged[Pays == 'BE',]
@@ -215,8 +218,17 @@ nrow(data_belgique)
 data_belgique
 
 data_belgique
-ggplot(data = data_belgique, aes(x = Decile_richesse_nette_pays, y = Decile_richesse_brute_pays)) +
-  geom_bar(stat="identity", position=position_dodge())
+
+
+
+### Un premier graphe : Le ratio patrimoine/salaire en fnt de l'âge !
+summary(data_merged$Ratio_pat_net_salaire)
+
+sous_df <- data_merged[, median(Ratio_pat_net_salaire, na.rm = TRUE), by = Age]
+sous_df
+
+ggplot(data = sous_df, aes(x = Age, y = V1, na.rm = TRUE)) +
+  geom_bar(stat="identity", position=position_dodge(), na.rm = TRUE)
 
 
 ggplot(data = data_belgique, aes(x = Quantite_heritage_recu, Richesse_menage)) +
