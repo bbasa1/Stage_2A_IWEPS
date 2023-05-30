@@ -21,10 +21,13 @@ library(tidyverse)
 library(broom)
 library(ggpubr)
 
-num_table <- 1
+num_table <- 3
 path_d <- paste("C:/Users/Benjamin/Desktop/IWEPS/HFCS_UDB_4_0 _early_diss_ASCII/d",num_table,".csv", sep = "")
 path_h <- paste("C:/Users/Benjamin/Desktop/IWEPS/HFCS_UDB_4_0 _early_diss_ASCII/h",num_table,".csv", sep = "")
 # path_p <- paste("C:/Users/Benjamin/Desktop/IWEPS/HFCS_UDB_4_0 _early_diss_ASCII/p",num_table,".csv", sep = "")
+path_h <- paste("C:/Users/Benjamin/Desktop/IWEPS/HFCS_UDB_1_5_ASCII/H",num_table,".csv", sep = "")
+
+
 
 # path <- "C:/Users/Benjamin/Desktop/IWEPS/HFCS_UDB_3_2_ASCII/H1.csv"
 
@@ -45,6 +48,9 @@ data_house <- read_csv(path_h,
 data_house <- as.data.table(data_house)
 data_house
 nrow(data_house)
+
+summary(data_house$SA0200)
+summary(data_derivated$sa0200)
 
 # # Ménage
 # data_perso <- read_csv(path_p,
