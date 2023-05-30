@@ -4,8 +4,6 @@ liste_cols_core_household <- c("sa0010", # household identification number
                                "id"
                                ) ### A mettre en minuscule
 
-num_table <- 1
-num_vague_max <- 4
 
 ###### On prépare la boucle avec la première importation
 num_vague <- 1
@@ -35,7 +33,7 @@ data_house <- data_house[,..liste_cols_core_household_new]
 nrow(data_house)
 
 
-data_complete <- merge(data_derivated, data_house, by= "ID") 
+data_complete <- merge(data_derivated, data_house, by= c("ID", "SA0100"))
 nrow(data_complete)
 
 
@@ -46,6 +44,7 @@ print("=================")
 
 
 for(num_vague in c(2,num_vague_max)){
+
   # Derivated
   path_d <- paste(sous_repo_data,"/d",num_table,".csv", sep = "")
   data_derivated <- read_csv(path_d[num_vague], 
@@ -67,15 +66,22 @@ for(num_vague in c(2,num_vague_max)){
   data_house <- data_house[,..liste_cols_core_household_new]
   
   # Merge et concat
-  data_complete_loc <- merge(data_derivated, data_house, by= "ID") 
+  data_complete_loc <- merge(data_derivated, data_house, by= c("ID", "SA0100"))
+  
+  colnames(data_complete_loc)
+  colnames(data_complete)
+  
   data_complete <- rbindlist(list(data_complete,
                                   data_complete_loc), fill=TRUE)
   
-  print(paste("Validation par le nombre de ligne =", (nrow(data_complete) == nrow(data_derivated))&(nrow(data_complete) == nrow(data_house))))
+  print(paste("Validation par le nombre de ligne =", (nrow(data_complete_loc) == nrow(data_derivated))&(nrow(data_complete_loc) == nrow(data_house))))
   print(paste("Nombre de ligne tot =", nrow(data_complete)))
   print(paste("Nombre de colonnes tot =", length(colnames(data_complete))))
   print("=================")
 }
+
+#### Les dernières retouches : quelques variables ont des .x et .y
+all(data_complete$SA0100.x == data_complete$SA0100.y)
 
 
 # path_d <- paste(sous_repo_data,"/d",num_table,".csv", sep = "")

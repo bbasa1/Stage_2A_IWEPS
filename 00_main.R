@@ -1,8 +1,6 @@
 ################################################################################
 ########################### SCRIPT PRINCIPAL ###################################
 ################################################################################
-source(paste(repo_prgm , "01_packages.R" , sep = "/"))
-
 
 # Le dossier général
 repgen <- "C:/Users/Benjamin/Desktop/IWEPS"
@@ -11,6 +9,9 @@ repo_prgm <- paste(repgen, "Stage_2A_IWEPS" , sep = "/")
 repo_sorties <- paste(repgen, "Sorties" , sep = "/")
 repo_data <- paste(repgen, "Data" , sep = "/")
 repo_inter <- paste(repgen, "Bases_intermediaires" , sep = "/")
+
+
+source(paste(repo_prgm , "01_packages.R" , sep = "/"))
 
 
 # Les sous-sous-dossiers qui contiennent les données
@@ -24,4 +25,16 @@ sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 # pn = non-core personal files
 # d = derivated variables files ==> Celui qu'on va principalement utiliser
 
+
+num_table <- 1 ### Change les poids assignés par eurostat
+num_vague_max <- 3 ### Le nombre de vague qu'on veut concaténer ATTENTION la dernière vague a des noms de colonnes en MINUSCULE. Ca pose pbm dans la concaténation...
+
+
 source(paste(repo_prgm , "02_importation_data.R" , sep = "/"))
+
+
+table(data_complete$SA0200)
+table(data_complete$SA0100)
+colnames(data_complete)
+
+
