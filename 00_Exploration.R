@@ -21,7 +21,8 @@ library(tidyverse)
 library(broom)
 library(ggpubr)
 
-num_table <- 3
+
+num_table <- 1
 path_d <- paste("C:/Users/Benjamin/Desktop/IWEPS/HFCS_UDB_4_0 _early_diss_ASCII/d",num_table,".csv", sep = "")
 path_h <- paste("C:/Users/Benjamin/Desktop/IWEPS/HFCS_UDB_4_0 _early_diss_ASCII/h",num_table,".csv", sep = "")
 # path_p <- paste("C:/Users/Benjamin/Desktop/IWEPS/HFCS_UDB_4_0 _early_diss_ASCII/p",num_table,".csv", sep = "")
@@ -50,8 +51,8 @@ data_house
 nrow(data_house)
 
 summary(data_house$SA0200)
-summary(data_derivated$sa0200)
-
+summary(data_derivated$sa0100)
+data_derivated
 # # Ménage
 # data_perso <- read_csv(path_p,
 #                            locale = locale(encoding ="UTF-8"),
@@ -62,10 +63,14 @@ summary(data_derivated$sa0200)
 # nrow(data_perso)
 ### Utilisation de data_perso : merge(data_complete, data_perso, by= "sa0010") ===> Donne environ 2x plus de lignes. Lien par RA0100 le lien à la personne de référence
 
+summary(data_house$SA0010)
+setnames(data_house, "SA0010", "sa0010")
+setnames(data_house, "SA0100", "sa0100")
 
 data_complete <- merge(data_derivated, data_house, by= c("sa0010", "sa0100"))
 
 nrow(data_complete)
+
 
 # data_complete$sa0010
 
