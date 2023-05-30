@@ -24,30 +24,4 @@ sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 # pn = non-core personal files
 # d = derivated variables files ==> Celui qu'on va principalement utiliser
 
-num_table <- 1
-path_d <- paste(sous_repo_data,"/d",num_table,".csv", sep = "")
-data_derivated <- read_csv(path_d[1], 
-                           locale = locale(encoding ="UTF-8"),
-                           show_col_types = FALSE)
-
-data_derivated <- as.data.table(data_derivated)
-data_derivated
-nrow(data_derivated)
-
-path_h <- paste(sous_repo_data,"/h",num_table,".csv", sep = "")
-data_house <- read_csv(path_h[1], 
-                       locale = locale(encoding ="UTF-8"),
-                       show_col_types = FALSE)
-
-data_house <- as.data.table(data_house)
-data_house
-nrow(data_house)
-
-
-data_complete <- merge(data_derivated, data_house, by= "ID") 
-nrow(data_complete)
-
-data_complete
-colnames(data_derivated)
-# all(data_complete$IM0100.x == data_complete$IM0100.y) # Normalement on a redondance pour : survey SA0010 (=identifiant) SA0100 (=pays) IM0100 (=implicate ID)
-
+source(paste(repo_prgm , "02_importation_data.R" , sep = "/"))
