@@ -41,6 +41,8 @@ num_vague_max <- 4 ### Le nombre de vague qu'on veut concaténer ATTENTION la de
 
 
 source(paste(repo_prgm , "02_importation_data.R" , sep = "/"))
+data_belgique <- data_complete[SA0100 == "BE"]
+
 
 
 table(data_complete$SA0200)
@@ -48,8 +50,105 @@ table(data_complete$SA0100)
 table(data_complete$VAGUE)
 colnames(data_complete)
 
+length(colnames(data_complete))
 
-########## Pour étudier les différences entre les différentes versions
+table(data_complete[SA0100 == "BE"]$DATOP10)
+head(data_complete[SA0100 == "BE"]$DATOP10, 20)
+
+hist(data_complete[SA0100 == "BE"]$DATOP10, breaks=13, col="red")
+
+sous_data <- data_complete[SA0100 == "BE", sum(HW0010), by = DITOP10]
+setorder(sous_data, DITOP10)
+sous_data
+
+
+############### Variables d'intérêt
+# HW0010 = Le poids
+# DA1000 = Total real assets (+ ventilations plus précises)
+# DA2100 = Total financial assets (+ ventilations plus précises)
+# DA3001 = DA1000 + DA2100 = Total assets
+# DATOP10 = Le décile de gross wealth/richesse brut au sein du pays
+# DHAGEH1 = Âge de la personne de référence
+# DHEDUH1 = Education de la personne de référence
+# DHGENDERH1 = Genre de la personne de référence
+# DHLIFESATIS = Life satisfaction
+# DI2000 = Revenu total du ménage
+# DI2000eq = DI2000/Nb personnes du ménage
+# DI2100 + DI200 + Assistance financière famille et amis
+# DITOP10 = Décile de revenu du ménage au sein du pays
+# DL1000 = Total outstanding balance of household's liabilities = Le passif total (+ ventilations plus précises, également sur les DL1200)
+# DLTOP10 = Décile des passifs du ménage
+# DN3001 = Net wealth = DA3001 - DL1000
+# DNFPOS = Net financial wealth = DA2100 - DL1000
+# DNHW = Net housing wealth = DA1110 - DL1110
+# DNTOP10 = Décile du net wealth du ménage
+# DOEINHERIT = S'attend à recevoir un héritage dans le futur
+# DOGIFTINHER = Montant des cadeaux et héritages reçus ==> ATTENTION : La résidence principale peut être exclue du montant, car elle est comptée dans la question sur le mode d'aquisition de celle-ci
+# DOINHERIT = Substantial inheritance/gift received ==> OSEF non ?
+
+sapply(data_belgique, function(x) sum(is.na(x)))
+
+
+data_belgique$HW0010 <- as.numeric(data_belgique$HW0010)
+data_belgique$DA1000 <- as.numeric(data_belgique$DA1000)
+data_belgique$DA2100 <- as.numeric(data_belgique$DA2100)
+data_belgique$DA3001 <- as.numeric(data_belgique$DA3001)
+data_belgique$DI2000 <- as.numeric(data_belgique$DI2000)
+data_belgique$DI2000eq <- as.numeric(data_belgique$DI2000eq)
+data_belgique$DI2100 <- as.numeric(data_belgique$DI2100)
+data_belgique$DL1000 <- as.numeric(data_belgique$DL1000)
+data_belgique$DN3001 <- as.numeric(data_belgique$DN3001)
+data_belgique$DNFPOS <- as.numeric(data_belgique$DNFPOS)
+data_belgique$DNHW <- as.numeric(data_belgique$DNHW)
+data_belgique$DOGIFTINHER <- as.numeric(data_belgique$DOGIFTINHER)
+
+data_belgique$DATOP10 <- as.factor(data_belgique$DATOP10)
+data_belgique$DHAGEH1 <- as.factor(data_belgique$DHAGEH1)
+data_belgique$DHEDUH1 <- as.factor(data_belgique$DHEDUH1)
+data_belgique$DHGENDERH1 <- as.factor(data_belgique$DHGENDERH1)
+data_belgique$DHLIFESATIS <- as.factor(data_belgique$DHLIFESATIS)
+data_belgique$DITOP10 <- as.factor(data_belgique$DITOP10)
+data_belgique$DLTOP10 <- as.factor(data_belgique$DLTOP10)
+data_belgique$DNTOP10 <- as.factor(data_belgique$DNTOP10)
+data_belgique$DOEINHERIT <- as.factor(data_belgique$DOEINHERIT)
+
+
+
+################################################## Un peu d'héritage...
+
+hist(log(data_belgique$DOGIFTINHER), breaks=50, col="red")
+
+
+
+
+################################################## Exploration avec le paclage survey
+dw <- svydesign(ids = ~1, data = data_belgique, weights = ~ data_belgique$HW0010)
+
+dw$variables$DN3001 # Pour retrouver le contenu d'une colonne
+
+svymean(~DN3001, dw) # Sur une variable continue
+svyquantile(~DN3001, dw, quantile = c(0.25, 0.5, 0.75), ci = TRUE) # Quantiles + leurs IC_a sur une variable continue
+
+svytable(~DHLIFESATIS, dw) # Sur une variable catégorielle
+
+svytable(~ DHLIFESATIS + DHGENDERH1, dw) # Sur deux variables catégorielles
+
+tab <- svytable(~DHLIFESATIS + DHGENDERH1, dw) # Pour avoir une fréquence sur une variable
+lprop(tab, total = TRUE) #Pour avoir les %
+
+
+ggplot(dw$variables) +
+  aes(weight = weights(dw), x = DHGENDERH1, fill = DOEINHERIT) +
+  geom_bar(position = "fill")
+
+ggplot(data_belgique) +
+  aes(x = DHGENDERH1, fill = DOEINHERIT) +
+  geom_bar(position = "fill")
+
+table(data_belgique$DOEINHERIT)
+
+
+################################################## Pour étudier les différences entre les différentes versions
 
 data_complete_1 <- copy(data_complete)
 

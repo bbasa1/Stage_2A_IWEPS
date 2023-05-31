@@ -29,7 +29,10 @@ data_derivated <- as.data.table(data_derivated)
 data_derivated
 nrow(data_derivated)
 try(setnames(data_derivated, "id", "ID"), silent=TRUE) #Parfois les colonnes ont des noms en minuscule...
-try(setnames(data_derivated, "survey", "Survey"), silent=TRUE) # Cette variable peut avoir deux noms 
+try(setnames(data_derivated, "survey", "SURVEY"), silent=TRUE) # Cette variable peut avoir deux noms 
+try(setnames(data_derivated, "Survey", "SURVEY"), silent=TRUE) # Cette variable peut avoir deux noms
+
+
 
 ###### Pour avoir le pays et l'année de référence il faut le household, mais on n'a pas besoin du reste
 path_h <- paste(sous_repo_data,"/h",num_table,".csv", sep = "")
