@@ -77,8 +77,9 @@ source(paste(repo_prgm , "03_nettoyage_data.R" , sep = "/"))
 # DOINHERIT = Substantial inheritance/gift received ==> OSEF non ?
 # VAGUE = La vague
 # SA0200 = L'année
+# DA1120 = La valeur de la résidence principale
 
-liste_var_continues <- c("HW0010", "DA1000", "DA2100", "DA3001", "DI2000", "DI2000EQ", "DI2100", "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER")
+liste_var_continues <- c("HW0010", "DA1000", "DA2100", "DA3001", "DI2000", "DI2000EQ", "DI2100", "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120")
 liste_var_categorielles <- c("DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DHLIFESATIS", "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE", "SA0200")
 liste_var_interet <- union(liste_var_continues, liste_var_categorielles)
 sous_data_belgique <- data_belgique[,..liste_var_interet]
@@ -87,7 +88,7 @@ sous_data_belgique <- sous_data_belgique %>% mutate_at(liste_var_categorielles, 
 
 sous_data_belgique
 
-summary(sous_data_belgique$HW0010)
+# summary(sous_data_belgique$HW0010)
 
 ################################################################################
 # ====================== 04 STAT DES & GRAPHIQUES ==============================
@@ -139,46 +140,51 @@ ggplot(data = data_for_plot, aes(x = reorder(.data[[x]], .data[[sortby_x]]), y =
 ######## On regarde la concentration des différents types de patrimoines #############
 
 nb_quantiles <- 100
+liste_type_patrimoines <- c("DA3001" = "Total",
+                            "DA1000" = "Physique",
+                            "DA2100" = "Financier")
 
-# On calcule tous les quantiles et les patrimoines moyens par quantiles
-sous_data_belgique[,Quantiles := cut(DA3001,
-                                            breaks=quantile(DA3001, probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
-                                            include.lowest= TRUE, labels=1:nb_quantiles)]
-data_for_plot <- sous_data_belgique[, mean(DA3001), by = Quantiles]
-setnames(data_for_plot, "V1", "Total")
+# On initialise
+data_for_plot <- as.data.table(1:nb_quantiles)
+setnames(data_for_plot, 'V1', "Quantiles")
+data_for_plot$Quantiles <- as.numeric(data_for_plot$Quantiles)
+data_for_plot
 
-sous_data_belgique[,Quantiles := cut(DA1000,
-                                            breaks=quantile(DA1000, probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
-                                            include.lowest= TRUE, labels=1:nb_quantiles)]
-data_for_plot_1 <- sous_data_belgique[, mean(DA1000), by = Quantiles]
-setnames(data_for_plot_1, "V1", "Physique")
+# On boucle sur les types de patrimoines
+for(type_pat in names(liste_type_patrimoines)){
+  
+  # Récupération des quantiles
+  sous_data_belgique[,Quantiles := cut(sous_data_belgique[[type_pat]],
+                                       breaks=quantile(sous_data_belgique[[type_pat]], probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
+                                       include.lowest= TRUE, labels=1:nb_quantiles)]
+  
+  # Traitement pour pouvoir merge
+  data_for_plot_loc <- sous_data_belgique[, mean(get(type_pat)), by = Quantiles]
+  setnames(data_for_plot_loc, "V1", liste_type_patrimoines[[type_pat]])
+  data_for_plot_loc$Quantiles <- as.numeric(data_for_plot_loc$Quantiles)
+  
+  # Merge
+  data_for_plot <- merge(data_for_plot, data_for_plot_loc, by = "Quantiles")
+}
 
-sous_data_belgique[,Quantiles := cut(DA2100,
-                                     breaks=quantile(DA2100, probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
-                                     include.lowest= TRUE, labels=1:nb_quantiles)]
-data_for_plot_2 <- sous_data_belgique[, mean(DA2100), by = Quantiles]
-setnames(data_for_plot_2, "V1", "Financier")
+# Calcul de la cumsum
+for(type_pat in liste_type_patrimoines){
+  data_for_plot[, eval(type_pat) := 100*cumsum(get(type_pat))/sum(get(type_pat))]
+  
+}
 
-# On merge tout ça pour avoir 1 colonne/type de patrimoine
-data_for_plot <- merge(data_for_plot, data_for_plot_1, by = "Quantiles")
-data_for_plot <- merge(data_for_plot, data_for_plot_2, by = "Quantiles")
 
-# On fait les cumsum
-data_for_plot[, Total := 100*cumsum(Total)/sum(Total)]
-data_for_plot[, Physique := 100*cumsum(Physique)/sum(Physique)]
-data_for_plot[, Financier := 100*cumsum(Financier)/sum(Financier)]
 
 
 data_for_plot
 
-
+# Melt pour pouvoir tracer
 melted <- melt(data_for_plot, 
                id.vars = "Quantiles", 
                measure.vars  = c("Total", "Physique", "Financier"),
                variable.name = "variable",
                value.name    = "value")
 
-melted$Quantiles <- as.numeric(melted$Quantiles)
 
 ggplot(melted) +
   geom_line(aes(x = Quantiles, y= value, color = variable)) +
@@ -207,42 +213,67 @@ ggplot(melted) +
   ) +
   theme(legend.text = element_text(angle = 0, vjust = 0.7, hjust = 0),
         axis.text.x = element_text(angle = 45, vjust = 0.5),
-        legend.position = "right")
+        legend.position = "bottom")
+
+
+
+
+########### OLD VERSION 
+
+# On calcule tous les quantiles et les patrimoines moyens par quantiles
+# sous_data_belgique[,Quantiles := cut(DA3001,
+#                                             breaks=quantile(DA3001, probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
+#                                             include.lowest= TRUE, labels=1:nb_quantiles)]
+# data_for_plot <- sous_data_belgique[, mean(DA3001), by = Quantiles]
+# setnames(data_for_plot, "V1", "Total")
+# 
+# sous_data_belgique[,Quantiles := cut(DA1000,
+#                                             breaks=quantile(DA1000, probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
+#                                             include.lowest= TRUE, labels=1:nb_quantiles)]
+# data_for_plot_1 <- sous_data_belgique[, mean(DA1000), by = Quantiles]
+# setnames(data_for_plot_1, "V1", "Physique")
+# 
+# sous_data_belgique[,Quantiles := cut(DA2100,
+#                                      breaks=quantile(DA2100, probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
+#                                      include.lowest= TRUE, labels=1:nb_quantiles)]
+# data_for_plot_2 <- sous_data_belgique[, mean(DA2100), by = Quantiles]
+# setnames(data_for_plot_2, "V1", "Financier")
+# 
+# # On merge tout ça pour avoir 1 colonne/type de patrimoine
+# data_for_plot <- merge(data_for_plot, data_for_plot_1, by = "Quantiles")
+# data_for_plot <- merge(data_for_plot, data_for_plot_2, by = "Quantiles")
+# 
+# # On fait les cumsum
+# data_for_plot[, Total := 100*cumsum(Total)/sum(Total)]
+# data_for_plot[, Physique := 100*cumsum(Physique)/sum(Physique)]
+# data_for_plot[, Financier := 100*cumsum(Financier)/sum(Financier)]
 
 
 
 
 
+### BROUILLON
 
-### On essaie de passer ça en fonction
-liste_type_patrimoines <- c("DA3001" = "Total",
-                            "DA1000" = "Physique",
-                            "DA2100" = "Financier")
-
-data_for_plot <- as.data.table(1:nb_quantiles)
-setnames(data_for_plot, 'V1', "Quantiles")
-data_for_plot$Quantiles <- as.numeric(data_for_plot$Quantiles)
-data_for_plot
-
-for(type_pat in names(liste_type_patrimoines)){
-  # print(type_pat)
-  sous_data_belgique[,Quantiles := cut(sous_data_belgique[[type_pat]],
-                                       breaks=quantile(sous_data_belgique[[type_pat]], probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
-                                       include.lowest= TRUE, labels=1:nb_quantiles)]
-  
-  data_for_plot_loc <- sous_data_belgique[, mean(get(type_pat)), by = Quantiles]
-  setnames(data_for_plot_loc, "V1", liste_type_patrimoines[[type_pat]])
-  data_for_plot_loc$Quantiles <- as.numeric(data_for_plot_loc$Quantiles)
-  data_for_plot <- merge(data_for_plot, data_for_plot_loc, by = "Quantiles")
-}
-
-for(type_pat in liste_type_patrimoines){
-  data_for_plot[, eval(type_pat) := 100*cumsum(get(type_pat))/sum(get(type_pat))]
-  
-}
-
-data_for_plot
-
+# data_for_plot
+# 
+# 
+# sous_sous_data_belgique <- copy(sous_data_belgique)
+# sous_sous_data_belgique[is.na(DA1120)]$DA1120 <- 0
+# 
+# sous_sous_data_belgique[,Quantiles := cut(DA1120,
+#                                      breaks= unique(quantile(DA1120, probs=seq(0, 1, by=1/100), na.rm=T)),
+#                                      include.lowest= TRUE)]
+# 
+# longueur <- length(table(sous_sous_data_belgique$Quantiles))
+# 
+# sous_sous_data_belgique[,Quantiles := cut(DA1120,
+#                                           breaks= unique(quantile(DA1120, probs=seq(0, 1, by=1/100), na.rm=T)),
+#                                           include.lowest= TRUE)]
+# 
+# sous_sous_data_belgique
+# 
+# setorder(sous_sous_data_belgique, Quantiles)
+# length(table(sous_sous_data_belgique$Quantiles))
 
 
 ################################################## Un peu d'héritage...
