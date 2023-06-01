@@ -131,18 +131,6 @@ trace_barplot(data_loc, x, sortby_x, y, fill, xlabel, ylabel, titre, titre_save,
   
 
 
-
-# ggplot(data = data_for_plot, aes(x = reorder(.data[[x]], .data[[sortby_x]]), y = .data[[y]], fill = .data[[fill]])) +
-#   geom_bar(stat="identity", position=position_dodge()) + 
-#   labs(title=titre,
-#        x= xlabel,
-#        y= ylabel) + 
-#   scale_y_continuous(limits = c(0, 15), labels = function(y) format(y, scientific = FALSE)) + 
-#   scale_fill_discrete() +
-#   scale_color_viridis() +
-#   theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
-
-
 ### Exploration supplémentaire
 data_for_plot <- sous_data_belgique[, sum(HW0010), by = DHGENDERH1]
 data_for_plot
@@ -152,7 +140,11 @@ data_for_plot
 nb_quantiles <- 100
 liste_type_patrimoines <- c("DA3001" = "Total",
                             "DA1000" = "Physique",
-                            "DA2100" = "Financier")
+                            "DA2100" = "Financier",
+                            "DL1000" = "Dettes",
+                            "DN3001" = "Richesse totale")
+
+# liste_labels as.data.frame(liste_type_patrimoines)$liste_type_patrimoines
 
 # On initialise
 data_for_plot <- as.data.table(1:nb_quantiles)
@@ -183,12 +175,15 @@ for(type_pat in liste_type_patrimoines){
   
 }
 
+# 
+# "DL1000" = "Dettes",
+# "DN3001" = "Richesse totale")
 
 
 # Melt pour pouvoir tracer
 melted <- melt(data_for_plot, 
                id.vars = "Quantiles", 
-               measure.vars  = c("Total", "Physique", "Financier"),
+               measure.vars  = as.data.frame(liste_type_patrimoines)$liste_type_patrimoines,
                variable.name = "variable",
                value.name    = "value")
 
@@ -207,37 +202,71 @@ data_melted_loc <- melted
 
 trace_concentration(data_melted_loc, x, y, color, xlabel, ylabel,colorlabel, titre_fig, titre_save)
 
-########### OLD VERSION 
-
-# On calcule tous les quantiles et les patrimoines moyens par quantiles
-# sous_data_belgique[,Quantiles := cut(DA3001,
-#                                             breaks=quantile(DA3001, probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
-#                                             include.lowest= TRUE, labels=1:nb_quantiles)]
-# data_for_plot <- sous_data_belgique[, mean(DA3001), by = Quantiles]
-# setnames(data_for_plot, "V1", "Total")
-# 
-# sous_data_belgique[,Quantiles := cut(DA1000,
-#                                             breaks=quantile(DA1000, probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
-#                                             include.lowest= TRUE, labels=1:nb_quantiles)]
-# data_for_plot_1 <- sous_data_belgique[, mean(DA1000), by = Quantiles]
-# setnames(data_for_plot_1, "V1", "Physique")
-# 
-# sous_data_belgique[,Quantiles := cut(DA2100,
-#                                      breaks=quantile(DA2100, probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
-#                                      include.lowest= TRUE, labels=1:nb_quantiles)]
-# data_for_plot_2 <- sous_data_belgique[, mean(DA2100), by = Quantiles]
-# setnames(data_for_plot_2, "V1", "Financier")
-# 
-# # On merge tout ça pour avoir 1 colonne/type de patrimoine
-# data_for_plot <- merge(data_for_plot, data_for_plot_1, by = "Quantiles")
-# data_for_plot <- merge(data_for_plot, data_for_plot_2, by = "Quantiles")
-# 
-# # On fait les cumsum
-# data_for_plot[, Total := 100*cumsum(Total)/sum(Total)]
-# data_for_plot[, Physique := 100*cumsum(Physique)/sum(Physique)]
-# data_for_plot[, Financier := 100*cumsum(Financier)/sum(Financier)]
 
 
+############### Dispersion du patrimoine en fonction de l'âge
+
+liste_type_patrimoines <- c("DA3001" = "Total",
+                            "DA1000" = "Physique",
+                            "DA2100" = "Financier",
+                            "DL1000" = "Dettes",
+                            "DN3001" = "Richesse totale")
+
+table(sous_data_belgique$DHAGEH1B) #C'est la borne inférieure de l'âge qui est indiquée
+
+data_for_plot <- sous_data_belgique[, sum(HW0010), by = DHAGEH1B]
+setnames(data_for_plot, "DHAGEH1B", "liste_ages")
+setnames(data_for_plot, "V1", "Effectifs")
+for(type_pat in names(liste_type_patrimoines)){
+  liste_ages <- sort(unique(sous_data_belgique$DHAGEH1B))
+  liste_variances <- 1:length(liste_ages)
+  
+  for(num_age in 1:length(liste_ages)){
+    age <- liste_ages[num_age]
+    data_loc <- sous_data_belgique[DHAGEH1B == age & VAGUE != 4,]
+    if(nrow(data_loc) >= 2){
+      dw_loc <- svydesign(ids = ~1, data = data_loc, weights = ~ data_loc$HW0010)
+      liste_variances[num_age] <- svyvar(~get(type_pat), design = dw_loc, na.rm=TRUE)[1]
+    }else{
+      liste_variances[num_age] <- 0
+    }
+  }
+  
+  data_for_plot_loc <- data.frame(liste_ages,liste_variances)
+  data_for_plot_loc <- as.data.table(data_for_plot_loc)
+  setnames(data_for_plot_loc, "liste_variances", liste_type_patrimoines[type_pat])
+  data_for_plot <- merge(data_for_plot_loc, data_for_plot, by = "liste_ages")
+}
+
+
+
+# Melt pour pouvoir tracer
+melted <- melt(data_for_plot, 
+               id.vars = "liste_ages", 
+               measure.vars  = as.data.frame(liste_type_patrimoines)$liste_type_patrimoines,
+               variable.name = "variable",
+               value.name    = "value")
+
+ggplot(data = melted[variable != "Effectifs"], aes(x = liste_ages, y = log(value), fill = variable)) +
+  geom_bar(stat="identity", position=position_dodge())
+
+
+
+
+titre <- "Variance du patrimoine des Belges, par type de patrimoine"
+titre_save <- "variance_patrimoine.pdf"
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+x <-"liste_ages"
+sortby_x <- "liste_ages"
+y <- "value"
+fill <- "variable"
+xlabel <-"Tranche d'âge de la personne de référence du ménage"
+ylabel <-"Variance du patrimoine (échelle log)"
+filllabel <- "Type de patrimoine"
+data_loc <- melted[variable != "Effectifs"]
+
+trace_barplot_log(data_loc, x, y, fill, xlabel, ylabel,filllabel, titre, titre_save)
+  
 
 
 
@@ -264,44 +293,14 @@ trace_concentration(data_melted_loc, x, y, color, xlabel, ylabel,colorlabel, tit
 # setorder(sous_sous_data_belgique, Quantiles)
 # length(table(sous_sous_data_belgique$Quantiles))
 
-############### Dispersion du patrimoine en fonction de l'âge
-
-dw <- svydesign(ids = ~1, data = data_belgique, weights = ~ data_belgique$HW0010)
-
-table(data_belgique$DHAGEH1B) #C'est la borne inférieure de l'âge qui est indiquée
-liste_ages <- sort(unique(data_belgique$DHAGEH1B))
-liste_variances <- 1:length(liste_ages)
-liste_effectifs <- 1:length(liste_ages)
-
-# names(liste_ages) <- 1:length(liste_ages)
-# names(liste_variances) <- 1:length(liste_variances)
-
-for(num_age in 1:length(liste_ages)){
-  age <- liste_ages[num_age]
-  data_loc <- data_belgique[DHAGEH1B == age,]
-  liste_effectifs[num_age] <- sum(data_loc$HW0010)
-  if(nrow(data_loc) >= 2){
-    dw_loc <- svydesign(ids = ~1, data = data_loc, weights = ~ data_loc$HW0010)
-    liste_variances[num_age] <- svyvar(~DA3001, design = dw_loc)[1]
-  }else{
-    liste_variances[num_age] <- 0
-  }
-}
-
-data_for_plot <- data.frame(liste_ages,liste_variances, liste_effectifs)
-data_for_plot <- as.data.table(data_for_plot)
-
-ggplot(data = data_for_plot, aes(x = liste_ages, y = liste_variances)) +
-  geom_bar(stat="identity", position=position_dodge())
 
 
-
-age <- 16
-data_loc <- sous_data_belgique[DHAGEH1B == age,]
-view(data_loc)
-dw_loc <- svydesign(ids = ~1, data = data_loc, weights = ~ data_loc$HW0010)
-svyvar(~DA3001, design = dw_loc)
-nrow(data_loc)
+# age <- 16
+# data_loc <- sous_data_belgique[DHAGEH1B == age,]
+# view(data_loc)
+# dw_loc <- svydesign(ids = ~1, data = data_loc, weights = ~ data_loc$HW0010)
+# svyvar(~DA3001, design = dw_loc)
+# nrow(data_loc)
 
 ################################################## Un peu d'héritage...
 
@@ -333,55 +332,55 @@ svycor(~DA3001 + DI2000, design = dw)$cors[1,2]
 
 
 ################################################## Exploration avec le paclage survey
-
-dw$variables$DN3001 # Pour retrouver le contenu d'une colonne
-
-svymean(~DN3001, dw) # Sur une variable continue
-svyquantile(~DN3001, dw, quantile = c(0.25, 0.5, 0.75), ci = TRUE) # Quantiles + leurs IC_a sur une variable continue
-
-svytable(~DHLIFESATIS, dw) # Sur une variable catégorielle
-
-svytable(~ DHLIFESATIS + DHGENDERH1, dw) # Sur deux variables catégorielles
-
-tab <- svytable(~DHLIFESATIS + DHGENDERH1, dw) # Pour avoir une fréquence sur une variable
-lprop(tab, total = TRUE) #Pour avoir les %
-
-
-ggplot(dw$variables) +
-  aes(weight = weights(dw), x = DHGENDERH1, fill = DOEINHERIT) +
-  geom_bar(position = "fill")
-
-ggplot(data_belgique) +
-  aes(x = DHGENDERH1, fill = DOEINHERIT) +
-  geom_bar(position = "fill")
-
-table(data_belgique$DOEINHERIT)
+# 
+# dw$variables$DN3001 # Pour retrouver le contenu d'une colonne
+# 
+# svymean(~DN3001, dw) # Sur une variable continue
+# svyquantile(~DN3001, dw, quantile = c(0.25, 0.5, 0.75), ci = TRUE) # Quantiles + leurs IC_a sur une variable continue
+# 
+# svytable(~DHLIFESATIS, dw) # Sur une variable catégorielle
+# 
+# svytable(~ DHLIFESATIS + DHGENDERH1, dw) # Sur deux variables catégorielles
+# 
+# tab <- svytable(~DHLIFESATIS + DHGENDERH1, dw) # Pour avoir une fréquence sur une variable
+# lprop(tab, total = TRUE) #Pour avoir les %
+# 
+# 
+# ggplot(dw$variables) +
+#   aes(weight = weights(dw), x = DHGENDERH1, fill = DOEINHERIT) +
+#   geom_bar(position = "fill")
+# 
+# ggplot(data_belgique) +
+#   aes(x = DHGENDERH1, fill = DOEINHERIT) +
+#   geom_bar(position = "fill")
+# 
+# table(data_belgique$DOEINHERIT)
 
 
 ################################################## Pour étudier les différences entre les différentes versions
-
-data_complete_1 <- copy(data_complete)
-
-num_table <- 2 ### Change les poids assignés par eurostat
-source(paste(repo_prgm , "02_importation_data.R" , sep = "/"))
-data_complete_2 <- copy(data_complete)
-
-
-num_table <- 1 ### Change les poids assignés par eurostat
-source(paste(repo_prgm , "02_importation_data.R" , sep = "/"))
-head(data_complete$HW0010,100)
-
-table(data_complete_1[data_complete_1$DN3001 != data_complete_2$DN3001])
-
-data_complete_1[data_complete_1$SA0010  != data_complete_2$SA0010]
-
-table(data_complete_1  == data_complete_2)
-
-head(data_complete_1[data_complete_1$DOEINHERIT  != data_complete_2$DOEINHERIT ]$DOEINHERIT , 10)
-head(data_complete_2[data_complete_1$DOEINHERIT  != data_complete_2$DOEINHERIT ]$DOEINHERIT , 10)
-
-nrow(data_complete_1)*length(colnames(data_complete_1))
-2277054 + 37663527
+# 
+# data_complete_1 <- copy(data_complete)
+# 
+# num_table <- 2 ### Change les poids assignés par eurostat
+# source(paste(repo_prgm , "02_importation_data.R" , sep = "/"))
+# data_complete_2 <- copy(data_complete)
+# 
+# 
+# num_table <- 1 ### Change les poids assignés par eurostat
+# source(paste(repo_prgm , "02_importation_data.R" , sep = "/"))
+# head(data_complete$HW0010,100)
+# 
+# table(data_complete_1[data_complete_1$DN3001 != data_complete_2$DN3001])
+# 
+# data_complete_1[data_complete_1$SA0010  != data_complete_2$SA0010]
+# 
+# table(data_complete_1  == data_complete_2)
+# 
+# head(data_complete_1[data_complete_1$DOEINHERIT  != data_complete_2$DOEINHERIT ]$DOEINHERIT , 10)
+# head(data_complete_2[data_complete_1$DOEINHERIT  != data_complete_2$DOEINHERIT ]$DOEINHERIT , 10)
+# 
+# nrow(data_complete_1)*length(colnames(data_complete_1))
+# 2277054 + 37663527
 
 
 

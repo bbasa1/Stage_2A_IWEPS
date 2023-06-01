@@ -19,6 +19,22 @@ trace_barplot <- function(data_loc, x, sortby_x, y, fill, xlabel, ylabel, titre,
   print(p)
 }
 
+trace_barplot_log <- function(data_loc, x, y, fill, xlabel, ylabel,filllabel, titre, titre_save){
+    p <- ggplot(data = data_loc, aes(x = data_loc[[x]], y = data_loc[[y]], fill = data_loc[[fill]])) +
+      geom_bar(stat="identity", position=position_dodge()) + 
+      labs(title=titre,
+           x= xlabel,
+           y= ylabel,
+           fill = filllabel) + 
+      scale_y_continuous(trans='log10', labels = function(y) format(y, scientific = TRUE)) + 
+      scale_fill_discrete() +
+      scale_color_viridis() +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+    
+  ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
+  print(p)
+}
+
 
 
 
