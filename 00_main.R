@@ -49,7 +49,7 @@ data_belgique <- data_complete[SA0100 == "BE"]
 ################################################################################
 
 ### On sélectionne un jeu réduit de données, et on force leur typage
-source(paste(repo_prgm , "03_nettoyage_data.R" , sep = "/"))
+source(paste(repo_prgm , "03_nettoyage_preparation.R" , sep = "/"))
 
 
 ############### Variables d'intérêt
@@ -59,6 +59,7 @@ source(paste(repo_prgm , "03_nettoyage_data.R" , sep = "/"))
 # DA3001 = DA1000 + DA2100 = Total assets
 # DATOP10 = Le décile de gross wealth/richesse brute au sein du pays
 # DHAGEH1 = Âge de la personne de référence
+# DHAGEH1B = Tranche d'âge de ...
 # DHEDUH1 = Education de la personne de référence
 # DHGENDERH1 = Genre de la personne de référence
 # DHLIFESATIS = Life satisfaction
@@ -80,27 +81,26 @@ source(paste(repo_prgm , "03_nettoyage_data.R" , sep = "/"))
 # DA1120 = La valeur de la résidence principale
 
 liste_var_continues <- c("HW0010", "DA1000", "DA2100", "DA3001", "DI2000", "DI2000EQ", "DI2100", "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120")
-liste_var_categorielles <- c("DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DHLIFESATIS", "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE", "SA0200")
+liste_var_categorielles <- c("DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DHLIFESATIS", "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE", "SA0200", "DHAGEH1B")
 liste_var_interet <- union(liste_var_continues, liste_var_categorielles)
 sous_data_belgique <- data_belgique[,..liste_var_interet]
 sous_data_belgique <- sous_data_belgique %>% mutate_at(liste_var_continues, as.numeric)
 sous_data_belgique <- sous_data_belgique %>% mutate_at(liste_var_categorielles, as.factor)
 
-sous_data_belgique
-
+# sous_data_belgique
 # summary(sous_data_belgique$HW0010)
 
 ################################################################################
 # ====================== 04 STAT DES & GRAPHIQUES ==============================
 ################################################################################
+source(paste(repo_prgm , "04_graphiques.R" , sep = "/"))
+
+
+
 liste_var_groupby <- c("DHGENDERH1", "DATOP10")
 var_normalisation <- 'DHGENDERH1' # Par quelle variable est-ce qu'on normalise ? Généralement le sexe
 
-
-
 dots <- lapply(var_normalisation, as.symbol) #Penser à bien convertir pour ne pas avoir de problèmes...
-
-
 data_for_plot <- sous_data_belgique[, sum(HW0010), by = liste_var_groupby] #On calcule les effectifs
 data_for_plot <- data_for_plot %>% group_by(.dots = dots) %>% mutate(new = 100*V1/sum(V1)) # Pour la normalisation il faut faire attention à grouper par sexe
 data_for_plot <- as.data.table(data_for_plot)
@@ -114,9 +114,9 @@ data_for_plot[, Sexe:= factor(
 )
 ]
 
-
-titre <- "Patrimoine normalisé par sexe"
-titre_save <- "Patrimoine_sexe"
+### Puis le tracé
+titre <- "Répartition du patrimoine total des Belges, normalisé par sexe"
+titre_save <- "Patrimoine_sexe.pdf"
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 x <-"DATOP10"
 sortby_x <- "DATOP10"
@@ -124,18 +124,28 @@ y <- "new"
 fill <- "Sexe"
 xlabel <-"Quantile de patrimoine brut"
 ylabel <-"% de la population belge"
+data_loc <- data_for_plot
+xlim_sup <- 15 #La limite en % sur l'axe x
 
-ggplot(data = data_for_plot, aes(x = reorder(.data[[x]], .data[[sortby_x]]), y = .data[[y]], fill = .data[[fill]])) +
-  geom_bar(stat="identity", position=position_dodge()) + 
-  labs(title=titre,
-       x= xlabel,
-       y= ylabel) + 
-  scale_y_continuous(limits = c(0, 15), labels = function(y) format(y, scientific = FALSE)) + 
-  scale_fill_discrete() +
-  scale_color_viridis() +
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+trace_barplot(data_loc, x, sortby_x, y, fill, xlabel, ylabel, titre, titre_save, xlim_sup)
+  
 
 
+
+# ggplot(data = data_for_plot, aes(x = reorder(.data[[x]], .data[[sortby_x]]), y = .data[[y]], fill = .data[[fill]])) +
+#   geom_bar(stat="identity", position=position_dodge()) + 
+#   labs(title=titre,
+#        x= xlabel,
+#        y= ylabel) + 
+#   scale_y_continuous(limits = c(0, 15), labels = function(y) format(y, scientific = FALSE)) + 
+#   scale_fill_discrete() +
+#   scale_color_viridis() +
+#   theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+
+
+### Exploration supplémentaire
+data_for_plot <- sous_data_belgique[, sum(HW0010), by = DHGENDERH1]
+data_for_plot
 
 ######## On regarde la concentration des différents types de patrimoines #############
 
@@ -175,9 +185,6 @@ for(type_pat in liste_type_patrimoines){
 
 
 
-
-data_for_plot
-
 # Melt pour pouvoir tracer
 melted <- melt(data_for_plot, 
                id.vars = "Quantiles", 
@@ -186,37 +193,19 @@ melted <- melt(data_for_plot,
                value.name    = "value")
 
 
-ggplot(melted) +
-  geom_line(aes(x = Quantiles, y= value, color = variable)) +
-  scale_color_viridis_d() +
-  labs(
-    x = "Part des ménages", 
-    y = "Patrimoine détenu (cumulatif)",
-    color = "Type de patrimoine",
-    titre = "Fonction de répartition du patrimoine des ménages Belges, par type de patrimoine"
-  ) +
-  scale_y_continuous(
-    labels = scales::dollar_format(
-      prefix = "",
-      suffix = " %",
-      big.mark = " ",
-      decimal.mark = ","), 
-    expand = c(0, 0)
-  ) + 
-  scale_x_continuous(
-    labels = scales::dollar_format(
-      prefix = "",
-      suffix = " %",
-      big.mark = " ",
-      decimal.mark = ","),
-    expand = c(0, 0)
-  ) +
-  theme(legend.text = element_text(angle = 0, vjust = 0.7, hjust = 0),
-        axis.text.x = element_text(angle = 45, vjust = 0.5),
-        legend.position = "bottom")
 
+titre_fig <- "Fonction de répartition du patrimoine des ménages Belges, par type de patrimoine"
+titre_save <- "Concentration_patrimoine_par_type.pdf"
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+x <- "Quantiles"
+y <- "value"
+color <- "variable"
+xlabel <- "Part des ménages"
+ylabel <- "Patrimoine détenu (cumulatif)"
+colorlabel <- "Type de patrimoine"
+data_melted_loc <- melted
 
-
+trace_concentration(data_melted_loc, x, y, color, xlabel, ylabel,colorlabel, titre_fig, titre_save)
 
 ########### OLD VERSION 
 
@@ -275,6 +264,44 @@ ggplot(melted) +
 # setorder(sous_sous_data_belgique, Quantiles)
 # length(table(sous_sous_data_belgique$Quantiles))
 
+############### Dispersion du patrimoine en fonction de l'âge
+
+dw <- svydesign(ids = ~1, data = data_belgique, weights = ~ data_belgique$HW0010)
+
+table(data_belgique$DHAGEH1B) #C'est la borne inférieure de l'âge qui est indiquée
+liste_ages <- sort(unique(data_belgique$DHAGEH1B))
+liste_variances <- 1:length(liste_ages)
+liste_effectifs <- 1:length(liste_ages)
+
+# names(liste_ages) <- 1:length(liste_ages)
+# names(liste_variances) <- 1:length(liste_variances)
+
+for(num_age in 1:length(liste_ages)){
+  age <- liste_ages[num_age]
+  data_loc <- data_belgique[DHAGEH1B == age,]
+  liste_effectifs[num_age] <- sum(data_loc$HW0010)
+  if(nrow(data_loc) >= 2){
+    dw_loc <- svydesign(ids = ~1, data = data_loc, weights = ~ data_loc$HW0010)
+    liste_variances[num_age] <- svyvar(~DA3001, design = dw_loc)[1]
+  }else{
+    liste_variances[num_age] <- 0
+  }
+}
+
+data_for_plot <- data.frame(liste_ages,liste_variances, liste_effectifs)
+data_for_plot <- as.data.table(data_for_plot)
+
+ggplot(data = data_for_plot, aes(x = liste_ages, y = liste_variances)) +
+  geom_bar(stat="identity", position=position_dodge())
+
+
+
+age <- 16
+data_loc <- sous_data_belgique[DHAGEH1B == age,]
+view(data_loc)
+dw_loc <- svydesign(ids = ~1, data = data_loc, weights = ~ data_loc$HW0010)
+svyvar(~DA3001, design = dw_loc)
+nrow(data_loc)
 
 ################################################## Un peu d'héritage...
 

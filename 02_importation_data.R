@@ -71,22 +71,18 @@ for(num_vague in 2:num_vague_max){
                              show_col_types = FALSE)
   data_derivated <- as.data.table(data_derivated)
   
-  #### Cas particulier : La quatrième vague
-  if(num_vague == 4){ ### On doit passer toutes les colonnes en majuscules dans ce cas
-    for(nom_col in colnames(data_derivated)){
-      try(setnames(data_derivated, nom_col, toupper(nom_col)), silent=TRUE)
-    }
-    print("Dernière vague prise en compte ==> Toutes les colonnes sont passées en majuscules")
-    for(nom_col in colnames(data_complete)){
-      try(setnames(data_complete, nom_col, toupper(nom_col)), silent=TRUE)
-    }
-  }else{ #Sinon seule id est passée en majuscule
-    try(setnames(data_derivated, "id", "ID"), silent=TRUE) #Parfois les colonnes ont des noms en minuscule...
+  ### On passe toutes les colonnes en majuscule...
+  for(nom_col in colnames(data_derivated)){
+    try(setnames(data_derivated, nom_col, toupper(nom_col)), silent=TRUE)
+  }
+  print("Dernière vague prise en compte ==> Toutes les colonnes sont passées en majuscules")
+  for(nom_col in colnames(data_complete)){
+    try(setnames(data_complete, nom_col, toupper(nom_col)), silent=TRUE)
   }
   
   
-  try(setnames(data_derivated, "survey", "SURVEY"), silent=TRUE) # Cette variable peut avoir deux noms 
-  try(setnames(data_derivated, "Survey", "SURVEY"), silent=TRUE) # Cette variable peut avoir deux noms 
+  # try(setnames(data_derivated, "survey", "SURVEY"), silent=TRUE) # Cette variable peut avoir deux noms 
+  # try(setnames(data_derivated, "Survey", "SURVEY"), silent=TRUE) # Cette variable peut avoir deux noms 
   
   
   
