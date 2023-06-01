@@ -14,8 +14,11 @@
 liste_cols_core_household <- c("sa0010", # household identification number
                                "sa0100", # country
                                "sa0200", # survey vintage
-                               "id"
+                               "id",
+                               "sa0210", # Vintage of last interview (household)
+                               "SA0110" # Past household ID
                                ) ### A mettre en minuscule
+
 
 
 ###### On prépare la boucle avec la première importation
@@ -45,6 +48,21 @@ for(nom_col in liste_cols_core_household){
   try(setnames(data_house, nom_col, toupper(nom_col)), silent=TRUE)
 }
 liste_cols_core_household_new <- toupper(liste_cols_core_household)
+
+for(var in liste_cols_core_household_new){
+  print(var)
+  if(is.null(data_house[[var]])){ #C'est ce qui concerne le past. Mais pour la première vague forcément il n'y en n'a pas...
+    data_house[, eval(var) := NaN]
+  }
+}
+# 
+# if(is.null(data_house$SA0210)){ #C'est ce qui concerne le past. Mais pour la première vague forcément il n'y en n'a pas...
+#   data_house[, SA0210 := NaN]
+# }
+# if(is.null(data_house$SA0110)){
+#   data_house[, SA0110 := NaN]
+# }
+
 data_house <- data_house[,..liste_cols_core_household_new]
 nrow(data_house)
 
@@ -96,6 +114,11 @@ for(num_vague in 2:num_vague_max){
     try(setnames(data_house, nom_col, toupper(nom_col)), silent=TRUE)
   }
   liste_cols_core_household_new <- toupper(liste_cols_core_household)
+  for(var in liste_cols_core_household_new){
+    if(is.null(data_house[[var]])){ #C'est ce qui concerne le past. Mais pour la première vague forcément il n'y en n'a pas...
+      data_house[, eval(var) := NaN]
+    }
+  }
   data_house <- data_house[,..liste_cols_core_household_new]
   
   # Merge et concat

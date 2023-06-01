@@ -77,11 +77,14 @@ source(paste(repo_prgm , "03_nettoyage_preparation.R" , sep = "/"))
 # DOGIFTINHER = Montant des cadeaux et héritages reçus ==> ATTENTION : La résidence principale peut être exclue du montant, car elle est comptée dans la question sur le mode d'aquisition de celle-ci
 # DOINHERIT = Substantial inheritance/gift received ==> OSEF non ?
 # VAGUE = La vague
-# SA0200 = L'année
 # DA1120 = La valeur de la résidence principale
+# SA0200 = Survey vintage
+# SA0010 = Identifiant du ménage
+# SA0210 = Vintage of last interview (household)
+# SA0110 = Past household ID
 
 liste_var_continues <- c("HW0010", "DA1000", "DA2100", "DA3001", "DI2000", "DI2000EQ", "DI2100", "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120")
-liste_var_categorielles <- c("DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DHLIFESATIS", "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE", "SA0200", "DHAGEH1B")
+liste_var_categorielles <- c("SA0110","SA0210", "SA0010" ,"DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DHLIFESATIS", "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE", "SA0200", "DHAGEH1B")
 liste_var_interet <- union(liste_var_continues, liste_var_categorielles)
 sous_data_belgique <- data_belgique[,..liste_var_interet]
 sous_data_belgique <- sous_data_belgique %>% mutate_at(liste_var_continues, as.numeric)
@@ -175,11 +178,6 @@ for(type_pat in liste_type_patrimoines){
   
 }
 
-# 
-# "DL1000" = "Dettes",
-# "DN3001" = "Richesse totale")
-
-
 # Melt pour pouvoir tracer
 melted <- melt(data_for_plot, 
                id.vars = "Quantiles", 
@@ -260,6 +258,46 @@ data_loc <- melted[variable != "Effectifs"]
 
 trace_barplot_log(data_loc, x, y, fill, xlabel, ylabel,filllabel, titre, titre_save)
   
+
+######### A-t-on bien des données de panel ?
+# SA0200 = Survey vintage
+# SA0010 = household identification number
+# SA0210 = Vintage of last interview (household)
+# SA0110 = Past household ID
+
+vague_1 <- sous_data_belgique[VAGUE == 1,] # On récupère les vagues
+vague_2 <- sous_data_belgique[VAGUE == 2,]
+vague_3 <- sous_data_belgique[VAGUE == 3,]
+vague_4 <- sous_data_belgique[VAGUE == 4,]
+
+colnames(vague_1) <- paste(colnames(vague_1),"V1",sep="_") # On renome pour ne pas avoir de conflits
+colnames(vague_2) <- paste(colnames(vague_2),"V2",sep="_")
+colnames(vague_3) <- paste(colnames(vague_3),"V3",sep="_")
+colnames(vague_4) <- paste(colnames(vague_4),"V4",sep="_")
+
+
+vague_12 <- merge(x = vague_2, y = vague_1, by.x = 'SA0110_V2',by.y = 'SA0010_V1')
+vague_123 <- merge(x = vague_3, y = vague_12, by.x = 'SA0110_V3',by.y = 'SA0010_V2') ## On s'arrête là parce qu'aucun ménage n'est enquêté 4x
+vague_1234 <- merge(x = vague_4, y = vague_123, by.x = 'SA0110_V4',by.y = 'SA0010_V3')
+
+vague_23 <- merge(x = vague_3, y = vague_2, by.x = 'SA0110_V3',by.y = 'SA0010_V2')
+vague_234 <- merge(x = vague_4, y = vague_23, by.x = 'SA0110_V4',by.y = 'SA0010_V3') ## PERSONNE N'EST EN PANEL A LA VAGUE 4 ?????
+
+view(vague_123)
+
+vague_123[,c("DHAGEH1_V1","DHAGEH1_V2", "DHAGEH1_V3")]
+vague_123[,c("SA0200_V1","SA0200_V2", "SA0200_V3")]
+
+
+
+### Pour vérifier on regarde les différences d'âges de la personne de référence du ménage
+## 2010      2014      2017 les vagues
+diff_12 <- as.numeric(vague_123$DHAGEH1_V2) - as.numeric(vague_123$DHAGEH1_V1)
+diff_23 <- as.numeric(vague_123$DHAGEH1_V3) - as.numeric(vague_123$DHAGEH1_V2)
+
+
+table(diff_12)
+table(diff_23)
 
 
 
