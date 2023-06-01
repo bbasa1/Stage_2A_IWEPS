@@ -138,9 +138,9 @@ data_for_plot
 ######## On regarde la concentration des différents types de patrimoines #############
 
 nb_quantiles <- 100
-liste_type_patrimoines <- c("DA3001" = "Total",
-                            "DA1000" = "Physique",
-                            "DA2100" = "Financier",
+liste_type_patrimoines <- c("DA3001" = "Total patrimoine",
+                            "DA1000" = "Patrimoine physique",
+                            "DA2100" = "Patrimoine financier",
                             "DL1000" = "Dettes",
                             "DN3001" = "Richesse totale")
 
@@ -188,16 +188,15 @@ melted <- melt(data_for_plot,
                value.name    = "value")
 
 
-
-titre_fig <- "Fonction de répartition du patrimoine des ménages Belges, par type de patrimoine"
+titre_fig <- "Fonction de répartition de la richesse détenue par les ménages Belges"
 titre_save <- "Concentration_patrimoine_par_type.pdf"
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 x <- "Quantiles"
 y <- "value"
 color <- "variable"
 xlabel <- "Part des ménages"
-ylabel <- "Patrimoine détenu (cumulatif)"
-colorlabel <- "Type de patrimoine"
+ylabel <- "Richesse détenue (cumulatif)"
+colorlabel <- "Type de richesse"
 data_melted_loc <- melted
 
 trace_concentration(data_melted_loc, x, y, color, xlabel, ylabel,colorlabel, titre_fig, titre_save)
@@ -206,9 +205,9 @@ trace_concentration(data_melted_loc, x, y, color, xlabel, ylabel,colorlabel, tit
 
 ############### Dispersion du patrimoine en fonction de l'âge
 
-liste_type_patrimoines <- c("DA3001" = "Total",
-                            "DA1000" = "Physique",
-                            "DA2100" = "Financier",
+liste_type_patrimoines <- c("DA3001" = "Total patrimoine",
+                            "DA1000" = "Patrimoine physique",
+                            "DA2100" = "Patrimoine financier",
                             "DL1000" = "Dettes",
                             "DN3001" = "Richesse totale")
 
@@ -247,13 +246,7 @@ melted <- melt(data_for_plot,
                variable.name = "variable",
                value.name    = "value")
 
-ggplot(data = melted[variable != "Effectifs"], aes(x = liste_ages, y = log(value), fill = variable)) +
-  geom_bar(stat="identity", position=position_dodge())
-
-
-
-
-titre <- "Variance du patrimoine des Belges, par type de patrimoine"
+titre <- "Variance de la richesse détenue par les ménages Belges"
 titre_save <- "variance_patrimoine.pdf"
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 x <-"liste_ages"
@@ -261,8 +254,8 @@ sortby_x <- "liste_ages"
 y <- "value"
 fill <- "variable"
 xlabel <-"Tranche d'âge de la personne de référence du ménage"
-ylabel <-"Variance du patrimoine (échelle log)"
-filllabel <- "Type de patrimoine"
+ylabel <-"Variance de la richesse (échelle log)"
+filllabel <- "Type de richesse"
 data_loc <- melted[variable != "Effectifs"]
 
 trace_barplot_log(data_loc, x, y, fill, xlabel, ylabel,filllabel, titre, titre_save)

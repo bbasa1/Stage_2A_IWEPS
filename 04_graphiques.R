@@ -10,7 +10,7 @@ trace_barplot <- function(data_loc, x, sortby_x, y, fill, xlabel, ylabel, titre,
          x= xlabel,
          y= ylabel) + 
     scale_y_continuous(limits = c(0, xlim_sup), labels = function(y) format(y, scientific = FALSE)) + 
-    scale_fill_discrete() +
+    scale_fill_viridis(discrete = TRUE) +
     scale_color_viridis() +
     theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
   
@@ -27,7 +27,7 @@ trace_barplot_log <- function(data_loc, x, y, fill, xlabel, ylabel,filllabel, ti
            y= ylabel,
            fill = filllabel) + 
       scale_y_continuous(trans='log10', labels = function(y) format(y, scientific = TRUE)) + 
-      scale_fill_discrete() +
+      scale_fill_viridis(discrete = TRUE) +
       scale_color_viridis() +
       theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
     
@@ -66,7 +66,7 @@ trace_concentration <- function(data_melted_loc, x, y, color, xlabel, ylabel,col
     scale_color_viridis_d() +
     theme(legend.text = element_text(angle = 0, vjust = 0.7, hjust = 0),
           axis.text.x = element_text(angle = 45, vjust = 0.5),
-          legend.position = "bottom") +
+          legend.position = "right") +
     geom_abline(intercept = 0, slope = 1, linetype = "dashed")
   
   print(p)
