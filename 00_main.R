@@ -264,6 +264,11 @@ trace_barplot_log(data_loc, x, y, fill, xlabel, ylabel,filllabel, titre, titre_s
 # SA0010 = household identification number
 # SA0210 = Vintage of last interview (household)
 # SA0110 = Past household ID
+### Pour faire l'évolution il faut commencer par mettre à 0 les patrimoines NaN ################## A REMONTER LUNDI ###################
+sous_data_belgique[is.na(DA1000), DA1000 := 0]
+sous_data_belgique[is.na(DA2100), DA2100 := 0]
+sous_data_belgique[is.na(DL1000), DL1000 := 0]
+
 
 vague_1 <- sous_data_belgique[VAGUE == 1,] # On récupère les vagues
 vague_2 <- sous_data_belgique[VAGUE == 2,]
@@ -290,6 +295,7 @@ vague_123[,c("SA0200_V1","SA0200_V2", "SA0200_V3")]
 
 
 
+
 ### Pour vérifier on regarde les différences d'âges de la personne de référence du ménage
 ## 2010      2014      2017 les vagues
 diff_12 <- as.numeric(vague_123$DHAGEH1_V2) - as.numeric(vague_123$DHAGEH1_V1)
@@ -298,6 +304,65 @@ diff_23 <- as.numeric(vague_123$DHAGEH1_V3) - as.numeric(vague_123$DHAGEH1_V2)
 
 table(diff_12)
 table(diff_23)
+
+######### Evolution du patrimoine des ménages entre les vagues
+liste_type_patrimoines <- c("DA3001" = "Total patrimoine",
+                            "DA1000" = "Patrimoine physique",
+                            "DA2100" = "Patrimoine financier",
+                            "DL1000" = "Dettes",
+                            "DN3001" = "Richesse totale")
+
+liste_quantiles <- seq(0, 1, 0.25)
+
+data_for_plot <- as.data.table(liste_quantiles)
+
+for(type_pat in names(liste_type_patrimoines)){
+  diff_V12 <- as.data.table(quantile(vague_123[[paste(type_pat, "V2", sep = "_")]] - vague_123[[paste(type_pat, "V1", sep = "_")]], probs = liste_quantiles))
+  setnames(diff_V12, "V1", paste(liste_type_patrimoines[type_pat], "Vagues 1-2", sep = " "))
+  diff_V12[, liste_quantiles := liste_quantiles]
+  
+  diff_V23 <- as.data.table(quantile(vague_123[[paste(type_pat, "V3", sep = "_")]] - vague_123[[paste(type_pat, "V2", sep = "_")]], probs = liste_quantiles))
+  setnames(diff_V23, "V1", paste(liste_type_patrimoines[type_pat], "Vagues 2-3", sep = " "))
+  diff_V23[, liste_quantiles := liste_quantiles]
+  
+  data_for_plot <- merge(data_for_plot, diff_V12, by = "liste_quantiles")
+  data_for_plot <- merge(data_for_plot, diff_V23, by = "liste_quantiles")
+}
+
+view(data_for_plot)
+
+
+
+# vague_123$DA1000_V12 <- vague_123$DA1000_V2 - vague_123$DA1000_V1
+# vague_123$DA1000_V23 <- vague_123$DA1000_V3 - vague_123$DA1000_V2
+
+# 
+# length(diff_V12)
+# 
+# 
+# liste_valeurs_quantiles <- as.data.frame(diff_DA1000_V12)
+# 
+# diff_DA1000_V12 <- quantile(vague_123$DA1000_V2 - vague_123$DA1000_V1, probs = liste_quantiles)
+# diff_DA1000_V23 <- quantile(vague_123$DA1000_V3 - vague_123$DA1000_V2, probs = liste_quantiles)
+# 
+# 
+# diff_DA1000_V12[[2]]
+# 
+
+
+
+
+
+
+# diff_V12 <- as.data.table(quantile(vague_123[['DA1000_V2']] - vague_123[['DA1000_V1']], probs = liste_quantiles))
+# setnames(diff_V12, "V1", "DA1000_V12")
+# diff_V12[, liste_quantiles := liste_quantiles]
+# 
+# diff_V23 <- as.data.table(quantile(vague_123[['DA1000_V3']] - vague_123[['DA1000_V2']], probs = liste_quantiles))
+# setnames(diff_V23, "V1", "DA1000_V23")
+# diff_V23[, liste_quantiles := liste_quantiles]
+# 
+# merge(data_for_plot, diff_V12, by = "liste_quantiles")
 
 
 
