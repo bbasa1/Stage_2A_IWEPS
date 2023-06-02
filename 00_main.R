@@ -134,9 +134,9 @@ trace_barplot(data_loc, x, sortby_x, y, fill, xlabel, ylabel, titre, titre_save,
   
 
 
-### Exploration supplémentaire
-data_for_plot <- sous_data_belgique[, sum(HW0010), by = DHGENDERH1]
-data_for_plot
+# ### Exploration supplémentaire
+# data_for_plot <- sous_data_belgique[, sum(HW0010), by = DHGENDERH1]
+# data_for_plot
 
 ######## On regarde la concentration des différents types de patrimoines #############
 
@@ -288,13 +288,6 @@ vague_1234 <- merge(x = vague_4, y = vague_123, by.x = 'SA0110_V4',by.y = 'SA001
 vague_23 <- merge(x = vague_3, y = vague_2, by.x = 'SA0110_V3',by.y = 'SA0010_V2')
 vague_234 <- merge(x = vague_4, y = vague_23, by.x = 'SA0110_V4',by.y = 'SA0010_V3') ## PERSONNE N'EST EN PANEL A LA VAGUE 4 ?????
 
-view(vague_123)
-
-vague_123[,c("DHAGEH1_V1","DHAGEH1_V2", "DHAGEH1_V3")]
-vague_123[,c("SA0200_V1","SA0200_V2", "SA0200_V3")]
-
-
-
 
 ### Pour vérifier on regarde les différences d'âges de la personne de référence du ménage
 ## 2010      2014      2017 les vagues
@@ -305,6 +298,8 @@ diff_23 <- as.numeric(vague_123$DHAGEH1_V3) - as.numeric(vague_123$DHAGEH1_V2)
 table(diff_12)
 table(diff_23)
 
+
+
 ######### Evolution du patrimoine des ménages entre les vagues
 liste_type_patrimoines <- c("DA3001" = "Total patrimoine",
                             "DA1000" = "Patrimoine physique",
@@ -312,26 +307,77 @@ liste_type_patrimoines <- c("DA3001" = "Total patrimoine",
                             "DL1000" = "Dettes",
                             "DN3001" = "Richesse totale")
 
-liste_quantiles <- seq(0, 1, 0.25)
+liste_quantiles <- seq(0.2, 0.8, 0.2)
 
 data_for_plot <- as.data.table(liste_quantiles)
 
 for(type_pat in names(liste_type_patrimoines)){
   diff_V12 <- as.data.table(quantile(vague_123[[paste(type_pat, "V2", sep = "_")]] - vague_123[[paste(type_pat, "V1", sep = "_")]], probs = liste_quantiles))
-  setnames(diff_V12, "V1", paste(liste_type_patrimoines[type_pat], "Vagues 1-2", sep = " "))
+  setnames(diff_V12, "V1", "Vagues 1-2")
   diff_V12[, liste_quantiles := liste_quantiles]
   
   diff_V23 <- as.data.table(quantile(vague_123[[paste(type_pat, "V3", sep = "_")]] - vague_123[[paste(type_pat, "V2", sep = "_")]], probs = liste_quantiles))
-  setnames(diff_V23, "V1", paste(liste_type_patrimoines[type_pat], "Vagues 2-3", sep = " "))
+  setnames(diff_V23, "V1", "Vagues 2-3")
   diff_V23[, liste_quantiles := liste_quantiles]
   
-  data_for_plot <- merge(data_for_plot, diff_V12, by = "liste_quantiles")
-  data_for_plot <- merge(data_for_plot, diff_V23, by = "liste_quantiles")
+  data_for_plot_loc <- merge(diff_V12, diff_V23, by = "liste_quantiles")
+  
+  data_for_plot_loc <- melt(data_for_plot_loc, 
+                 id.vars = "liste_quantiles", 
+                 measure.vars  = c("Vagues 2-3", "Vagues 1-2"),
+                 variable.name = "Vague",
+                 value.name    = "Difference")
+
+  data_for_plot_loc[, Type_patrimoine := liste_type_patrimoines[type_pat]]
+  
+  data_for_plot <- rbindlist(list(data_for_plot,
+                                  data_for_plot_loc), fill=TRUE)
 }
 
-view(data_for_plot)
+data_for_plot <- na.omit(data_for_plot)
+data_for_plot[Vague == "Vagues 2-3", Numero_vague := 2]
+data_for_plot[Vague == "Vagues 1-2", Numero_vague := 1]
+
+data_for_plot$Type_patrimoine <- as.factor(data_for_plot$Type_patrimoine)
+data_for_plot$Vague <- as.factor(data_for_plot$Vague)
+data_for_plot$liste_quantiles <- as.factor(data_for_plot$liste_quantiles)
 
 
+data_for_plot <- ff_interaction(data_for_plot, Type_patrimoine, liste_quantiles)
+
+
+titre <- "Quantiles de l'évolution de la richesse des Belges entre les vagues"
+titre_save <- "quantiles_evolution_richesse_panel.pdf"
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+x <-"Vague"
+sortby_x <- "Numero_vague"
+y <- "Difference"
+xlabel <-"Vague"
+ylabel <-"Différence entre les vagues"
+data_loc <- data_for_plot
+fill <- "Type_patrimoine"
+ligne <- "Type_patrimoine_liste_quantiles"
+shape <- "liste_quantiles"
+
+ggplot(data = data_loc, aes(x = reorder(.data[[x]], .data[[sortby_x]]), y = .data[[y]], color = .data[[fill]], shape = .data[[shape]], group = .data[[ligne]])) +
+  geom_point(size=2) +
+  geom_line() +
+  labs(title=titre,
+       x= xlabel,
+       y= ylabel)
+
++ 
+  scale_y_continuous(limits = c(0, 100), labels = function(y) format(y, scientific = FALSE)) + 
+  scale_fill_discrete() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+
+
+
+
+
+
+# names(data_for_plot)[names(data_for_plot) %like% "1-2"]
+# names(data_for_plot)[names(data_for_plot) %like% "2-3"]
 
 # vague_123$DA1000_V12 <- vague_123$DA1000_V2 - vague_123$DA1000_V1
 # vague_123$DA1000_V23 <- vague_123$DA1000_V3 - vague_123$DA1000_V2
