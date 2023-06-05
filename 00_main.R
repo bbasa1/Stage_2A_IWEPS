@@ -112,54 +112,62 @@ source(paste(repo_prgm , "04_graphiques.R" , sep = "/"))
 
 
 
-liste_var_groupby <- c("DHGENDERH1", "DATOP10")
-var_normalisation <- 'DHGENDERH1' # Par quelle variable est-ce qu'on normalise ? Généralement le sexe
+# liste_var_groupby <- c("DHGENDERH1", "DNTOP10")
+# var_normalisation <- 'DHGENDERH1' # Par quelle variable est-ce qu'on normalise ? Généralement le sexe
+# data_for_plot <- preparation_barplot(sous_data_belgique, liste_var_groupby, var_normalisation)
+# 
+# titre <- "Répartition du patrimoine net des Belges, normalisé par sexe"
+# titre_save <- "Patrimoine_net_sexe.pdf"
+# titre_save <- paste(repo_sorties, titre_save, sep ='/')
+# x <-"DNTOP10"
+# sortby_x <- "DNTOP10"
+# y <- "new"
+# fill <- "Sexe"
+# xlabel <-"Quantile de patrimoine net"
+# ylabel <-"% de la population belge"
+# data_loc <- data_for_plot
+# xlim_sup <- 15 #La limite en % sur l'axe x
+# 
+# trace_barplot(data_loc, x, sortby_x, y, fill, xlabel, ylabel, titre, titre_save, xlim_sup)
 
-dots <- lapply(var_normalisation, as.symbol) #Penser à bien convertir pour ne pas avoir de problèmes...
-data_for_plot <- sous_data_belgique[, sum(HW0010), by = liste_var_groupby] #On calcule les effectifs
-data_for_plot <- data_for_plot %>% group_by(.dots = dots) %>% mutate(new = 100*V1/sum(V1)) # Pour la normalisation il faut faire attention à grouper par sexe
-data_for_plot <- as.data.table(data_for_plot)
-data_for_plot
 
-data_for_plot[, Sexe:= factor(
-  fcase(
-    DHGENDERH1 == 1, "Homme",
-    DHGENDERH1 == 2, "Femme"
-  )
-)
-]
-
-### Puis le tracé
-titre <- "Répartition du patrimoine total des Belges, normalisé par sexe"
-titre_save <- "Patrimoine_sexe.pdf"
+# Patrimoine net
+var_decile <- "DNTOP10"
+titre <- "Répartition du patrimoine net des Belges, normalisé par sexe"
+titre_save <- "Patrimoine_net_sexe.pdf"
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-x <-"DATOP10"
-sortby_x <- "DATOP10"
-y <- "new"
-fill <- "Sexe"
-xlabel <-"Quantile de patrimoine brut"
-ylabel <-"% de la population belge"
-data_loc <- data_for_plot
-xlim_sup <- 15 #La limite en % sur l'axe x
-
-trace_barplot(data_loc, x, sortby_x, y, fill, xlabel, ylabel, titre, titre_save, xlim_sup)
+xlabel <-"Quantile de patrimoine net"
+graphique_repartition_pat_quantile_sexe(sous_data_belgique, var_decile, titre, titre_save, xlabel, xlim_sup = 15)
   
+# Patrimoine brut
+var_decile <- "DATOP10"
+titre <- "Répartition du patrimoine brut des Belges, normalisé par sexe"
+titre_save <- "Patrimoine_brut_sexe.pdf"
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+xlabel <-"Quantile de patrimoine brut"
+graphique_repartition_pat_quantile_sexe(sous_data_belgique, var_decile, titre, titre_save, xlabel, xlim_sup = 15)
+
+# Dettes
+var_decile <- "DLTOP10"
+titre <- "Répartition des dettes des Belges, normalisé par sexe"
+titre_save <- "Patrimoine_dettes_sexe.pdf"
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+xlabel <-"Quantile de dettes"
+graphique_repartition_pat_quantile_sexe(sous_data_belgique, var_decile, titre, titre_save, xlabel, xlim_sup = 15)
 
 
-# ### Exploration supplémentaire
-# data_for_plot <- sous_data_belgique[, sum(HW0010), by = DHGENDERH1]
-# data_for_plot
+
+
+
+
 
 ######## On regarde la concentration des différents types de patrimoines #############
-
 nb_quantiles <- 100
-liste_type_patrimoines <- c("DA3001" = "Total patrimoine",
+liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DA1000" = "Patrimoine physique",
                             "DA2100" = "Patrimoine financier",
                             "DL1000" = "Dettes",
-                            "DN3001" = "Richesse totale")
-
-# liste_labels as.data.frame(liste_type_patrimoines)$liste_type_patrimoines
+                            "DN3001" = "Patrimoine net")
 
 # On initialise
 data_for_plot <- as.data.table(1:nb_quantiles)
@@ -186,6 +194,7 @@ for(type_pat in names(liste_type_patrimoines)){
 
 # Calcul de la cumsum
 for(type_pat in liste_type_patrimoines){
+  data_for_plot[, eval(paste(type_pat,"_non_norm", sep = "")) := get(type_pat)]
   data_for_plot[, eval(type_pat) := 100*cumsum(get(type_pat))/sum(get(type_pat))]
   
 }
@@ -214,12 +223,11 @@ trace_concentration(data_melted_loc, x, y, color, xlabel, ylabel,colorlabel, tit
 
 
 ############### Dispersion du patrimoine en fonction de l'âge
-
-liste_type_patrimoines <- c("DA3001" = "Total patrimoine",
+liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DA1000" = "Patrimoine physique",
                             "DA2100" = "Patrimoine financier",
                             "DL1000" = "Dettes",
-                            "DN3001" = "Richesse totale")
+                            "DN3001" = "Patrimoine net")
 
 table(sous_data_belgique$DHAGEH1B) #C'est la borne inférieure de l'âge qui est indiquée
 
@@ -229,21 +237,27 @@ setnames(data_for_plot, "V1", "Effectifs")
 for(type_pat in names(liste_type_patrimoines)){
   liste_ages <- sort(unique(sous_data_belgique$DHAGEH1B))
   liste_variances <- 1:length(liste_ages)
+  liste_conf_inter <- 1:length(liste_ages)
+  
   
   for(num_age in 1:length(liste_ages)){
     age <- liste_ages[num_age]
     data_loc <- sous_data_belgique[DHAGEH1B == age & VAGUE != 4,]
     if(nrow(data_loc) >= 2){
       dw_loc <- svydesign(ids = ~1, data = data_loc, weights = ~ data_loc$HW0010)
-      liste_variances[num_age] <- svyvar(~get(type_pat), design = dw_loc, na.rm=TRUE)[1]
+      variance <- svyvar(~get(type_pat), design = dw_loc, na.rm=TRUE)
+      liste_variances[num_age] <- variance[1]
+      liste_conf_inter[num_age] <- SE(variance)[1]
     }else{
       liste_variances[num_age] <- 0
+      liste_conf_inter[num_age] <- 0
     }
   }
   
-  data_for_plot_loc <- data.frame(liste_ages,liste_variances)
+  data_for_plot_loc <- data.frame(liste_ages,liste_variances, liste_conf_inter)
   data_for_plot_loc <- as.data.table(data_for_plot_loc)
   setnames(data_for_plot_loc, "liste_variances", liste_type_patrimoines[type_pat])
+  setnames(data_for_plot_loc, "liste_conf_inter", paste(liste_type_patrimoines[type_pat], "_SE", sep = ""))
   data_for_plot <- merge(data_for_plot_loc, data_for_plot, by = "liste_ages")
 }
 
@@ -256,7 +270,21 @@ melted <- melt(data_for_plot,
                variable.name = "variable",
                value.name    = "value")
 
-titre <- "Variance de la richesse détenue par les ménages Belges"
+melted_SE <- melt(data_for_plot, 
+               id.vars = "liste_ages", 
+               measure.vars  = paste(as.data.frame(liste_type_patrimoines)$liste_type_patrimoines,"_SE", sep = ""),
+               variable.name = "variable",
+               value.name    = "value_SE")
+
+melted_SE$variable= gsub("_SE","",melted_SE$variable)
+# melted_SE$value_IC <- 3*melted_SE$value
+merged_melted <- merge(melted, melted_SE, by = c("liste_ages", "variable"))
+merged_melted$value_SE <- 1.96*merged_melted$value_SE # Pour un interval à 95%
+merged_melted$ymin <- merged_melted$value - merged_melted$value_SE
+merged_melted$ymax <- merged_melted$value + merged_melted$value_SE
+
+
+titre <- "Variance du patrimoine détenu par les ménages Belges"
 titre_save <- "variance_patrimoine.pdf"
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 x <-"liste_ages"
@@ -264,9 +292,9 @@ sortby_x <- "liste_ages"
 y <- "value"
 fill <- "variable"
 xlabel <-"Tranche d'âge de la personne de référence du ménage"
-ylabel <-"Variance de la richesse (échelle log)"
-filllabel <- "Type de richesse"
-data_loc <- melted[variable != "Effectifs"]
+ylabel <-"Variance du patrimoine (échelle log)"
+filllabel <- "Type de patrimoine"
+data_loc <- merged_melted[variable != "Effectifs"]
 
 trace_barplot_log(data_loc, x, y, fill, xlabel, ylabel,filllabel, titre, titre_save)
   
@@ -312,11 +340,11 @@ table(diff_23)
 
 
 ######### Evolution du patrimoine des ménages entre les vagues ##############
-liste_type_patrimoines <- c("DA3001" = "Total patrimoine",
+liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DA1000" = "Patrimoine physique",
                             "DA2100" = "Patrimoine financier",
                             "DL1000" = "Dettes",
-                            "DN3001" = "Richesse totale")
+                            "DN3001" = "Patrimoine net")
 
 liste_quantiles <- seq(0.2, 0.8, 0.2)
 
@@ -357,7 +385,7 @@ data_for_plot$liste_quantiles <- as.factor(data_for_plot$liste_quantiles)
 data_for_plot <- ff_interaction(data_for_plot, Type_patrimoine, liste_quantiles)
 
 
-titre <- "Quantiles de l'évolution de la richesse des Belges entre les vagues"
+titre <- "Quantiles de l'évolution du patrimoine des Belges entre les vagues"
 titre_save <- "quantiles_evolution_richesse_panel.pdf"
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 x <-"Vague"
