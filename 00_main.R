@@ -20,6 +20,7 @@ repo_inter <- paste(repgen, "Bases_intermediaires" , sep = "/")
 source(paste(repo_prgm , "01_packages.R" , sep = "/"))
 
 
+
 # Les sous-sous-dossiers qui contiennent les données
 liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_UDB_3_2_ASCII", "HFCS_UDB_4_0_early_diss_ASCII")
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
@@ -75,17 +76,28 @@ source(paste(repo_prgm , "03_nettoyage_preparation.R" , sep = "/"))
 # DNTOP10 = Décile du net wealth du ménage
 # DOEINHERIT = S'attend à recevoir un héritage dans le futur
 # DOGIFTINHER = Montant des cadeaux et héritages reçus ==> ATTENTION : La résidence principale peut être exclue du montant, car elle est comptée dans la question sur le mode d'aquisition de celle-ci
-# DOINHERIT = Substantial inheritance/gift received ==> OSEF non ?
+# DOINHERIT = Substantial inheritance/gift received 
 # VAGUE = La vague
 # DA1120 = La valeur de la résidence principale
 # SA0200 = Survey vintage
 # SA0010 = Identifiant du ménage
 # SA0210 = Vintage of last interview (household)
 # SA0110 = Past household ID
+# DA1110i = Fait d'être propriétaire
+# "HB0700 = year of property acquisition
+# "HH0201 = year gift/inheritance received
+# "HH0202"
+# "HH0203"
 
-liste_var_continues <- c("HW0010", "DA1000", "DA2100", "DA3001", "DI2000", "DI2000EQ", "DI2100", "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120")
-liste_var_categorielles <- c("SA0110","SA0210", "SA0010" ,"DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DHLIFESATIS", "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE", "SA0200", "DHAGEH1B")
+
+liste_var_continues <- c("HH0201", "HH0202", "HH0203", "HB0700","HW0010", "DA1000", "DA2100", "DA3001", "DI2000", "DI2000EQ", "DI2100", "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120")
+liste_var_categorielles <- c("DOINHERIT", "DA1110I","SA0110","SA0210", "SA0010" ,"DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DHLIFESATIS", "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE", "SA0200", "DHAGEH1B")
 liste_var_interet <- union(liste_var_continues, liste_var_categorielles)
+
+intersection <- intersect(liste_var_interet, colnames(data_belgique))
+if(length(setdiff(liste_var_interet, intersection)) > 0){
+  print(paste("Attention les variables : ", setdiff(liste_var_interet, intersection), "ont été sélectionnées mais ne sont pas présentent dans la table initiale", sep = " "))
+}
 sous_data_belgique <- data_belgique[,..liste_var_interet]
 sous_data_belgique <- sous_data_belgique %>% mutate_at(liste_var_continues, as.numeric)
 sous_data_belgique <- sous_data_belgique %>% mutate_at(liste_var_categorielles, as.factor)
@@ -299,8 +311,7 @@ table(diff_12)
 table(diff_23)
 
 
-
-######### Evolution du patrimoine des ménages entre les vagues
+######### Evolution du patrimoine des ménages entre les vagues ##############
 liste_type_patrimoines <- c("DA3001" = "Total patrimoine",
                             "DA1000" = "Patrimoine physique",
                             "DA2100" = "Patrimoine financier",
@@ -359,22 +370,104 @@ fill <- "Type_patrimoine"
 ligne <- "Type_patrimoine_liste_quantiles"
 shape <- "liste_quantiles"
 
-ggplot(data = data_loc, aes(x = reorder(.data[[x]], .data[[sortby_x]]), y = .data[[y]], color = .data[[fill]], shape = .data[[shape]], group = .data[[ligne]])) +
+p <- ggplot(data = data_loc, aes(x = reorder(.data[[x]], .data[[sortby_x]]), y = .data[[y]], color = .data[[fill]], shape = .data[[shape]], group = .data[[ligne]])) +
   geom_point(size=2) +
   geom_line() +
   labs(title=titre,
        x= xlabel,
-       y= ylabel)
+       y= ylabel) 
 
-+ 
-  scale_y_continuous(limits = c(0, 100), labels = function(y) format(y, scientific = FALSE)) + 
-  scale_fill_discrete() +
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
 
 
 
+########################## DiD ESSAI N°1 = EFFET DU FAIT D'AVOIR RECU UN HERITAGE SUR LE FAIT D'ACHETER UNE HMR ###############
+pop_initiale_tot <- copy(sous_data_belgique[VAGUE %in% c(2,3),]) ## On se place sur les vagues 2 et 3 pour pouvoir tester la common trend asump. sur vagues 1 et 2
+nrow(pop_initiale_tot)
+
+pop_initiale_tot[, Reg_Y := 0]
+pop_initiale_tot[DA1110I == 1, Reg_Y := 1] ## La population qui ont une HMR
+pop_initiale_tot$Reg_Y <- as.numeric(pop_initiale_tot$Reg_Y)
+
+pop_initiale_tot[, Reg_G := 0]
+pop_initiale_tot[DOINHERIT == 1, Reg_G := 1] ## La population reçoit le traitement = un héritage
+pop_initiale_tot$Reg_G <- as.numeric(pop_initiale_tot$Reg_G)
 
 
+pop_initiale_tot[, Reg_T := 0]
+pop_initiale_tot[VAGUE == 3, Reg_T := 1] ## La date
+pop_initiale_tot$Reg_T <- as.numeric(pop_initiale_tot$Reg_T)
+
+
+pop_initiale_tot[, Reg_D := Reg_G * Reg_T]
+
+liste_cols_reg <- c("Reg_Y", "Reg_G", "Reg_T", "Reg_D")
+pop_initiale_tot[,..liste_cols_reg]
+
+
+did_reg <- lm(Reg_Y  ~ Reg_G + Reg_D + Reg_T , data = pop_initiale_tot[,..liste_cols_reg])
+
+summary(did_reg)
+
+summary(did_reg)$coefficients["Reg_D", "Pr(>|t|)"] #Pour récupérer la pvalue du coeff
+
+
+############ Ajout de poids
+liste_cols_reg <- c("Reg_Y", "Reg_G", "Reg_T", "Reg_D", "HW0010")
+pop_initiale_tot[,..liste_cols_reg]
+dw <- svydesign(ids = ~1, data = pop_initiale_tot[,..liste_cols_reg], weights = ~ HW0010)
+
+mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw)
+summary(mysvyglm) # Ca change pas grand chose... Ca dégrade même les résultats mais on va utiliser ça pour la suite
+
+
+
+
+## Test de la common trend asumption sur les vagues 1 et 2
+pop_test_hyp <- copy(sous_data_belgique[VAGUE %in% c(1,2),]) 
+
+pop_test_hyp[, Reg_Y := 0]
+pop_test_hyp[DA1110I == 1, Reg_Y := 1] ## La population qui ont une HMR
+pop_test_hyp$Reg_Y <- as.numeric(pop_test_hyp$Reg_Y)
+
+pop_test_hyp[, Reg_G := 0]
+pop_test_hyp[DOINHERIT == 1, Reg_G := 1] ## La population reçoit le traitement = un héritage
+pop_test_hyp$Reg_G <- as.numeric(pop_test_hyp$Reg_G)
+
+
+pop_test_hyp[, Reg_T := -1]
+pop_test_hyp[VAGUE == 2, Reg_T := 0] ## La date
+pop_test_hyp$Reg_T <- as.numeric(pop_test_hyp$Reg_T)
+
+dw <- svydesign(ids = ~1, data = pop_test_hyp, weights = ~ HW0010)
+
+
+sous_dw <- subset(dw, Reg_G == 1 & Reg_T == 0) # Un sous-échantillon
+svymean(~Reg_Y, subset(dw, Reg_G == 1 & Reg_T == 0))[1]
+
+
+svymean(~Reg_Y, subset(dw, Reg_G == 1 & Reg_T == 0))[1] - svymean(~Reg_Y, subset(dw, Reg_G == 1 & Reg_T == -1))[1]
+svymean(~Reg_Y, subset(dw, Reg_G == 0 & Reg_T == 0))[1] - svymean(~Reg_Y, subset(dw, Reg_G == 0 & Reg_T == -1))[1]
+
+
+table(pop_initiale_tot$Reg_D)
+
+
+######## Tracé : le date d'achat de la HMR - la date de l'héritage
+# "HB0700 = year of property acquisition
+# "HH0201 = year gift/inheritance received
+# "HH0202"
+# "HH0203"
+
+sum(table(sous_data_belgique$HH0201))
+sum(table(sous_data_belgique$HH0202))
+sum(table(sous_data_belgique$HH0203))
+
+hist(sous_data_belgique$HB0700 - sous_data_belgique$HH0201, breaks=50)
+table(sous_data_belgique$HB0700 - sous_data_belgique$HH0201)
+
+
+hist(log10(sous_data_belgique$DOGIFTINHER), breaks = 50)
 
 # names(data_for_plot)[names(data_for_plot) %like% "1-2"]
 # names(data_for_plot)[names(data_for_plot) %like% "2-3"]
@@ -473,7 +566,7 @@ svycor(~DA3001 + DI2000, design = dw)$cors[1,2]
 
 
 
-################################################## Exploration avec le paclage survey
+################################################## Exploration avec le paclage 
 # 
 # dw$variables$DN3001 # Pour retrouver le contenu d'une colonne
 # 
