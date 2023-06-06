@@ -106,11 +106,6 @@ sous_data_belgique <- data_belgique[,..liste_var_interet]
 sous_data_belgique <- sous_data_belgique %>% mutate_at(liste_var_continues, as.numeric)
 sous_data_belgique <- sous_data_belgique %>% mutate_at(liste_var_categorielles, as.factor)
 
-### Pour faire l'évolution il faut commencer par mettre à 0 les patrimoines NaN 
-sous_data_belgique[is.na(DA1000), DA1000 := 0]
-sous_data_belgique[is.na(DA2100), DA2100 := 0]
-sous_data_belgique[is.na(DL1000), DL1000 := 0]
-
 ################################################################################
 # ====================== 04 STAT DES & GRAPHIQUES ==============================
 ################################################################################
@@ -183,11 +178,71 @@ titre_save <- "variance_patrimoine.pdf"
 graphique_variance_pat_age(data_loc, liste_type_patrimoines, titre, titre_save)
 
 
+
+
+######################### Tracé : le date d'achat de la HMR - la date de l'héritage
+# "HB0700 = year of property acquisition
+# "HH0201 = year gift/inheritance received
+# "HH0202"
+# "HH0203"
+
+sous_data_belgique[, Annee_heritage_1 := pmin(HH0201, HH0202, HH0203, na.rm = TRUE)] ## C'est le premier héritage obtenu
+sous_data_belgique[, Montant_heritage_1 := factor(
+  fcase(
+    Annee_heritage_1 == HH0201, HH0401,
+    Annee_heritage_1 == HH0202, HH0402,
+    Annee_heritage_1 == HH0203, HH0403
+  )
+)
+]
+sous_data_belgique$Montant_heritage_1 <- as.numeric(as.character(sous_data_belgique$Montant_heritage_1)) ### ATTENTION laisser le as.character sinon ça bug je sais pas pourquoi...
+hist(log10(sous_data_belgique$Montant_heritage_1), breaks = 50)
+
+
+
+
+## En fait on ne veut pas le premier héritage obtenu mais le premier héritage CONSEQUANT obtenu
+montant_heritage_min <- 10000
+
+sous_data_belgique[HH0401 >= montant_heritage_min, HH0201_cons := HH0201] #On recréé les colonnes des dates d'héritages, mais que si l'héritage est conséquent
+sous_data_belgique[HH0402 >= montant_heritage_min, HH0202_cons := HH0202]
+sous_data_belgique[HH0403 >= montant_heritage_min, HH0203_cons := HH0203]
+
+sous_data_belgique[, Annee_heritage_1_cons := pmin(HH0201_cons, HH0202_cons, HH0203_cons, na.rm = TRUE)] # Pour les ménages qui ont un premier héritage conséquent on met celui-là
+sous_data_belgique[is.na(Annee_heritage_1_cons), Annee_heritage_1_cons := Annee_heritage_1] # Pour les autres on peut mettre le premier héritage obtenu même s'il est faible
+sous_data_belgique[, Montant_heritage_1_cons := factor( #Puis on peut mettre le montant de l'héritage associé
+  fcase(
+    Annee_heritage_1_cons == HH0201, HH0401,
+    Annee_heritage_1_cons == HH0202, HH0402,
+    Annee_heritage_1_cons == HH0203, HH0403
+  )
+)
+]
+sous_data_belgique$Montant_heritage_1_cons <- as.numeric(as.character(sous_data_belgique$Montant_heritage_1_cons)) ### ATTENTION laisser le as.character sinon ça bug je sais pas pourquoi...
+
+# Pour vérifier
+liste_obs <- c("HH0201", "HH0202", "HH0203", "HH0401", "HH0402", "HH0403", "Annee_heritage_1_cons", "Montant_heritage_1_cons")
+head(sous_data_belgique[,..liste_obs], 50)
+
+hist(sous_data_belgique$HB0700 - sous_data_belgique$Annee_heritage_1, breaks=50)
+hist(sous_data_belgique$HB0700 - sous_data_belgique$Annee_heritage_1_cons, breaks=50)
+
+count(sous_data_belgique[Annee_heritage_1 != Annee_heritage_1_cons]) #Ouais bon ça change 100 lignes...
+
+
+
+
+
 ######### A-t-on bien des données de panel ?
 # SA0200 = Survey vintage
 # SA0010 = household identification number
 # SA0210 = Vintage of last interview (household)
 # SA0110 = Past household ID
+
+### Pour faire l'évolution il faut commencer par mettre à 0 les patrimoines NaN 
+sous_data_belgique[is.na(DA1000), DA1000 := 0]
+sous_data_belgique[is.na(DA2100), DA2100 := 0]
+sous_data_belgique[is.na(DL1000), DL1000 := 0]
 
 vague_1 <- sous_data_belgique[VAGUE == 1,] # On récupère les vagues
 vague_2 <- sous_data_belgique[VAGUE == 2,]
@@ -229,72 +284,6 @@ titre_save <- paste(repo_sorties, titre_save, sep ='/')
 graphique_evolution_position_vagues(vague_123 ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save)
   
 
-
-
-
-# data_for_plot <- as.data.table(1:nb_quantiles)
-# 
-# data_for_plot_loc_bis <- data_for_plot_loc[, median(DN3001_QV2), by = DN3001_QV1 ]
-# setnames(data_for_plot, "V1", "Médiane Vague 2")
-# data_for_plot <- merge(data_for_plot, data_for_plot_loc_bis, by = )
-# 
-# data_for_plot_loc_bis <- data_for_plot_loc[, median(DN3001_QV3), by = DN3001_QV2 ]
-# setnames(data_for_plot, "V1", "Médiane Vague 3")
-# 
-# data_for_plot_loc_bis <- data_for_plot_loc[, median(DN3001_QV2), by = DN3001_QV1 ]
-# setnames(data_for_plot, "V1", "Médiane Vague 3")
-
-
-
-# ggplot(vague_123, aes(x = Quantiles_V1, y = Quantiles_V2)) + 
-#   geom_point()+
-#   stat_poly_eq(use_label(c("eq", "R2"))) +
-#   stat_poly_line() +
-#   geom_abline(intercept = 0, slope = 1, linetype = "dashed")
-# 
-# 
-# 
-# vague_123$RANG_V1 <- rank(vague_123$DA3001_V1)
-# vague_123$RANG_V2 <- rank(vague_123$DA3001_V2)
-# 
-# 
-# vague_123[,Quantiles_V1 := cut(vague_123$RANG_V1,
-#                                      breaks=quantile(vague_123$RANG_V1, probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
-#                                      include.lowest= TRUE, labels=1:nb_quantiles)]
-# 
-# vague_123[,Quantiles_V2 := cut(vague_123$RANG_V2,
-#                                breaks=quantile(vague_123$RANG_V2, probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
-#                                include.lowest= TRUE, labels=1:nb_quantiles)]
-# 
-# 
-# vague_123$Quantiles_V1 <- as.numeric(vague_123$Quantiles_V1)
-# vague_123$Quantiles_V2 <- as.numeric(vague_123$Quantiles_V2)
-# ### Moyenne des rangs de la V2 en fonction des rangs de la V1
-# data_for_plot <- vague_123[, median(Quantiles_V2), by = Quantiles_V1]
-# 
-# 
-# plot(data_for_plot)
-# 
-# ggplot(vague_123) +
-#   geom_point(aes(x = Quantiles_V1, y = Quantiles_V2))
-# 
-# 
-# 
-# vague_123$Quantiles_V1
-# 
-# quantile(vague_123$RANG_V1, probs = liste_quantiles)
-# 
-# 
-# 
-# plot(vague_123$RANG_V1, vague_123$RANG_V2)
-# 
-# x2<-rpois(10,5)
-# x2
-# length(rank(x2))
-# 
-# x <- 1:10
-# x[2] <- 12
-# rank(x)
 
 ######### Evolution du patrimoine des ménages entre les vagues ##############
 liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
@@ -438,58 +427,13 @@ svymean(~Reg_Y, subset(dw, Reg_G == 0 & Reg_T == 0))[1] - svymean(~Reg_Y, subset
 table(pop_initiale_tot$Reg_D)
 
 
-######## Tracé : le date d'achat de la HMR - la date de l'héritage
-# "HB0700 = year of property acquisition
-# "HH0201 = year gift/inheritance received
-# "HH0202"
-# "HH0203"
-
-sous_data_belgique[, Annee_heritage_1 := pmin(HH0201, HH0202, HH0203, na.rm = TRUE)] ## C'est le premier héritage obtenu
-sous_data_belgique[, Montant_heritage_1 := factor(
-  fcase(
-    Annee_heritage_1 == HH0201, HH0401,
-    Annee_heritage_1 == HH0202, HH0402,
-    Annee_heritage_1 == HH0203, HH0403
-  )
-)
-]
-sous_data_belgique$Montant_heritage_1 <- as.numeric(as.character(sous_data_belgique$Montant_heritage_1)) ### ATTENTION laisser le as.character sinon ça bug je sais pas pourquoi...
-hist(log10(sous_data_belgique$Montant_heritage_1), breaks = 50)
+############################### 
 
 
 
 
-## En fait on ne veut pas le premier héritage obtenu mais le premier héritage CONSEQUANT obtenu
-montant_heritage_min <- 10000
 
-sous_data_belgique[HH0401 >= montant_heritage_min, HH0201_cons := HH0201] #On recréé les colonnes des dates d'héritages, mais que si l'héritage est conséquent
-sous_data_belgique[HH0402 >= montant_heritage_min, HH0202_cons := HH0202]
-sous_data_belgique[HH0403 >= montant_heritage_min, HH0203_cons := HH0203]
 
-sous_data_belgique[, Annee_heritage_1_cons := pmin(HH0201_cons, HH0202_cons, HH0203_cons, na.rm = TRUE)] # Pour les ménages qui ont un premier héritage conséquent on met celui-là
-sous_data_belgique[is.na(Annee_heritage_1_cons), Annee_heritage_1_cons := Annee_heritage_1] # Pour les autres on peut mettre le premier héritage obtenu même s'il est faible
-sous_data_belgique[, Montant_heritage_1_cons := factor( #Puis on peut mettre le montant de l'héritage associé
-  fcase(
-    Annee_heritage_1_cons == HH0201, HH0401,
-    Annee_heritage_1_cons == HH0202, HH0402,
-    Annee_heritage_1_cons == HH0203, HH0403
-  )
-)
-]
-sous_data_belgique$Montant_heritage_1_cons <- as.numeric(as.character(sous_data_belgique$Montant_heritage_1_cons)) ### ATTENTION laisser le as.character sinon ça bug je sais pas pourquoi...
-
-# Pour vérifier
-liste_obs <- c("HH0201", "HH0202", "HH0203", "HH0401", "HH0402", "HH0403", "Annee_heritage_1_cons", "Montant_heritage_1_cons")
-head(sous_data_belgique[,..liste_obs], 50)
-
-hist(sous_data_belgique$HB0700 - sous_data_belgique$Annee_heritage_1, breaks=50)
-hist(sous_data_belgique$HB0700 - sous_data_belgique$Annee_heritage_1_cons, breaks=50)
-
-count(sous_data_belgique[Annee_heritage_1 != Annee_heritage_1_cons]) #Ouais bon ça change 100 lignes...
-# 
-# 
-# 
-# 
 # sous_data_belgique$Annee_heritage_1_cons
 # 
 # sous_data_belgique[is.na(HH0202) & is.na(HH0203), Annee_heritage_1_cons := HH0201] # S'il n'y a qu'un ou aucun héritage, alors on ne met que lui, ou on met NAN
