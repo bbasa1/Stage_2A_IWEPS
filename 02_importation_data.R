@@ -58,13 +58,6 @@ for(var in liste_cols_core_household_new){
     data_house[, eval(var) := NaN]
   }
 }
-# 
-# if(is.null(data_house$SA0210)){ #C'est ce qui concerne le past. Mais pour la première vague forcément il n'y en n'a pas...
-#   data_house[, SA0210 := NaN]
-# }
-# if(is.null(data_house$SA0110)){
-#   data_house[, SA0110 := NaN]
-# }
 
 data_house <- data_house[,..liste_cols_core_household_new]
 nrow(data_house)

@@ -103,8 +103,10 @@ sous_data_belgique <- data_belgique[,..liste_var_interet]
 sous_data_belgique <- sous_data_belgique %>% mutate_at(liste_var_continues, as.numeric)
 sous_data_belgique <- sous_data_belgique %>% mutate_at(liste_var_categorielles, as.factor)
 
-# sous_data_belgique
-# summary(sous_data_belgique$HW0010)
+### Pour faire l'évolution il faut commencer par mettre à 0 les patrimoines NaN 
+sous_data_belgique[is.na(DA1000), DA1000 := 0]
+sous_data_belgique[is.na(DA2100), DA2100 := 0]
+sous_data_belgique[is.na(DL1000), DL1000 := 0]
 
 ################################################################################
 # ====================== 04 STAT DES & GRAPHIQUES ==============================
@@ -153,56 +155,13 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DL1000" = "Dettes",
                             "DN3001" = "Patrimoine net")
 
-# On initialise
-data_for_plot <- as.data.table(1:nb_quantiles)
-setnames(data_for_plot, 'V1', "Quantiles")
-data_for_plot$Quantiles <- as.numeric(data_for_plot$Quantiles)
-# data_for_plot
-
-# On boucle sur les types de patrimoines
-for(type_pat in names(liste_type_patrimoines)){
-  
-  # Récupération des quantiles
-  sous_data_belgique[,Quantiles := cut(sous_data_belgique[[type_pat]],
-                                       breaks=quantile(sous_data_belgique[[type_pat]], probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
-                                       include.lowest= TRUE, labels=1:nb_quantiles)]
-  
-  # Traitement pour pouvoir merge
-  data_for_plot_loc <- sous_data_belgique[, mean(get(type_pat)), by = Quantiles]
-  setnames(data_for_plot_loc, "V1", liste_type_patrimoines[[type_pat]])
-  data_for_plot_loc$Quantiles <- as.numeric(data_for_plot_loc$Quantiles)
-  
-  # Merge
-  data_for_plot <- merge(data_for_plot, data_for_plot_loc, by = "Quantiles")
-}
-
-# Calcul de la cumsum
-for(type_pat in liste_type_patrimoines){
-  data_for_plot[, eval(paste(type_pat,"_non_norm", sep = "")) := get(type_pat)]
-  data_for_plot[, eval(type_pat) := 100*cumsum(get(type_pat))/sum(get(type_pat))]
-  
-}
-
-# Melt pour pouvoir tracer
-melted <- melt(data_for_plot, 
-               id.vars = "Quantiles", 
-               measure.vars  = as.data.frame(liste_type_patrimoines)$liste_type_patrimoines,
-               variable.name = "variable",
-               value.name    = "value")
-
-
 titre_fig <- "Fonction de répartition de la richesse détenue par les ménages Belges"
 titre_save <- "Concentration_patrimoine_par_type.pdf"
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-x <- "Quantiles"
-y <- "value"
-color <- "variable"
-xlabel <- "Part des ménages"
-ylabel <- "Richesse détenue (cumulatif)"
-colorlabel <- "Type de richesse"
-data_melted_loc <- melted
 
-trace_concentration(data_melted_loc, x, y, color, xlabel, ylabel,colorlabel, titre_fig, titre_save)
+
+graphique_contration_patrimoine(sous_data_belgique ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save)
+  
 
 
 
@@ -226,11 +185,6 @@ graphique_variance_pat_age(data_loc, liste_type_patrimoines, titre, titre_save)
 # SA0010 = household identification number
 # SA0210 = Vintage of last interview (household)
 # SA0110 = Past household ID
-### Pour faire l'évolution il faut commencer par mettre à 0 les patrimoines NaN ################## A REMONTER LUNDI ###################
-sous_data_belgique[is.na(DA1000), DA1000 := 0]
-sous_data_belgique[is.na(DA2100), DA2100 := 0]
-sous_data_belgique[is.na(DL1000), DL1000 := 0]
-
 
 vague_1 <- sous_data_belgique[VAGUE == 1,] # On récupère les vagues
 vague_2 <- sous_data_belgique[VAGUE == 2,]
@@ -257,9 +211,87 @@ diff_12 <- as.numeric(vague_123$DHAGEH1_V2) - as.numeric(vague_123$DHAGEH1_V1)
 diff_23 <- as.numeric(vague_123$DHAGEH1_V3) - as.numeric(vague_123$DHAGEH1_V2)
 
 
-# table(diff_12)
-# table(diff_23)
 
+
+####### Positions dans la distribution du patrimoine
+liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
+                            "DN3001" = "Patrimoine net")
+nb_quantiles <- 100
+
+titre_fig <- "Evolution des rangs d'appartenance des ménages Belges entre les différentes vagues, en patrimoine net"
+titre_save <- "evolution_rang_appartenance.pdf"
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+
+
+graphique_evolution_position_vagues(vague_123 ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save)
+  
+
+
+
+
+# data_for_plot <- as.data.table(1:nb_quantiles)
+# 
+# data_for_plot_loc_bis <- data_for_plot_loc[, median(DN3001_QV2), by = DN3001_QV1 ]
+# setnames(data_for_plot, "V1", "Médiane Vague 2")
+# data_for_plot <- merge(data_for_plot, data_for_plot_loc_bis, by = )
+# 
+# data_for_plot_loc_bis <- data_for_plot_loc[, median(DN3001_QV3), by = DN3001_QV2 ]
+# setnames(data_for_plot, "V1", "Médiane Vague 3")
+# 
+# data_for_plot_loc_bis <- data_for_plot_loc[, median(DN3001_QV2), by = DN3001_QV1 ]
+# setnames(data_for_plot, "V1", "Médiane Vague 3")
+
+
+
+ggplot(vague_123, aes(x = Quantiles_V1, y = Quantiles_V2)) + 
+  geom_point()+
+  stat_poly_eq(use_label(c("eq", "R2"))) +
+  stat_poly_line() +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed")
+
+
+
+vague_123$RANG_V1 <- rank(vague_123$DA3001_V1)
+vague_123$RANG_V2 <- rank(vague_123$DA3001_V2)
+
+
+vague_123[,Quantiles_V1 := cut(vague_123$RANG_V1,
+                                     breaks=quantile(vague_123$RANG_V1, probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
+                                     include.lowest= TRUE, labels=1:nb_quantiles)]
+
+vague_123[,Quantiles_V2 := cut(vague_123$RANG_V2,
+                               breaks=quantile(vague_123$RANG_V2, probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
+                               include.lowest= TRUE, labels=1:nb_quantiles)]
+
+
+vague_123$Quantiles_V1 <- as.numeric(vague_123$Quantiles_V1)
+vague_123$Quantiles_V2 <- as.numeric(vague_123$Quantiles_V2)
+### Moyenne des rangs de la V2 en fonction des rangs de la V1
+data_for_plot <- vague_123[, median(Quantiles_V2), by = Quantiles_V1]
+
+
+plot(data_for_plot)
+
+ggplot(vague_123) +
+  geom_point(aes(x = Quantiles_V1, y = Quantiles_V2))
+
+
+
+vague_123$Quantiles_V1
+
+quantile(vague_123$RANG_V1, probs = liste_quantiles)
+
+
+
+plot(vague_123$RANG_V1, vague_123$RANG_V2)
+
+x2<-rpois(10,5)
+x2
+length(rank(x2))
+
+x <- 1:10
+x[2] <- 12
+rank(x)
 
 ######### Evolution du patrimoine des ménages entre les vagues ##############
 liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
