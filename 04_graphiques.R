@@ -1,7 +1,7 @@
 ################################################################################
 # ====================== 04 FONCTIONS GRAPHIQUES ===============================
 ################################################################################
-
+# Ici uniquement les fonctions graphiques
 
 trace_barplot <- function(data_loc, x, sortby_x, y, fill, xlabel, ylabel, titre, titre_save, xlim_sup=100){
   p <- ggplot(data = data_loc, aes(x = reorder(.data[[x]], .data[[sortby_x]]), y = .data[[y]], fill = .data[[fill]])) +
@@ -61,9 +61,6 @@ trace_barplot_log <- function(data_loc, x, y, fill, xlabel, ylabel,filllabel, ti
       scale_y_continuous(trans='log10', labels = function(y) format(y, scientific = TRUE)) + 
       scale_fill_viridis(discrete = TRUE) +
       scale_color_viridis(discrete = TRUE)
-    # +
-    #   theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) # Pour tourner la légende sur l'axe x
-    
     
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
   print(p)

@@ -1,20 +1,30 @@
 ################################################################################
 # ====================== 03 NETTOYAGE DONNEES ==================================
 ################################################################################
-# Ici toutes les fonctions qui crééent les graphiques précis. Elles utilisent notamment le script 04_graphiques.R
+# Ici toutes les fonctions qui crééent les graphiques précis. Elles utilisent notamment le script 04_graphiques.R et sont appelées dans le script 00_main.R
+
+
+
+################################################################################
+# -------------------------- LES FONCTIONS COMPLETES  --------------------------
+################################################################################
+# Ces fonctions partent de la table initiale et produisent un graphique complet
+# Généralement il y a deux étapes : 
+  # - Préparation de la table
+  # - Appel d'une fonction de 04.graphiques.R pour le tracé
+
 
 graphique_repartition_pat_quantile_sexe <- function(data_loc, var_decile, var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 15){
   # Prépare la table pour les graphiques de répartition du patrimoine par quantile, puis trace le graphique associé
 
-  
+  # On prépare la table
   liste_var_groupby <- c(var_decile, var_normalisation)
   dots <- lapply(var_normalisation, as.symbol) #Penser à bien convertir pour ne pas avoir de problèmes...
   data_for_plot <- data_loc[, sum(HW0010), by = liste_var_groupby] #On calcule les effectifs
   data_for_plot <- data_for_plot %>% group_by(.dots = dots) %>% mutate(new = 100*V1/sum(V1)) # Pour la normalisation il faut faire attention à grouper par sexe
   data_for_plot <- as.data.table(data_for_plot)
-  data_for_plot
   
-  
+  # Puis on nettoie
   data_for_plot <- nettoyage_sexe(data_for_plot)
   data_for_plot <- nettoyage_type_menage(data_for_plot, "V1") # Pour faire des facets propres
   
@@ -32,6 +42,11 @@ graphique_repartition_pat_quantile_sexe <- function(data_loc, var_decile, var_no
 }
 
 
+################################################################################
+# -------------------------- LES SOUS-FONCTIONS  -------------------------------
+################################################################################
+# Ces fonctions sont des sous-fonctions appelées plus haut ou dans le script 00_main.R
+
 
 nettoyage_classe_age <- function(data_loc){ # Créé des classes d'âge + larges que celles présentes dans DHAGEH1B
   data_loc$DHAGEH1 = as.numeric(data_loc$DHAGEH1)
@@ -46,7 +61,6 @@ nettoyage_classe_age <- function(data_loc){ # Créé des classes d'âge + larges
     )
   )
   ]
-  
   data_loc[, age_min := factor( #Permet de trier ensuite par âge croissant
     fcase(
       DHAGEH1 <= 24, 16,
@@ -59,7 +73,6 @@ nettoyage_classe_age <- function(data_loc){ # Créé des classes d'âge + larges
   )
   ]
   data_loc$age_min = as.numeric(data_loc$age_min)
-  
   return(data_loc)
 }
 
@@ -76,8 +89,6 @@ nettoyage_sexe <- function(data_loc){ # Renome les modalités de DHGENDERH1
 
 
 nettoyage_type_menage <- function(data_loc, var_sum){ # Renome proprement les modalités de DHHTYPE pour en faire une appélation compréhensible avec le nb de ménages concernés
-  # data_loc <- data_for_plot
-  
   data_loc[, DHHTYPE:= factor( # On renome proprement
     fcase(
       DHHTYPE == 51, "Adulte seul.e <= 64 ans",
@@ -93,10 +104,8 @@ nettoyage_type_menage <- function(data_loc, var_sum){ # Renome proprement les mo
     )
   )
   ]
-  
   data_loc[, Nb_personnes_conc := sum(get(var_sum)), by = DHHTYPE] #On ajoute le nb de personnes concernées
   data_loc$Nb_personnes_conc <- paste("\n(",round(data_loc$Nb_personnes_conc), " personnes concernées)", sep = "")
   data_loc$DHHTYPE <- paste(data_loc$DHHTYPE, data_loc$Nb_personnes_conc)
-  
   return(data_loc)
 }
