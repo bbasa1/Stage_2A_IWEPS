@@ -214,72 +214,12 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DL1000" = "Dettes",
                             "DN3001" = "Patrimoine net")
 
-# Préparation de la table
-data_for_plot_initial <- nettoyage_classe_age(sous_data_belgique[VAGUE == num_vague]) # On prépare un data.table initial qu'on va augmenter pour le tracé
-data_for_plot <- data_for_plot_initial[, sum(HW0010), by = c("classe_age", "age_min")]
-setnames(data_for_plot, "V1", "Effectifs")
-for(type_pat in names(liste_type_patrimoines)){
-  classe_age <- unique(data_for_plot$classe_age) # On créé des listes temporaires pour stocker les valeurs
-  liste_variances <- 1:length(classe_age)
-  liste_conf_inter <- 1:length(classe_age)
-  
-  for(num_age in 1:length(classe_age)){
-    age <- classe_age[num_age]
-    data_loc <- data_for_plot_initial[classe_age == age] 
-    if(nrow(data_loc) >= 2){
-      dw_loc <- svydesign(ids = ~1, data = data_loc, weights = ~ data_loc$HW0010)
-      variance <- svyvar(~get(type_pat), design = dw_loc, na.rm=TRUE)
-      liste_variances[num_age] <- variance[1]
-      liste_conf_inter[num_age] <- SE(variance)[1]
-    }else{
-      liste_variances[num_age] <- 0
-      liste_conf_inter[num_age] <- 0
-    }
-  }
-  
-  data_for_plot_loc <- data.frame(classe_age,liste_variances, liste_conf_inter) #On ajoute ces listes temporaires au data.table initial
-  data_for_plot_loc <- as.data.table(data_for_plot_loc)
-  setnames(data_for_plot_loc, "liste_variances", liste_type_patrimoines[type_pat])
-  setnames(data_for_plot_loc, "liste_conf_inter", paste(liste_type_patrimoines[type_pat], "_SE", sep = ""))
-  data_for_plot <- merge(data_for_plot_loc, data_for_plot, by = "classe_age")
-}
-
-
-
-# Melt pour pouvoir tracer
-melted <- melt(data_for_plot, 
-               id.vars = c("classe_age", "age_min"), 
-               measure.vars  = as.data.frame(liste_type_patrimoines)$liste_type_patrimoines,
-               variable.name = "variable",
-               value.name    = "value")
-
-melted_SE <- melt(data_for_plot, 
-               id.vars = c("classe_age", "age_min"), 
-               measure.vars  = paste(as.data.frame(liste_type_patrimoines)$liste_type_patrimoines,"_SE", sep = ""),
-               variable.name = "variable",
-               value.name    = "value_SE")
-
-melted_SE$variable= gsub("_SE","",melted_SE$variable)
-merged_melted <- merge(melted, melted_SE, by = c("classe_age", "variable", "age_min"))
-merged_melted$value_SE <- 1.96*merged_melted$value_SE # Pour un interval à 95%
-merged_melted$ymin <- merged_melted$value - merged_melted$value_SE
-merged_melted$ymax <- merged_melted$value + merged_melted$value_SE
-
-
+data_loc <- sous_data_belgique[VAGUE == num_vague]
 titre <- "Variance du patrimoine détenu par les ménages Belges\nIntervalles de confiance à 95%"
 titre_save <- "variance_patrimoine.pdf"
-titre_save <- paste(repo_sorties, titre_save, sep ='/')
-x <-"classe_age"
-sortby_x <- "age_min"
-y <- "value"
-fill <- "variable"
-xlabel <-"Tranche d'âge de la personne de référence du ménage"
-ylabel <-"Variance du patrimoine (échelle log)"
-filllabel <- "Type de patrimoine"
-data_loc <- merged_melted[variable != "Effectifs"]
 
-trace_barplot_log(data_loc, x, y, fill, xlabel, ylabel,filllabel, titre, titre_save)
-  
+graphique_variance_pat_age(data_loc, liste_type_patrimoines, titre, titre_save)
+
 
 ######### A-t-on bien des données de panel ?
 # SA0200 = Survey vintage

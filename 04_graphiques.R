@@ -50,7 +50,7 @@ trace_barplot_avec_facet <- function(data_loc, x, sortby_x, y, fill, xlabel, yla
 }
 
 
-trace_barplot_log <- function(data_loc, x, y, fill, xlabel, ylabel,filllabel, titre, titre_save){
+trace_barplot_log <- function(data_loc, x,sortby_x, y, fill, xlabel, ylabel,filllabel, titre, titre_save){
     p <- ggplot(data = data_loc, aes(x = reorder(.data[[x]], .data[[sortby_x]]), y = data_loc[[y]], fill = data_loc[[fill]], ymin = ymin, ymax = ymax)) +
       geom_bar(stat="identity", position=position_dodge()) + 
       geom_errorbar(position=position_dodge(width=0.9), color = "purple", linetype = 1) +
