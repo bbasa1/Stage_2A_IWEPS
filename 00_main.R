@@ -34,7 +34,7 @@ sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
 num_table <- 1 ### Change les poids assignés par eurostat
-num_vague_max <- 4 ### Le nombre de vague qu'on veut concaténer ATTENTION la dernière vague a des noms de colonnes en MINUSCULE. Ca pose pbm dans la concaténation...
+num_vague_max <- 4 ### Le nombre de vague qu'on veut concaténer ATTENTION la dernière vague a des noms de colonnes en MAJUSCULE Ca pose pbm dans la concaténation...
 
 ################################################################################
 # ============================ 02 IMPORTATION ==================================
@@ -173,7 +173,7 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
 data_for_plot <- as.data.table(1:nb_quantiles)
 setnames(data_for_plot, 'V1', "Quantiles")
 data_for_plot$Quantiles <- as.numeric(data_for_plot$Quantiles)
-data_for_plot
+# data_for_plot
 
 # On boucle sur les types de patrimoines
 for(type_pat in names(liste_type_patrimoines)){
@@ -222,27 +222,66 @@ trace_concentration(data_melted_loc, x, y, color, xlabel, ylabel,colorlabel, tit
 
 
 
-############### Dispersion du patrimoine en fonction de l'âge
+############################## Dispersion du patrimoine en fonction de l'âge
+
+nettoyage_classe_age <- function(data_loc){ # Créé des classes d'âge + larges que celles présentes dans DHAGEH1B
+  data_loc$DHAGEH1 = as.numeric(data_loc$DHAGEH1)
+  data_loc[, classe_age := factor(
+    fcase(
+      DHAGEH1 <= 24, "16 - 24 ans",
+      DHAGEH1 %in% 25:34, "25 - 34 ans",
+      DHAGEH1 %in% 35:44, "35 - 44 ans",
+      DHAGEH1 %in% 45:54, "45 - 54 ans",
+      DHAGEH1 %in% 55:64, "55 - 64 ans",
+      DHAGEH1 >= 65, "+ 65 ans"
+    )
+  )
+  ]
+  
+  data_loc[, age_min := factor( #Permet de trier ensuite par âge croissant
+    fcase(
+      DHAGEH1 <= 24, 16,
+      DHAGEH1 %in% 25:34, 25,
+      DHAGEH1 %in% 35:44, 35,
+      DHAGEH1 %in% 45:54, 45,
+      DHAGEH1 %in% 55:64, 55,
+      DHAGEH1 >= 65, 65
+    )
+  )
+  ]
+  data_loc$age_min = as.numeric(data_loc$age_min)
+  
+  return(data_loc)
+}
+
+
+num_vague <- 2
 liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DA1000" = "Patrimoine physique",
                             "DA2100" = "Patrimoine financier",
                             "DL1000" = "Dettes",
                             "DN3001" = "Patrimoine net")
 
-table(sous_data_belgique$DHAGEH1B) #C'est la borne inférieure de l'âge qui est indiquée
+# Préparation de la table
+data_for_plot_initial <- nettoyage_classe_age(sous_data_belgique[VAGUE == num_vague])
+data_for_plot <- data_for_plot_initial[, sum(HW0010), by = c("classe_age", "age_min")]
 
-data_for_plot <- sous_data_belgique[, sum(HW0010), by = DHAGEH1B]
-setnames(data_for_plot, "DHAGEH1B", "liste_ages")
+# data_for_plot <- nettoyage_classe_age(data_for_plot)
+# setnames(data_for_plot, "classe_age", "liste_ages")
 setnames(data_for_plot, "V1", "Effectifs")
 for(type_pat in names(liste_type_patrimoines)){
-  liste_ages <- sort(unique(sous_data_belgique$DHAGEH1B))
-  liste_variances <- 1:length(liste_ages)
-  liste_conf_inter <- 1:length(liste_ages)
+  # classe_age <- sort(unique(data_for_plot$classe_age))
   
+  # classe_age <- data_for_plot$age_min[order(match(data_for_plot$age_min,data_for_plot$classe_age))] #sort y by x
+  classe_age <- data_for_plot$classe_age[order(match(data_for_plot$classe_age,data_for_plot$age_min))] #sort y by x
   
-  for(num_age in 1:length(liste_ages)){
-    age <- liste_ages[num_age]
-    data_loc <- sous_data_belgique[DHAGEH1B == age & VAGUE != 4,]
+  liste_variances <- 1:length(classe_age)
+  liste_conf_inter <- 1:length(classe_age)
+  
+  for(num_age in 1:length(classe_age)){
+    age <- classe_age[num_age]
+    # data_loc <- data_for_plot_initial[DHAGEH1B == age & VAGUE != 4,] #On en prend pas la vague 4 parce qu'il y a des valeurs bizarres dessus
+    data_loc <- data_for_plot_initial[classe_age == age] 
     if(nrow(data_loc) >= 2){
       dw_loc <- svydesign(ids = ~1, data = data_loc, weights = ~ data_loc$HW0010)
       variance <- svyvar(~get(type_pat), design = dw_loc, na.rm=TRUE)
@@ -254,31 +293,31 @@ for(type_pat in names(liste_type_patrimoines)){
     }
   }
   
-  data_for_plot_loc <- data.frame(liste_ages,liste_variances, liste_conf_inter)
+  data_for_plot_loc <- data.frame(classe_age,liste_variances, liste_conf_inter)
   data_for_plot_loc <- as.data.table(data_for_plot_loc)
   setnames(data_for_plot_loc, "liste_variances", liste_type_patrimoines[type_pat])
   setnames(data_for_plot_loc, "liste_conf_inter", paste(liste_type_patrimoines[type_pat], "_SE", sep = ""))
-  data_for_plot <- merge(data_for_plot_loc, data_for_plot, by = "liste_ages")
+  data_for_plot <- merge(data_for_plot_loc, data_for_plot, by = "classe_age")
 }
 
 
 
 # Melt pour pouvoir tracer
 melted <- melt(data_for_plot, 
-               id.vars = "liste_ages", 
+               id.vars = c("classe_age", "age_min"), 
                measure.vars  = as.data.frame(liste_type_patrimoines)$liste_type_patrimoines,
                variable.name = "variable",
                value.name    = "value")
 
 melted_SE <- melt(data_for_plot, 
-               id.vars = "liste_ages", 
+               id.vars = c("classe_age", "age_min"), 
                measure.vars  = paste(as.data.frame(liste_type_patrimoines)$liste_type_patrimoines,"_SE", sep = ""),
                variable.name = "variable",
                value.name    = "value_SE")
 
 melted_SE$variable= gsub("_SE","",melted_SE$variable)
 # melted_SE$value_IC <- 3*melted_SE$value
-merged_melted <- merge(melted, melted_SE, by = c("liste_ages", "variable"))
+merged_melted <- merge(melted, melted_SE, by = c("classe_age", "variable", "age_min"))
 merged_melted$value_SE <- 1.96*merged_melted$value_SE # Pour un interval à 95%
 merged_melted$ymin <- merged_melted$value - merged_melted$value_SE
 merged_melted$ymax <- merged_melted$value + merged_melted$value_SE
@@ -287,8 +326,8 @@ merged_melted$ymax <- merged_melted$value + merged_melted$value_SE
 titre <- "Variance du patrimoine détenu par les ménages Belges"
 titre_save <- "variance_patrimoine.pdf"
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-x <-"liste_ages"
-sortby_x <- "liste_ages"
+x <-"classe_age"
+sortby_x <- "age_min"
 y <- "value"
 fill <- "variable"
 xlabel <-"Tranche d'âge de la personne de référence du ménage"
@@ -335,8 +374,8 @@ diff_12 <- as.numeric(vague_123$DHAGEH1_V2) - as.numeric(vague_123$DHAGEH1_V1)
 diff_23 <- as.numeric(vague_123$DHAGEH1_V3) - as.numeric(vague_123$DHAGEH1_V2)
 
 
-table(diff_12)
-table(diff_23)
+# table(diff_12)
+# table(diff_23)
 
 
 ######### Evolution du patrimoine des ménages entre les vagues ##############
@@ -404,7 +443,7 @@ p <- ggplot(data = data_loc, aes(x = reorder(.data[[x]], .data[[sortby_x]]), y =
   labs(title=titre,
        x= xlabel,
        y= ylabel) 
-
+print(p)
 ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
 
 
