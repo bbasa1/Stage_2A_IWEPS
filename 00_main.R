@@ -88,10 +88,11 @@ source(paste(repo_prgm , "03_nettoyage_preparation.R" , sep = "/"))
 # "HH0201 = year gift/inheritance received
 # "HH0202"
 # "HH0203"
+# DHHTYPE = Household type
 
 
 liste_var_continues <- c("HH0201", "HH0202", "HH0203", "HB0700","HW0010", "DA1000", "DA2100", "DA3001", "DI2000", "DI2000EQ", "DI2100", "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120")
-liste_var_categorielles <- c("DOINHERIT", "DA1110I","SA0110","SA0210", "SA0010" ,"DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DHLIFESATIS", "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE", "SA0200", "DHAGEH1B")
+liste_var_categorielles <- c("DHHTYPE","DOINHERIT", "DA1110I","SA0110","SA0210", "SA0010" ,"DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DHLIFESATIS", "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE", "SA0200", "DHAGEH1B")
 liste_var_interet <- union(liste_var_continues, liste_var_categorielles)
 
 intersection <- intersect(liste_var_interet, colnames(data_belgique))
@@ -111,41 +112,25 @@ sous_data_belgique <- sous_data_belgique %>% mutate_at(liste_var_categorielles, 
 source(paste(repo_prgm , "04_graphiques.R" , sep = "/"))
 
 
-
-# liste_var_groupby <- c("DHGENDERH1", "DNTOP10")
-# var_normalisation <- 'DHGENDERH1' # Par quelle variable est-ce qu'on normalise ? Généralement le sexe
-# data_for_plot <- preparation_barplot(sous_data_belgique, liste_var_groupby, var_normalisation)
-# 
-# titre <- "Répartition du patrimoine net des Belges, normalisé par sexe"
-# titre_save <- "Patrimoine_net_sexe.pdf"
-# titre_save <- paste(repo_sorties, titre_save, sep ='/')
-# x <-"DNTOP10"
-# sortby_x <- "DNTOP10"
-# y <- "new"
-# fill <- "Sexe"
-# xlabel <-"Quantile de patrimoine net"
-# ylabel <-"% de la population belge"
-# data_loc <- data_for_plot
-# xlim_sup <- 15 #La limite en % sur l'axe x
-# 
-# trace_barplot(data_loc, x, sortby_x, y, fill, xlabel, ylabel, titre, titre_save, xlim_sup)
-
-
 # Patrimoine net
 var_decile <- "DNTOP10"
 titre <- "Répartition du patrimoine net des Belges, normalisé par sexe"
 titre_save <- "Patrimoine_net_sexe.pdf"
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <-"Quantile de patrimoine net"
-graphique_repartition_pat_quantile_sexe(sous_data_belgique, var_decile, titre, titre_save, xlabel, xlim_sup = 15)
-  
+facet <- "DHHTYPE" # On facet par type de ménage
+var_normalisation <- c("DHGENDERH1","DHHTYPE") #On va mettre fill et normalisation par sexe
+graphique_repartition_pat_quantile_sexe(sous_data_belgique, var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 15)
+
 # Patrimoine brut
 var_decile <- "DATOP10"
 titre <- "Répartition du patrimoine brut des Belges, normalisé par sexe"
 titre_save <- "Patrimoine_brut_sexe.pdf"
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <-"Quantile de patrimoine brut"
-graphique_repartition_pat_quantile_sexe(sous_data_belgique, var_decile, titre, titre_save, xlabel, xlim_sup = 15)
+facet <- "DHHTYPE"
+var_normalisation <- c("DHGENDERH1","DHHTYPE") #On va mettre fill et normalisation par sexe
+graphique_repartition_pat_quantile_sexe(sous_data_belgique, var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 15)
 
 # Dettes
 var_decile <- "DLTOP10"
@@ -153,10 +138,9 @@ titre <- "Répartition des dettes des Belges, normalisé par sexe"
 titre_save <- "Patrimoine_dettes_sexe.pdf"
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <-"Quantile de dettes"
-graphique_repartition_pat_quantile_sexe(sous_data_belgique, var_decile, titre, titre_save, xlabel, xlim_sup = 15)
-
-
-
+facet <- "DHHTYPE"
+var_normalisation <- c("DHGENDERH1","DHHTYPE") #On va mettre fill et normalisation par sexe
+graphique_repartition_pat_quantile_sexe(sous_data_belgique, var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 15)
 
 
 
@@ -223,38 +207,6 @@ trace_concentration(data_melted_loc, x, y, color, xlabel, ylabel,colorlabel, tit
 
 
 ############################## Dispersion du patrimoine en fonction de l'âge
-
-nettoyage_classe_age <- function(data_loc){ # Créé des classes d'âge + larges que celles présentes dans DHAGEH1B
-  data_loc$DHAGEH1 = as.numeric(data_loc$DHAGEH1)
-  data_loc[, classe_age := factor(
-    fcase(
-      DHAGEH1 <= 24, "16 - 24 ans",
-      DHAGEH1 %in% 25:34, "25 - 34 ans",
-      DHAGEH1 %in% 35:44, "35 - 44 ans",
-      DHAGEH1 %in% 45:54, "45 - 54 ans",
-      DHAGEH1 %in% 55:64, "55 - 64 ans",
-      DHAGEH1 >= 65, "+ 65 ans"
-    )
-  )
-  ]
-  
-  data_loc[, age_min := factor( #Permet de trier ensuite par âge croissant
-    fcase(
-      DHAGEH1 <= 24, 16,
-      DHAGEH1 %in% 25:34, 25,
-      DHAGEH1 %in% 35:44, 35,
-      DHAGEH1 %in% 45:54, 45,
-      DHAGEH1 %in% 55:64, 55,
-      DHAGEH1 >= 65, 65
-    )
-  )
-  ]
-  data_loc$age_min = as.numeric(data_loc$age_min)
-  
-  return(data_loc)
-}
-
-
 num_vague <- 2
 liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DA1000" = "Patrimoine physique",
@@ -263,24 +215,16 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DN3001" = "Patrimoine net")
 
 # Préparation de la table
-data_for_plot_initial <- nettoyage_classe_age(sous_data_belgique[VAGUE == num_vague])
+data_for_plot_initial <- nettoyage_classe_age(sous_data_belgique[VAGUE == num_vague]) # On prépare un data.table initial qu'on va augmenter pour le tracé
 data_for_plot <- data_for_plot_initial[, sum(HW0010), by = c("classe_age", "age_min")]
-
-# data_for_plot <- nettoyage_classe_age(data_for_plot)
-# setnames(data_for_plot, "classe_age", "liste_ages")
 setnames(data_for_plot, "V1", "Effectifs")
 for(type_pat in names(liste_type_patrimoines)){
-  # classe_age <- sort(unique(data_for_plot$classe_age))
-  
-  # classe_age <- data_for_plot$age_min[order(match(data_for_plot$age_min,data_for_plot$classe_age))] #sort y by x
-  classe_age <- data_for_plot$classe_age[order(match(data_for_plot$classe_age,data_for_plot$age_min))] #sort y by x
-  
+  classe_age <- unique(data_for_plot$classe_age) # On créé des listes temporaires pour stocker les valeurs
   liste_variances <- 1:length(classe_age)
   liste_conf_inter <- 1:length(classe_age)
   
   for(num_age in 1:length(classe_age)){
     age <- classe_age[num_age]
-    # data_loc <- data_for_plot_initial[DHAGEH1B == age & VAGUE != 4,] #On en prend pas la vague 4 parce qu'il y a des valeurs bizarres dessus
     data_loc <- data_for_plot_initial[classe_age == age] 
     if(nrow(data_loc) >= 2){
       dw_loc <- svydesign(ids = ~1, data = data_loc, weights = ~ data_loc$HW0010)
@@ -293,7 +237,7 @@ for(type_pat in names(liste_type_patrimoines)){
     }
   }
   
-  data_for_plot_loc <- data.frame(classe_age,liste_variances, liste_conf_inter)
+  data_for_plot_loc <- data.frame(classe_age,liste_variances, liste_conf_inter) #On ajoute ces listes temporaires au data.table initial
   data_for_plot_loc <- as.data.table(data_for_plot_loc)
   setnames(data_for_plot_loc, "liste_variances", liste_type_patrimoines[type_pat])
   setnames(data_for_plot_loc, "liste_conf_inter", paste(liste_type_patrimoines[type_pat], "_SE", sep = ""))
@@ -316,14 +260,13 @@ melted_SE <- melt(data_for_plot,
                value.name    = "value_SE")
 
 melted_SE$variable= gsub("_SE","",melted_SE$variable)
-# melted_SE$value_IC <- 3*melted_SE$value
 merged_melted <- merge(melted, melted_SE, by = c("classe_age", "variable", "age_min"))
 merged_melted$value_SE <- 1.96*merged_melted$value_SE # Pour un interval à 95%
 merged_melted$ymin <- merged_melted$value - merged_melted$value_SE
 merged_melted$ymax <- merged_melted$value + merged_melted$value_SE
 
 
-titre <- "Variance du patrimoine détenu par les ménages Belges"
+titre <- "Variance du patrimoine détenu par les ménages Belges\nIntervalles de confiance à 95%"
 titre_save <- "variance_patrimoine.pdf"
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 x <-"classe_age"
