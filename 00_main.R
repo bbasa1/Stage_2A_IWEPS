@@ -182,22 +182,10 @@ graphique_variance_pat_age(data_loc, liste_type_patrimoines, titre, titre_save)
 
 ######################### Tracé : le date d'achat de la HMR - la date de l'héritage
 sous_data_belgique <- Ajout_premier_heritage(sous_data_belgique)
-
-# hist(log10(sous_data_belgique$Montant_heritage_1), breaks = 50)
-
-## En fait on ne veut pas le premier héritage obtenu mais le premier héritage CONSEQUANT obtenu
+# En fait on ne veut pas le premier héritage obtenu mais le premier héritage CONSEQUANT obtenu
 montant_heritage_min <- 10000
 sous_data_belgique <- Ajout_premier_heritage_cons(sous_data_belgique, montant_heritage_min)
-# class(sous_data_belgique$Montant_heritage_1_cons)
-# 
-# 
-# # Pour vérifier
-# liste_obs <- c("HH0201", "HH0202", "HH0203", "HH0401", "HH0402", "HH0403", "Annee_heritage_1_cons", "Montant_heritage_1_cons")
-# head(sous_data_belgique[,..liste_obs], 50)
-# 
-# 
-# sous_data_belgique[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
-# 
+sous_data_belgique[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
 
 
 ## Petit histogramme pour visualiser
@@ -225,7 +213,6 @@ liste_breaks_fill <- c('< Brevet', 'Brevet', 'Bac', '> Bac')
 data_loc <- sous_data_belgique
 liste_breaks_x <- seq(-50, 50, 2)
 limits_x <- c(-50,50)
-
 trace_distrib_variable(data_loc, x, fill, xlabel, ylabel,filllabel, titre, titre_save, liste_breaks_fill, liste_breaks_x, limits_x)
 
 
@@ -249,12 +236,12 @@ trace_distrib_variable(data_loc, x, NaN, xlabel, ylabel,NaN, titre, titre_save, 
 
 ######### A-t-on bien des données de panel ?
 list_output <- Creation_donnees_panel(sous_data_belgique)
-vague_12 <- list_output[1]
-vague_23 <- list_output[2]
-vague_34 <- list_output[3]
-vague_123 <- list_output[4]
-vague_234 <- list_output[5]
-vague_1234 <- list_output[6]
+vague_12 <- as.data.table(list_output[1])
+vague_23 <- as.data.table(list_output[2])
+vague_34 <- as.data.table(list_output[3])
+vague_123 <- as.data.table(list_output[4])
+vague_234 <- as.data.table(list_output[5])
+vague_1234 <- as.data.table(list_output[6])
 
 
 ####### Positions dans la distribution du patrimoine
@@ -279,66 +266,12 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DN3001" = "Patrimoine net")
 
 liste_quantiles <- seq(0.2, 0.8, 0.2)
-
-data_for_plot <- as.data.table(liste_quantiles)
-
-for(type_pat in names(liste_type_patrimoines)){
-  diff_V12 <- as.data.table(quantile(vague_123[[paste(type_pat, "V2", sep = "_")]] - vague_123[[paste(type_pat, "V1", sep = "_")]], probs = liste_quantiles))
-  setnames(diff_V12, "V1", "Vagues 1-2")
-  diff_V12[, liste_quantiles := liste_quantiles]
-  
-  diff_V23 <- as.data.table(quantile(vague_123[[paste(type_pat, "V3", sep = "_")]] - vague_123[[paste(type_pat, "V2", sep = "_")]], probs = liste_quantiles))
-  setnames(diff_V23, "V1", "Vagues 2-3")
-  diff_V23[, liste_quantiles := liste_quantiles]
-  
-  data_for_plot_loc <- merge(diff_V12, diff_V23, by = "liste_quantiles")
-  
-  data_for_plot_loc <- melt(data_for_plot_loc, 
-                 id.vars = "liste_quantiles", 
-                 measure.vars  = c("Vagues 2-3", "Vagues 1-2"),
-                 variable.name = "Vague",
-                 value.name    = "Difference")
-
-  data_for_plot_loc[, Type_patrimoine := liste_type_patrimoines[type_pat]]
-  
-  data_for_plot <- rbindlist(list(data_for_plot,
-                                  data_for_plot_loc), fill=TRUE)
-}
-
-data_for_plot <- na.omit(data_for_plot)
-data_for_plot[Vague == "Vagues 2-3", Numero_vague := 2]
-data_for_plot[Vague == "Vagues 1-2", Numero_vague := 1]
-
-data_for_plot$Type_patrimoine <- as.factor(data_for_plot$Type_patrimoine)
-data_for_plot$Vague <- as.factor(data_for_plot$Vague)
-data_for_plot$liste_quantiles <- as.factor(data_for_plot$liste_quantiles)
-
-
-data_for_plot <- ff_interaction(data_for_plot, Type_patrimoine, liste_quantiles)
-
-
 titre <- "Quantiles de l'évolution du patrimoine des Belges entre les vagues"
 titre_save <- "quantiles_evolution_richesse_panel.pdf"
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-x <-"Vague"
-sortby_x <- "Numero_vague"
-y <- "Difference"
-xlabel <-"Vague"
-ylabel <-"Différence entre les vagues"
-data_loc <- data_for_plot
-fill <- "Type_patrimoine"
-ligne <- "Type_patrimoine_liste_quantiles"
-shape <- "liste_quantiles"
 
-p <- ggplot(data = data_loc, aes(x = reorder(.data[[x]], .data[[sortby_x]]), y = .data[[y]], color = .data[[fill]], shape = .data[[shape]], group = .data[[ligne]])) +
-  geom_point(size=2) +
-  geom_line() +
-  labs(title=titre,
-       x= xlabel,
-       y= ylabel) 
-print(p)
-ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
 
+graphique_evolution_pat_entre_vagues(vague_123, liste_type_patrimoines,liste_quantiles, titre, titre_save)
 
 
 ########################## DiD ESSAI N°1 = EFFET DU FAIT D'AVOIR RECU UN HERITAGE SUR LE FAIT D'ACHETER UNE HMR ###############
@@ -441,7 +374,6 @@ sous_pop_initiale <- pop_initiale_tot[Reg_G == 0][sample(1:nrow(pop_initiale_tot
 sous_pop_initiale <- rbindlist(list(sous_pop_initiale, pop_initiale_tot[Reg_G == 1]), fill=TRUE)
 
 dw <- svydesign(ids = ~1, data = sous_pop_initiale[,..liste_cols_reg_poids], weights = ~ HW0010)
-
 mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw)
 summary(mysvyglm) 
 
@@ -453,7 +385,6 @@ pop_test_hyp[, Reg_Y := 0]
 pop_test_hyp[(DA1110I == 1 & VAGUE == 2) | (DA1110I == 1 & VAGUE == 1), Reg_Y := 1] ## La population qui ont une HMR
 pop_test_hyp$Reg_Y <- as.numeric(pop_test_hyp$Reg_Y)
 count(pop_test_hyp[ Reg_Y == 1])
-
 
 pop_test_hyp[, Reg_G := 0]
 SA0110_V2 <- vague_12[DOINHERIT_V2 == 1 & DOINHERIT_V1 == 0]$SA0110_V2 ## On récupère les identifiants ménages de ceux qui ont reçu un héritage entre la vague 2 et la vague 3
@@ -492,9 +423,6 @@ data_loc[(is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := -
 data_loc[(!is.na(HB0700) & is.na(Montant_heritage_1)), Annee_achat_heritage :=  99] # Achat mais pas d'héritage
 data_loc[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
 
-hist(data_loc$Annee_achat_heritage, breaks = 50)
-
-
 sous_data <- data_loc[Annee_achat_heritage <= 98] ## Uniquement les ménages qui ONT reçu un héritage
 
 sous_data[, Reg_Y := 0]
@@ -531,6 +459,11 @@ summary(denyprobit)
 
 lm_her <- lm(Reg_Y ~ Reg_G, data = sous_data)
 summary(lm_her)
+
+liste_cols_reg_poids <- c("HW0010", "Reg_Y", "Reg_G")
+dw <- svydesign(ids = ~1, data = sous_data[,..liste_cols_reg_poids], weights = ~ HW0010)
+mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G, design = dw)
+summary(mysvyglm) 
 
 denyprobit <- glm(Reg_Y ~ Reg_G, 
                   family = binomial(link = "probit"), 

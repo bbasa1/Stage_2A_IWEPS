@@ -285,6 +285,69 @@ graphique_evolution_position_vagues <- function(data_vagues, nb_quantiles, liste
 }
 
 
+
+graphique_evolution_pat_entre_vagues <- function(data_loc, liste_type_patrimoines,liste_quantiles, titre, titre_save){
+  # Trace les quantiles de l'évolution de patrimoine entre les vagues pour les ménages qui ont été suivis sur trois vagues
+  
+  data_for_plot <- as.data.table(liste_quantiles)
+  
+  for(type_pat in names(liste_type_patrimoines)){
+    diff_V12 <- as.data.table(quantile(data_loc[[paste(type_pat, "V2", sep = "_")]] - data_loc[[paste(type_pat, "V1", sep = "_")]], probs = liste_quantiles))
+    setnames(diff_V12, "V1", "Vagues 1-2")
+    diff_V12[, liste_quantiles := liste_quantiles]
+    
+    diff_V23 <- as.data.table(quantile(data_loc[[paste(type_pat, "V3", sep = "_")]] - data_loc[[paste(type_pat, "V2", sep = "_")]], probs = liste_quantiles))
+    setnames(diff_V23, "V1", "Vagues 2-3")
+    diff_V23[, liste_quantiles := liste_quantiles]
+    
+    data_for_plot_loc <- merge(diff_V12, diff_V23, by = "liste_quantiles")
+    
+    data_for_plot_loc <- melt(data_for_plot_loc, 
+                              id.vars = "liste_quantiles", 
+                              measure.vars  = c("Vagues 2-3", "Vagues 1-2"),
+                              variable.name = "Vague",
+                              value.name    = "Difference")
+    
+    data_for_plot_loc[, Type_patrimoine := liste_type_patrimoines[type_pat]]
+    
+    data_for_plot <- rbindlist(list(data_for_plot,
+                                    data_for_plot_loc), fill=TRUE)
+  }
+  
+  data_for_plot <- na.omit(data_for_plot)
+  data_for_plot[Vague == "Vagues 2-3", Numero_vague := 2]
+  data_for_plot[Vague == "Vagues 1-2", Numero_vague := 1]
+  
+  data_for_plot$Type_patrimoine <- as.factor(data_for_plot$Type_patrimoine)
+  data_for_plot$Vague <- as.factor(data_for_plot$Vague)
+  data_for_plot$liste_quantiles <- as.factor(data_for_plot$liste_quantiles)
+  
+  
+  data_for_plot <- ff_interaction(data_for_plot, Type_patrimoine, liste_quantiles)
+  
+  
+  x <-"Vague"
+  sortby_x <- "Numero_vague"
+  y <- "Difference"
+  xlabel <-"Vague"
+  ylabel <-"Différence entre les vagues"
+  data_loc <- data_for_plot
+  fill <- "Type_patrimoine"
+  ligne <- "Type_patrimoine_liste_quantiles"
+  shape <- "liste_quantiles"
+  
+  p <- ggplot(data = data_loc, aes(x = reorder(.data[[x]], .data[[sortby_x]]), y = .data[[y]], color = .data[[fill]], shape = .data[[shape]], group = .data[[ligne]])) +
+    geom_point(size=2) +
+    geom_line() +
+    labs(title=titre,
+         x= xlabel,
+         y= ylabel) 
+  print(p)
+  ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
+}
+
+
+
 ################################################################################
 # -------------------------- LES SOUS-FONCTIONS  -------------------------------
 ################################################################################
