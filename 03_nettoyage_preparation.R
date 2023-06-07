@@ -14,7 +14,7 @@
   # - Appel d'une fonction de 04.graphiques.R pour le tracé
 
 
-graphique_repartition_pat_quantile_sexe <- function(data_loc, var_decile, var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 15){
+graphique_repartition_pat_quantile_sexe <- function(data_loc, var_decile, var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 20){
   # Prépare la table pour les graphiques de répartition du patrimoine par quantile, puis trace le graphique associé
 
   # On prépare la table
@@ -351,4 +351,83 @@ nettoyage_type_menage <- function(data_loc, var_sum){ # Renome proprement les mo
   data_loc$Nb_personnes_conc <- paste("\n(",round(data_loc$Nb_personnes_conc), " personnes concernées)", sep = "")
   data_loc$DHHTYPE <- paste(data_loc$DHHTYPE, data_loc$Nb_personnes_conc)
   return(data_loc)
+}
+
+
+Ajout_premier_heritage <- function(data_loc){
+  # "HB0700 = year of property acquisition
+  # "HH0201 = year gift/inheritance received
+  # "HH0202"
+  # "HH0203"
+  
+  ### Cette fonction créé une colonne qui indique l'année, et une autre qui indique le montant du PREMIER héritage obtenu dans le temps
+  data_loc[, Annee_heritage_1 := pmin(HH0201, HH0202, HH0203, na.rm = TRUE)] ## C'est le premier héritage obtenu
+  data_loc[, Montant_heritage_1 := factor(
+    fcase(
+      Annee_heritage_1 == HH0201, HH0401,
+      Annee_heritage_1 == HH0202, HH0402,
+      Annee_heritage_1 == HH0203, HH0403
+    )
+  )
+  ]
+  data_loc$Montant_heritage_1 <- as.numeric(as.character(data_loc$Montant_heritage_1)) ### ATTENTION laisser le as.character sinon ça bug je sais pas pourquoi...
+  return(data_loc)
+}
+
+Ajout_premier_heritage_cons <- function(data_loc, montant_heritage_min){
+  ### Cette fonction créé une colonne qui indique l'année, et une autre qui indique le montant du PREMIER héritage obtenu CONSEQUENT dans le temps
+  data_loc[HH0401 >= montant_heritage_min, HH0201_cons := HH0201] #On recréé les colonnes des dates d'héritages, mais que si l'héritage est conséquent
+  data_loc[HH0402 >= montant_heritage_min, HH0202_cons := HH0202]
+  data_loc[HH0403 >= montant_heritage_min, HH0203_cons := HH0203]
+  
+  data_loc[, Annee_heritage_1_cons := pmin(HH0201_cons, HH0202_cons, HH0203_cons, na.rm = TRUE)] # Pour les ménages qui ont un premier héritage conséquent on met celui-là
+  data_loc[is.na(Annee_heritage_1_cons), Annee_heritage_1_cons := Annee_heritage_1] # Pour les autres on peut mettre le premier héritage obtenu même s'il est faible
+  data_loc[, Montant_heritage_1_cons := factor( #Puis on peut mettre le montant de l'héritage associé
+    fcase(
+      Annee_heritage_1_cons == HH0201, HH0401,
+      Annee_heritage_1_cons == HH0202, HH0402,
+      Annee_heritage_1_cons == HH0203, HH0403
+    )
+  )
+  ]
+  data_loc$Montant_heritage_1_cons <- as.numeric(as.character(data_loc$Montant_heritage_1_cons)) ### ATTENTION laisser le as.character sinon ça bug je sais pas pourquoi...
+  return(data_loc)
+}
+
+
+
+Creation_donnees_panel <- function(data_loc){
+  ###### Cette fonction met sous format long les données pannélisées
+  
+  # SA0200 = Survey vintage
+  # SA0010 = household identification number
+  # SA0210 = Vintage of last interview (household)
+  # SA0110 = Past household ID
+  
+  # Pour faire l'évolution il faut commencer par mettre à 0 les patrimoines NaN
+  data_loc[is.na(DA1000), DA1000 := 0]
+  data_loc[is.na(DA2100), DA2100 := 0]
+  data_loc[is.na(DL1000), DL1000 := 0]
+  
+  vague_1 <- data_loc[VAGUE == 1,] # On récupère les vagues
+  vague_2 <- data_loc[VAGUE == 2,]
+  vague_3 <- data_loc[VAGUE == 3,]
+  vague_4 <- data_loc[VAGUE == 4,]
+  
+  colnames(vague_1) <- paste(colnames(vague_1),"V1",sep="_") # On renome pour ne pas avoir de conflits
+  colnames(vague_2) <- paste(colnames(vague_2),"V2",sep="_")
+  colnames(vague_3) <- paste(colnames(vague_3),"V3",sep="_")
+  colnames(vague_4) <- paste(colnames(vague_4),"V4",sep="_")
+  
+  
+  vague_12 <- merge(x = vague_2, y = vague_1, by.x = 'SA0110_V2',by.y = 'SA0010_V1')
+  vague_123 <- merge(x = vague_3, y = vague_12, by.x = 'SA0110_V3',by.y = 'SA0010_V2') ## On s'arrête là parce qu'aucun ménage n'est enquêté 4x
+  vague_1234 <- merge(x = vague_4, y = vague_123, by.x = 'SA0110_V4',by.y = 'SA0010_V3')
+  
+  vague_23 <- merge(x = vague_3, y = vague_2, by.x = 'SA0110_V3',by.y = 'SA0010_V2')
+  vague_234 <- merge(x = vague_4, y = vague_23, by.x = 'SA0110_V4',by.y = 'SA0010_V3') ## PERSONNE N'EST EN PANEL A LA VAGUE 4 ?????
+  
+  vague_34 <- merge(x = vague_4, y = vague_3, by.x = 'SA0110_V4',by.y = 'SA0010_V3')
+  
+  return(list(vague_12, vague_23, vague_34, vague_123, vague_234, vague_1234))
 }

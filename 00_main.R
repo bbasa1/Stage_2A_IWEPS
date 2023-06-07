@@ -120,7 +120,7 @@ titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <-"Quantile de patrimoine net"
 facet <- "DHHTYPE" # On facet par type de ménage
 var_normalisation <- c("DHGENDERH1","DHHTYPE") #On va mettre fill et normalisation par sexe
-graphique_repartition_pat_quantile_sexe(sous_data_belgique, var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 15)
+graphique_repartition_pat_quantile_sexe(sous_data_belgique[!is.na(get(var_decile))], var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 25)
 
 # Patrimoine brut
 var_decile <- "DATOP10"
@@ -130,7 +130,7 @@ titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <-"Quantile de patrimoine brut"
 facet <- "DHHTYPE"
 var_normalisation <- c("DHGENDERH1","DHHTYPE") #On va mettre fill et normalisation par sexe
-graphique_repartition_pat_quantile_sexe(sous_data_belgique, var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 15)
+graphique_repartition_pat_quantile_sexe(sous_data_belgique[!is.na(get(var_decile))], var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 25)
 
 # Dettes
 var_decile <- "DLTOP10"
@@ -140,7 +140,7 @@ titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <-"Quantile de dettes"
 facet <- "DHHTYPE"
 var_normalisation <- c("DHGENDERH1","DHHTYPE") #On va mettre fill et normalisation par sexe
-graphique_repartition_pat_quantile_sexe(sous_data_belgique, var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 15)
+graphique_repartition_pat_quantile_sexe(sous_data_belgique[!is.na(get(var_decile))], var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 25)
 
 
 
@@ -181,94 +181,80 @@ graphique_variance_pat_age(data_loc, liste_type_patrimoines, titre, titre_save)
 
 
 ######################### Tracé : le date d'achat de la HMR - la date de l'héritage
-# "HB0700 = year of property acquisition
-# "HH0201 = year gift/inheritance received
-# "HH0202"
-# "HH0203"
+sous_data_belgique <- Ajout_premier_heritage(sous_data_belgique)
 
-sous_data_belgique[, Annee_heritage_1 := pmin(HH0201, HH0202, HH0203, na.rm = TRUE)] ## C'est le premier héritage obtenu
-sous_data_belgique[, Montant_heritage_1 := factor(
-  fcase(
-    Annee_heritage_1 == HH0201, HH0401,
-    Annee_heritage_1 == HH0202, HH0402,
-    Annee_heritage_1 == HH0203, HH0403
-  )
-)
-]
-sous_data_belgique$Montant_heritage_1 <- as.numeric(as.character(sous_data_belgique$Montant_heritage_1)) ### ATTENTION laisser le as.character sinon ça bug je sais pas pourquoi...
-hist(log10(sous_data_belgique$Montant_heritage_1), breaks = 50)
-
-
-
+# hist(log10(sous_data_belgique$Montant_heritage_1), breaks = 50)
 
 ## En fait on ne veut pas le premier héritage obtenu mais le premier héritage CONSEQUANT obtenu
 montant_heritage_min <- 10000
+sous_data_belgique <- Ajout_premier_heritage_cons(sous_data_belgique, montant_heritage_min)
+# class(sous_data_belgique$Montant_heritage_1_cons)
+# 
+# 
+# # Pour vérifier
+# liste_obs <- c("HH0201", "HH0202", "HH0203", "HH0401", "HH0402", "HH0403", "Annee_heritage_1_cons", "Montant_heritage_1_cons")
+# head(sous_data_belgique[,..liste_obs], 50)
+# 
+# 
+# sous_data_belgique[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
+# 
 
-sous_data_belgique[HH0401 >= montant_heritage_min, HH0201_cons := HH0201] #On recréé les colonnes des dates d'héritages, mais que si l'héritage est conséquent
-sous_data_belgique[HH0402 >= montant_heritage_min, HH0202_cons := HH0202]
-sous_data_belgique[HH0403 >= montant_heritage_min, HH0203_cons := HH0203]
 
-sous_data_belgique[, Annee_heritage_1_cons := pmin(HH0201_cons, HH0202_cons, HH0203_cons, na.rm = TRUE)] # Pour les ménages qui ont un premier héritage conséquent on met celui-là
-sous_data_belgique[is.na(Annee_heritage_1_cons), Annee_heritage_1_cons := Annee_heritage_1] # Pour les autres on peut mettre le premier héritage obtenu même s'il est faible
-sous_data_belgique[, Montant_heritage_1_cons := factor( #Puis on peut mettre le montant de l'héritage associé
+## Petit histogramme pour visualiser
+sous_data_belgique[, label_education := factor(
   fcase(
-    Annee_heritage_1_cons == HH0201, HH0401,
-    Annee_heritage_1_cons == HH0202, HH0402,
-    Annee_heritage_1_cons == HH0203, HH0403
+    DHEDUH1 == 1, "< Brevet",
+    DHEDUH1 == 2, "Brevet",
+    DHEDUH1 == 3, "Bac",
+    DHEDUH1 == 5, "> Bac"
   )
 )
 ]
-sous_data_belgique$Montant_heritage_1_cons <- as.numeric(as.character(sous_data_belgique$Montant_heritage_1_cons)) ### ATTENTION laisser le as.character sinon ça bug je sais pas pourquoi...
 
-# Pour vérifier
-liste_obs <- c("HH0201", "HH0202", "HH0203", "HH0401", "HH0402", "HH0403", "Annee_heritage_1_cons", "Montant_heritage_1_cons")
-head(sous_data_belgique[,..liste_obs], 50)
 
-hist(sous_data_belgique$HB0700 - sous_data_belgique$Annee_heritage_1, breaks=50)
-hist(sous_data_belgique$HB0700 - sous_data_belgique$Annee_heritage_1_cons, breaks=50)
 
-count(sous_data_belgique[Annee_heritage_1 != Annee_heritage_1_cons]) #Ouais bon ça change 100 lignes...
+titre <- "Distribution de la variable :\ndate d'aquisition de la résidence principale actuelle - date du premier don ou héritage reçu"
+xlabel <- "Année (coupé à 50) "
+ylabel <- "Nombre d'occurence"
+filllabel <- "Niveau d'éducation\nde la personne de\nréférence du ménage"
+titre_save <- "Distrib_diff_annees_heritage_achat_detaille.pdf"
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+x <- "Annee_achat_heritage"
+fill <- "label_education"
+liste_breaks_fill <- c('< Brevet', 'Brevet', 'Bac', '> Bac')
+data_loc <- sous_data_belgique
+liste_breaks_x <- seq(-50, 50, 2)
+limits_x <- c(-50,50)
+
+trace_distrib_variable(data_loc, x, fill, xlabel, ylabel,filllabel, titre, titre_save, liste_breaks_fill, liste_breaks_x, limits_x)
+
+
+titre <- "Distribution de la variable :\ndate d'aquisition de la résidence principale actuelle - date du premier don ou héritage reçu"
+xlabel <- "Année (coupé à 50) "
+ylabel <- "Nombre d'occurence"
+filllabel <- NaN
+titre_save <- "Distrib_diff_annees_heritage_achat_non_detaille.pdf"
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+x <- "Annee_achat_heritage"
+fill <- NaN
+liste_breaks_fill <- NaN
+data_loc <- sous_data_belgique
+liste_breaks_x <- seq(-50, 50, 2)
+limits_x <- c(-50,50)
+trace_distrib_variable(data_loc, x, NaN, xlabel, ylabel,NaN, titre, titre_save, liste_breaks_fill, liste_breaks_x, limits_x)
 
 
 
 
 
 ######### A-t-on bien des données de panel ?
-# SA0200 = Survey vintage
-# SA0010 = household identification number
-# SA0210 = Vintage of last interview (household)
-# SA0110 = Past household ID
-
-### Pour faire l'évolution il faut commencer par mettre à 0 les patrimoines NaN 
-sous_data_belgique[is.na(DA1000), DA1000 := 0]
-sous_data_belgique[is.na(DA2100), DA2100 := 0]
-sous_data_belgique[is.na(DL1000), DL1000 := 0]
-
-vague_1 <- sous_data_belgique[VAGUE == 1,] # On récupère les vagues
-vague_2 <- sous_data_belgique[VAGUE == 2,]
-vague_3 <- sous_data_belgique[VAGUE == 3,]
-vague_4 <- sous_data_belgique[VAGUE == 4,]
-
-colnames(vague_1) <- paste(colnames(vague_1),"V1",sep="_") # On renome pour ne pas avoir de conflits
-colnames(vague_2) <- paste(colnames(vague_2),"V2",sep="_")
-colnames(vague_3) <- paste(colnames(vague_3),"V3",sep="_")
-colnames(vague_4) <- paste(colnames(vague_4),"V4",sep="_")
-
-
-vague_12 <- merge(x = vague_2, y = vague_1, by.x = 'SA0110_V2',by.y = 'SA0010_V1')
-vague_123 <- merge(x = vague_3, y = vague_12, by.x = 'SA0110_V3',by.y = 'SA0010_V2') ## On s'arrête là parce qu'aucun ménage n'est enquêté 4x
-vague_1234 <- merge(x = vague_4, y = vague_123, by.x = 'SA0110_V4',by.y = 'SA0010_V3')
-
-vague_23 <- merge(x = vague_3, y = vague_2, by.x = 'SA0110_V3',by.y = 'SA0010_V2')
-vague_234 <- merge(x = vague_4, y = vague_23, by.x = 'SA0110_V4',by.y = 'SA0010_V3') ## PERSONNE N'EST EN PANEL A LA VAGUE 4 ?????
-
-
-# ### Pour vérifier on regarde les différences d'âges de la personne de référence du ménage
-# ## 2010      2014      2017 les vagues
-# diff_12 <- as.numeric(vague_123$DHAGEH1_V2) - as.numeric(vague_123$DHAGEH1_V1)
-# diff_23 <- as.numeric(vague_123$DHAGEH1_V3) - as.numeric(vague_123$DHAGEH1_V2)
-
-
+list_output <- Creation_donnees_panel(sous_data_belgique)
+vague_12 <- list_output[1]
+vague_23 <- list_output[2]
+vague_34 <- list_output[3]
+vague_123 <- list_output[4]
+vague_234 <- list_output[5]
+vague_1234 <- list_output[6]
 
 
 ####### Positions dans la distribution du patrimoine
@@ -522,10 +508,29 @@ sous_data[Montant_heritage_1 >= Montant_minimal, Reg_G := 1] # Reçu un héritag
 table(sous_data$Reg_G)
 table(sous_data$Reg_Y)
 
+##### Est-ce qu'on a un problème de biais de sélection des traités ????
+
+
+# DHAGEH1B = Tranche d'âge de la personne de référence
+# DHEDUH1 = Education de la personne de référence
+# DHGENDERH1 = Genre de la personne de référence
+# DI2000 = Revenu total du ménage
+# DHHTYPE = Type du ménage
+lm_her <- lm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE, data = sous_data)
+summary(lm_her) ### A priori à part le salaire pas beaucoup de variables ne jouent sur le fait d'être traité ou non. Sauf sur le niveau d'éducation...
+
+# Mêmes conclusions avec logit et probit...
+denyprobit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE, 
+                  family = binomial(link = "logit"), 
+                  data = sous_data)
+summary(denyprobit)
+
+
+
+###### Est-ce que G est significatif pour prévoir Y ?
+
 lm_her <- lm(Reg_Y ~ Reg_G, data = sous_data)
-summary(lm_her) ### A priorià part le salaire pas beaucoup de variables ne jouent sur le fait d'être traité ou non ==> On a peu de biais de variables ommises ???
-
-
+summary(lm_her)
 
 denyprobit <- glm(Reg_Y ~ Reg_G, 
                   family = binomial(link = "probit"), 
@@ -550,8 +555,12 @@ f(beta_0 + beta_g)*beta_g
 f(beta_0)*beta_g
 
 
+#### Conclusion :
+# G est significatif pour prédire Y
+# Seuls 2 modalités sur les 4 de la variable d'éducation sont significative pour prédire G à partir de variables socio-éco du ménage
+# Donc on peut se dire qu'on a identifié un effet causal ???
 
-
+# Quid d'un éventuel biais de sélection ?
 
 
 

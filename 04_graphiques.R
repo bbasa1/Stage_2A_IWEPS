@@ -104,3 +104,34 @@ trace_concentration <- function(data_melted_loc, x, y, color, xlabel, ylabel,col
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
 }
+
+
+
+
+
+trace_distrib_variable <- function(data_loc, x, fill, xlabel, ylabel,filllabel, titre, titre_save, liste_breaks_fill, liste_breaks_x, limits_x){
+  ### Trace l'histogramme d'une variable. Avec ou sans sous-décomposition fill
+  
+  if(!is.na(fill)){
+    p <- ggplot(data_loc, aes(x = data_loc[[x]], fill = data_loc[[fill]])) + 
+      geom_histogram(binwidth=2, color="black", alpha = 0.75) +
+      scale_fill_viridis(discrete = TRUE, breaks=liste_breaks_fill) +
+      labs(title=titre,
+           x= xlabel,
+           y= ylabel,
+           fill = filllabel) +
+      scale_x_continuous(breaks = liste_breaks_x, limits = limits_x) +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
+  }else{
+    p <- ggplot(data_loc, aes(x = data_loc[[x]])) + 
+      geom_histogram(binwidth=2, color="black", alpha = 0.75) +
+      labs(title=titre,
+           x= xlabel,
+           y= ylabel) +
+      scale_x_continuous(breaks = liste_breaks_x, limits = limits_x) +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
+  }
+  
+  ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
+  print(p) 
+}
