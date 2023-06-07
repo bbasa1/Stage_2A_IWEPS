@@ -499,6 +499,67 @@ table(pop_initiale_tot$Reg_D)
 
 ############################################################################################################################### 
 ########################## AVEC LA DATE D'ACHAT - LA DATE D'HERITAGE  ######################################################### 
+### La clé a l'air d'être l'héritage
+data_loc <- copy(sous_data_belgique)
+
+data_loc[(is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := - 99] # Pas d'achat mais un héritage
+data_loc[(!is.na(HB0700) & is.na(Montant_heritage_1)), Annee_achat_heritage :=  99] # Achat mais pas d'héritage
+data_loc[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
+
+hist(data_loc$Annee_achat_heritage, breaks = 50)
+
+
+sous_data <- data_loc[Annee_achat_heritage <= 98] ## Uniquement les ménages qui ONT reçu un héritage
+
+sous_data[, Reg_Y := 0]
+sous_data[Annee_achat_heritage %in% -1:5, Reg_Y := 1] # Ont acheté qq années après
+
+
+Montant_minimal <- 35000
+sous_data[, Reg_G := 0]
+sous_data[Montant_heritage_1 >= Montant_minimal, Reg_G := 1] # Reçu un héritage conséquant
+
+table(sous_data$Reg_G)
+table(sous_data$Reg_Y)
+
+lm_her <- lm(Reg_Y ~ Reg_G, data = sous_data)
+summary(lm_her) ### A priorià part le salaire pas beaucoup de variables ne jouent sur le fait d'être traité ou non ==> On a peu de biais de variables ommises ???
+
+
+
+denyprobit <- glm(Reg_Y ~ Reg_G, 
+                  family = binomial(link = "probit"), 
+                  data = sous_data)
+summary(denyprobit)
+beta_0 <- as.numeric(denyprobit$coefficients[1])
+beta_g <- as.numeric(denyprobit$coefficients[2])
+
+dnorm(beta_0 + beta_g, mean=1, sd=1)*beta_g
+dnorm(beta_0, mean=1, sd=1)*beta_g
+
+
+denyprobit <- glm(Reg_Y ~ Reg_G, 
+                  family = binomial(link = "logit"), 
+                  data = sous_data)
+summary(denyprobit)
+beta_0 <- as.numeric(denyprobit$coefficients[1])
+beta_g <- as.numeric(denyprobit$coefficients[2])
+
+f <- function(x){return(exp(-x)/(1+exp(-x))^2)}
+f(beta_0 + beta_g)*beta_g
+f(beta_0)*beta_g
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 hist(sous_data_belgique$HB0700 - sous_data_belgique$Annee_heritage_1_cons, breaks=50)
@@ -521,32 +582,41 @@ table(data_loc[Reg_G == 0]$DHAGEH1B)
 sous_pop_initiale <- data_loc[Reg_G == 0][sample(1:nrow(data_loc[Reg_G == 0]), n$n), ]
 sous_pop_initiale <- rbindlist(list(sous_pop_initiale, data_loc[Reg_G == 1]), fill=TRUE)
 
-liste_cols_importantes <- c("DHAGEH1B", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE")
-X_tot <- sous_pop_initiale[,..liste_cols_importantes]
-Y_tot <- sous_pop_initiale$Reg_G
-
-table(sous_pop_initiale[Reg_G == 1]$DHAGEH1B)
-table(sous_pop_initiale[Reg_G == 0]$DHAGEH1B)
-
-
 
 # DHAGEH1B = Tranche d'âge de la personne de référence
 # DHEDUH1 = Education de la personne de référence
 # DHGENDERH1 = Genre de la personne de référence
 # DI2000 = Revenu total du ménage
 # DHHTYPE = Type du ménage
-lm_her <- lm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE, data = sous_pop_initiale)
-
-summary(lm_her) ### A priorià part le salaire pas beaucoup de variables ne jouent sur le fait d'être traité ou non
-
+lm_her <- lm(DOINHERIT ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE, data = data_loc)
+summary(lm_her) ### A priorià part le salaire pas beaucoup de variables ne jouent sur le fait d'être traité ou non ==> On a peu de biais de variables ommises ???
 
 
-
-dtrain <- xgb.DMatrix(data = sous_pop_initiale[,..liste_cols_importantes], label = sous_pop_initiale$Reg_G)
-bstSparse <- xgboost(data = X_tot, label = Y_tot, max.depth = 2, eta = 1, nthread = 2, nrounds = 2, objective = "binary:logistic")
-
-
-
+# 
+# liste_cols_importantes <- c("DHAGEH1B", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE")
+# X_tot <- sous_pop_initiale[,..liste_cols_importantes]
+# Y_tot <- sous_pop_initiale$Reg_G
+# 
+# 
+# 
+# data_loc$DOINHERIT <- as.numeric(data_loc$DOINHERIT)
+# data_loc$DA1110I <- as.numeric(data_loc$DA1110I)
+# 
+# lm_her <- lm(DOINHERIT ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE, data = data_loc)
+# summary(lm_her) ### A priorià part le salaire pas beaucoup de variables ne jouent sur le fait d'être traité ou non ==> On a peu de biais de variables ommises ???
+# 
+# 
+# # DA1110I= Fait d'être proprio
+# # DOINHERIT = Fait d'avoir hérité
+# 
+# lm_caus <- lm(DA1110I ~ DOINHERIT, data = data_loc)
+# summary(lm_caus)
+# 
+# 
+# 
+# dtrain <- xgb.DMatrix(data = sous_pop_initiale[,..liste_cols_importantes], label = sous_pop_initiale$Reg_G)
+# bstSparse <- xgboost(data = X_tot, label = Y_tot, max.depth = 2, eta = 1, nthread = 2, nrounds = 2, objective = "binary:logistic")
+# 
 
 
 
