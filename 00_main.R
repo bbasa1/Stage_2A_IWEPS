@@ -376,26 +376,19 @@ pop_initiale_tot$Reg_T <- as.numeric(pop_initiale_tot$Reg_T)
 pop_initiale_tot[, Reg_D := Reg_G * Reg_T]
 
 liste_cols_reg <- c("Reg_Y", "Reg_G", "Reg_T", "Reg_D")
+liste_cols_reg_poids <- c("Reg_Y", "Reg_G", "Reg_T", "Reg_D", "HW0010")
 pop_initiale_tot[,..liste_cols_reg]
 
+n <- count(pop_initiale_tot[Reg_G == 1])
+# sous_pop_initiale <- as.data.table(sapply(pop_initiale_tot[Reg_G == 0], sample, n$n))
+sous_pop_initiale <- pop_initiale_tot[Reg_G == 0][sample(1:nrow(pop_initiale_tot[Reg_G == 0]), n$n), ]
+sous_pop_initiale <- rbindlist(list(sous_pop_initiale, pop_initiale_tot[Reg_G == 1]), fill=TRUE)
 
-did_reg <- lm(Reg_Y  ~ Reg_G + Reg_D + Reg_T , data = pop_initiale_tot[,..liste_cols_reg])
+dw <- svydesign(ids = ~1, data = sous_pop_initiale[,..liste_cols_reg_poids], weights = ~ HW0010)
 
-summary(did_reg)
-
-summary(did_reg)$coefficients["Reg_D", "Pr(>|t|)"] #Pour récupérer la pvalue du coeff
-
-
-############ Ajout de poids
-liste_cols_reg <- c("Reg_Y", "Reg_G", "Reg_T", "Reg_D", "HW0010")
-pop_initiale_tot[,..liste_cols_reg]
-dw <- svydesign(ids = ~1, data = pop_initiale_tot[,..liste_cols_reg], weights = ~ HW0010)
-
+# dw <- svydesign(ids = ~1, data = pop_initiale_tot[,..liste_cols_reg_poids], weights = ~ HW0010)
 mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw)
-summary(mysvyglm) # Ca change pas grand chose... Ca dégrade même les résultats mais on va utiliser ça pour la suite
-
-
-
+summary(mysvyglm) 
 
 ## Test de la common trend asumption sur les vagues 1 et 2
 pop_test_hyp <- copy(sous_data_belgique[VAGUE %in% c(1,2),]) 
@@ -417,6 +410,80 @@ dw <- svydesign(ids = ~1, data = pop_test_hyp, weights = ~ HW0010)
 
 
 sous_dw <- subset(dw, Reg_G == 1 & Reg_T == 0) # Un sous-échantillon
+# svymean(~Reg_Y, subset(dw, Reg_G == 1 & Reg_T == 0))[1]
+
+svymean(~Reg_Y, subset(dw, Reg_G == 1 & Reg_T == 0))[1] - svymean(~Reg_Y, subset(dw, Reg_G == 1 & Reg_T == -1))[1]
+svymean(~Reg_Y, subset(dw, Reg_G == 0 & Reg_T == 0))[1] - svymean(~Reg_Y, subset(dw, Reg_G == 0 & Reg_T == -1))[1]
+
+table(pop_initiale_tot$Reg_D)
+
+
+
+############################################################################################################################### 
+########################## DiD ESSAI N°2 = EFFET DU FAIT D'AVOIR RECU UN HERITAGE SUR LE FAIT D'ACHETER UNE HMR ###############
+########################## G = 1   <====> Reçu un héritage à la vague 3 MAIS PAS à la vague 2  ################################
+pop_initiale_tot <- copy(sous_data_belgique[VAGUE %in% c(2,3),])
+nrow(pop_initiale_tot)
+
+pop_initiale_tot[, Reg_Y := 0]
+pop_initiale_tot[(DA1110I == 1 & VAGUE == 3) | (DA1110I == 1 & VAGUE == 2), Reg_Y := 1] ## La population qui ont une HMR
+pop_initiale_tot$Reg_Y <- as.numeric(pop_initiale_tot$Reg_Y)
+count(pop_initiale_tot[ Reg_Y == 1])
+
+
+pop_initiale_tot[, Reg_G := 0]
+SA0110_V3 <- vague_23[DOINHERIT_V3 == 1 & DOINHERIT_V2 == 0]$SA0110_V3 ## On récupère les identifiants ménages de ceux qui ont reçu un héritage entre la vague 2 et la vague 3
+pop_initiale_tot[(SA0110 %in% SA0110_V3 & VAGUE == 3) | (SA0010 %in% SA0110_V3 & VAGUE == 2), Reg_G := 1]
+pop_initiale_tot$Reg_G <- as.numeric(pop_initiale_tot$Reg_G)
+count(pop_initiale_tot[ Reg_G == 1])
+
+
+pop_initiale_tot[, Reg_T := 0]
+pop_initiale_tot[VAGUE == 3, Reg_T := 1] ## La date
+pop_initiale_tot$Reg_T <- as.numeric(pop_initiale_tot$Reg_T)
+count(pop_initiale_tot[ Reg_T == 1])
+
+
+pop_initiale_tot[, Reg_D := Reg_G * Reg_T]
+
+liste_cols_reg <- c("Reg_Y", "Reg_G", "Reg_T", "Reg_D")
+liste_cols_reg_poids <- c("Reg_Y", "Reg_G", "Reg_T", "Reg_D", "HW0010")
+pop_initiale_tot[,..liste_cols_reg]
+
+n <- count(pop_initiale_tot[Reg_G == 1])
+sous_pop_initiale <- pop_initiale_tot[Reg_G == 0][sample(1:nrow(pop_initiale_tot[Reg_G == 0]), n$n), ]
+sous_pop_initiale <- rbindlist(list(sous_pop_initiale, pop_initiale_tot[Reg_G == 1]), fill=TRUE)
+
+dw <- svydesign(ids = ~1, data = sous_pop_initiale[,..liste_cols_reg_poids], weights = ~ HW0010)
+
+mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw)
+summary(mysvyglm) 
+
+
+## Test de la common trend asumption sur les vagues 1 et 2
+pop_test_hyp <- copy(sous_data_belgique[VAGUE %in% c(1,2),]) 
+
+pop_test_hyp[, Reg_Y := 0]
+pop_test_hyp[(DA1110I == 1 & VAGUE == 2) | (DA1110I == 1 & VAGUE == 1), Reg_Y := 1] ## La population qui ont une HMR
+pop_test_hyp$Reg_Y <- as.numeric(pop_test_hyp$Reg_Y)
+count(pop_test_hyp[ Reg_Y == 1])
+
+
+pop_test_hyp[, Reg_G := 0]
+SA0110_V2 <- vague_12[DOINHERIT_V2 == 1 & DOINHERIT_V1 == 0]$SA0110_V2 ## On récupère les identifiants ménages de ceux qui ont reçu un héritage entre la vague 2 et la vague 3
+# vague_23 <- merge(x = vague_3, y = vague_2, by.x = 'SA0110_V3',by.y = 'SA0010_V2')
+pop_test_hyp[(SA0110 %in% SA0110_V2 & VAGUE == 2) | (SA0010 %in% SA0110_V2 & VAGUE == 1), Reg_G := 1]
+pop_test_hyp$Reg_G <- as.numeric(pop_test_hyp$Reg_G)
+count(pop_test_hyp[ Reg_G == 1])
+
+pop_test_hyp[, Reg_T := -1]
+pop_test_hyp[VAGUE == 2, Reg_T := 0] ## La date
+pop_test_hyp$Reg_T <- as.numeric(pop_test_hyp$Reg_T)
+
+dw <- svydesign(ids = ~1, data = pop_test_hyp, weights = ~ HW0010)
+
+
+sous_dw <- subset(dw, Reg_G == 1 & Reg_T == 0) # Un sous-échantillon
 svymean(~Reg_Y, subset(dw, Reg_G == 1 & Reg_T == 0))[1]
 
 
@@ -427,7 +494,57 @@ svymean(~Reg_Y, subset(dw, Reg_G == 0 & Reg_T == 0))[1] - svymean(~Reg_Y, subset
 table(pop_initiale_tot$Reg_D)
 
 
-############################### 
+
+
+
+############################################################################################################################### 
+########################## AVEC LA DATE D'ACHAT - LA DATE D'HERITAGE  ######################################################### 
+
+
+hist(sous_data_belgique$HB0700 - sous_data_belgique$Annee_heritage_1_cons, breaks=50)
+### La clé a l'air d'être l'héritage
+data_loc <- copy(sous_data_belgique)
+
+data_loc[(is.na(HB0700) & !is.na(Annee_heritage_1_cons)), Annee_achat_heritage := - 99] # Pas d'achat mais un héritage
+data_loc[(!is.na(HB0700) & is.na(Annee_heritage_1_cons)), Annee_achat_heritage :=  99] # Achat mais pas d'héritage
+data_loc[(!is.na(HB0700) & !is.na(Annee_heritage_1_cons)), Annee_achat_heritage := HB0700 - Annee_heritage_1_cons]
+
+table(data_loc$Annee_achat_heritage)
+hist(data_loc$Annee_achat_heritage, breaks = 50)
+
+
+data_loc[, Reg_G := 0]
+data_loc[Annee_achat_heritage %in% -1:4, Reg_G := 1]
+n <- count(data_loc[Reg_G == 1])
+table(data_loc[Reg_G == 0]$DHAGEH1B)
+
+sous_pop_initiale <- data_loc[Reg_G == 0][sample(1:nrow(data_loc[Reg_G == 0]), n$n), ]
+sous_pop_initiale <- rbindlist(list(sous_pop_initiale, data_loc[Reg_G == 1]), fill=TRUE)
+
+liste_cols_importantes <- c("DHAGEH1B", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE")
+X_tot <- sous_pop_initiale[,..liste_cols_importantes]
+Y_tot <- sous_pop_initiale$Reg_G
+
+table(sous_pop_initiale[Reg_G == 1]$DHAGEH1B)
+table(sous_pop_initiale[Reg_G == 0]$DHAGEH1B)
+
+
+
+# DHAGEH1B = Tranche d'âge de la personne de référence
+# DHEDUH1 = Education de la personne de référence
+# DHGENDERH1 = Genre de la personne de référence
+# DI2000 = Revenu total du ménage
+# DHHTYPE = Type du ménage
+lm_her <- lm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE, data = sous_pop_initiale)
+
+summary(lm_her) ### A priorià part le salaire pas beaucoup de variables ne jouent sur le fait d'être traité ou non
+
+
+
+
+dtrain <- xgb.DMatrix(data = sous_pop_initiale[,..liste_cols_importantes], label = sous_pop_initiale$Reg_G)
+bstSparse <- xgboost(data = X_tot, label = Y_tot, max.depth = 2, eta = 1, nthread = 2, nrounds = 2, objective = "binary:logistic")
+
 
 
 
