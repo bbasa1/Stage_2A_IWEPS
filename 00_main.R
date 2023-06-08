@@ -274,6 +274,11 @@ titre_save <- paste(repo_sorties, titre_save, sep ='/')
 graphique_evolution_pat_entre_vagues(vague_123, liste_type_patrimoines,liste_quantiles, titre, titre_save)
 
 
+
+################################################################################
+# ========================= 05 ECONOMETRIE =====================================
+################################################################################
+
 ########################## DiD ESSAI N°1 = EFFET DU FAIT D'AVOIR RECU UN HERITAGE SUR LE FAIT D'ACHETER UNE HMR ###############
 pop_initiale_tot <- copy(sous_data_belgique[VAGUE %in% c(2,3),]) ## On se place sur les vagues 2 et 3 pour pouvoir tester la common trend asump. sur vagues 1 et 2
 nrow(pop_initiale_tot)
@@ -304,10 +309,12 @@ sous_pop_initiale <- pop_initiale_tot[Reg_G == 0][sample(1:nrow(pop_initiale_tot
 sous_pop_initiale <- rbindlist(list(sous_pop_initiale, pop_initiale_tot[Reg_G == 1]), fill=TRUE)
 
 dw <- svydesign(ids = ~1, data = sous_pop_initiale[,..liste_cols_reg_poids], weights = ~ HW0010)
-
-# dw <- svydesign(ids = ~1, data = pop_initiale_tot[,..liste_cols_reg_poids], weights = ~ HW0010)
 mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw)
-summary(mysvyglm) 
+summary(mysvyglm)
+
+
+titre <- paste(repo_sorties,"DD_1_mauvaises_classes.xlsx", sep = "/")
+write.xlsx(as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE), titre)
 
 ## Test de la common trend asumption sur les vagues 1 et 2
 pop_test_hyp <- copy(sous_data_belgique[VAGUE %in% c(1,2),]) 
@@ -375,7 +382,9 @@ sous_pop_initiale <- rbindlist(list(sous_pop_initiale, pop_initiale_tot[Reg_G ==
 
 dw <- svydesign(ids = ~1, data = sous_pop_initiale[,..liste_cols_reg_poids], weights = ~ HW0010)
 mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw)
-summary(mysvyglm) 
+summary(mysvyglm)
+titre <- paste(repo_sorties,"DD_2_heritage_achat.xlsx", sep = "/")
+write.xlsx(as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE), titre)
 
 
 ## Test de la common trend asumption sur les vagues 1 et 2
@@ -447,6 +456,14 @@ table(sous_data$Reg_Y)
 lm_her <- lm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE, data = sous_data)
 summary(lm_her) ### A priori à part le salaire pas beaucoup de variables ne jouent sur le fait d'être traité ou non. Sauf sur le niveau d'éducation...
 
+liste_cols_reg_poids <- c("HW0010", "Reg_G", "DHAGEH1B", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE")
+dw <- svydesign(ids = ~1, data = sous_data[,..liste_cols_reg_poids], weights = ~ HW0010)
+mysvyglm <- svyglm(formula = Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE, design = dw)
+summary(mysvyglm)
+titre <- paste(repo_sorties,"DD_3_preparation_heritage_consequant_achat.xlsx", sep = "/")
+write.xlsx(as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE), titre)
+
+
 # Mêmes conclusions avec logit et probit...
 denyprobit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE, 
                   family = binomial(link = "logit"), 
@@ -463,12 +480,16 @@ summary(lm_her)
 liste_cols_reg_poids <- c("HW0010", "Reg_Y", "Reg_G")
 dw <- svydesign(ids = ~1, data = sous_data[,..liste_cols_reg_poids], weights = ~ HW0010)
 mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G, design = dw)
-summary(mysvyglm) 
+summary(mysvyglm)
+titre <- paste(repo_sorties,"DD_3_reg_lin_heritage_consequant_achat.xlsx", sep = "/")
+write.xlsx(as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE), titre)
 
 denyprobit <- glm(Reg_Y ~ Reg_G, 
                   family = binomial(link = "probit"), 
                   data = sous_data)
 summary(denyprobit)
+titre <- paste(repo_sorties,"DD_3_probit_heritage_consequant_achat.xlsx", sep = "/")
+write.xlsx(as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE), titre)
 beta_0 <- as.numeric(denyprobit$coefficients[1])
 beta_g <- as.numeric(denyprobit$coefficients[2])
 
@@ -480,6 +501,8 @@ denyprobit <- glm(Reg_Y ~ Reg_G,
                   family = binomial(link = "logit"), 
                   data = sous_data)
 summary(denyprobit)
+titre <- paste(repo_sorties,"DD_3_logit_heritage_consequant_achat.xlsx", sep = "/")
+write.xlsx(as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE), titre)
 beta_0 <- as.numeric(denyprobit$coefficients[1])
 beta_g <- as.numeric(denyprobit$coefficients[2])
 
