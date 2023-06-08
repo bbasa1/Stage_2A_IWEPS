@@ -37,6 +37,9 @@ num_table <- 1 ### Change les poids assignés par eurostat
 num_vague_max <- 4 ### Le nombre de vague qu'on veut concaténer ATTENTION la dernière vague a des noms de colonnes en MAJUSCULE Ca pose pbm dans la concaténation...
 pays <- "BE"
 
+Montant_minimal <- 5000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
+
+
 
 ################################################################################
 # ============================ 02 IMPORTATION ==================================
@@ -460,7 +463,6 @@ sous_data[Annee_achat_heritage %in% -1:3, Reg_Y := 1] # Ont acheté qq années a
 table(sous_data$Reg_Y)
 
 
-Montant_minimal <- 5000
 sous_data[, Reg_G := 0]
 sous_data[Montant_heritage_1 >= Montant_minimal, Reg_G := 1] # Reçu un héritage conséquant
 table(sous_data$Reg_G)
@@ -548,6 +550,80 @@ f(beta_0)*beta_g
 
 
 
+######################### On passe tout ça sous forme de fonction pour voir facilement la dépendance avec le montant minimal d'héritage ################
+
+source(paste(repo_prgm , "05_econometrie.R" , sep = "/"))
+
+liste_montant_initial <- lseq(100, 1000000, 250)
+
+
+data_loc <- copy(sous_data_pays)
+data_loc[(is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := - 99] # Pas d'achat mais un héritage
+data_loc[(!is.na(HB0700) & is.na(Montant_heritage_1)), Annee_achat_heritage :=  99] # Achat mais pas d'héritage
+data_loc[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
+sous_data <- data_loc[Annee_achat_heritage <= 98] ## Uniquement les ménages qui ONT reçu un héritage
+sous_data_loc <- sous_data
+
+
+### On récupère les données
+dt_tot_reg <- data.table(Reg_lin_pval = numeric(),
+                      Logit_pval = numeric(),
+                      Probit_pval = numeric(),
+                      Montant_initial =  numeric(),
+                      Reg_lin_coeff = numeric(),
+                      Logit_coeff = numeric(),
+                      Probit_coeff = numeric())
+for(Montant_initial in liste_montant_initial){
+  dt_loc <- recuperation_pval(sous_data_loc, Montant_initial)
+  dt_tot_reg <- rbindlist(list(dt_tot_reg, dt_loc), fill=TRUE)
+}
+
+### On met en forme
+melted_pval <- melt(dt_tot_reg,
+                    id.vars = "Montant_initial",
+                    measure.vars = c("Reg_lin_pval", "Logit_pval", "Probit_pval"),
+                    variable.name = "variable",
+                    value.name    = "value")
+melted_pval$Statistique <- "pvalue"
+
+melted_coeff <- melt(dt_tot_reg,
+                    id.vars = "Montant_initial",
+                    measure.vars = c("Reg_lin_coeff", "Logit_coeff", "Probit_coeff"),
+                    variable.name = "variable",
+                    value.name    = "value")
+melted_coeff$Statistique <- "Coefficiant"
+
+melted_final <- rbindlist(list(melted_pval, melted_coeff), fill=TRUE)
+melted_final$Statistique <- as.factor(melted_final$Statistique)
+
+### On prépare le graphique
+melted_final[, label_variable := factor(
+  fcase(
+    variable == "Reg_lin_pval", "Linéaire",
+    variable == "Logit_pval", "Logit",
+    variable == "Probit_pval", "Probit",
+    variable == "Reg_lin_coeff", "Linéaire",
+    variable == "Logit_coeff", "Logit",
+    variable == "Probit_coeff", "Probit"
+  )
+)
+]
+
+### on trace
+titre <- "Résultats des régressions de Y sur G"
+xlabel <- "Montant d'héritage minimal pour être considéré comme conséquant"
+ylabel <- ""
+titre_save <- paste(pays,"_pval_coeff_G_reg_Y_sur_G.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+melted_loc <- melted_final
+x <- "Montant_initial"
+y <- 'value'
+color <- "label_variable"
+colorlabel <- "Régression"
+facet <- "Statistique"
+
+trace_courbes(melted_loc, x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save)
+  
 
 
 

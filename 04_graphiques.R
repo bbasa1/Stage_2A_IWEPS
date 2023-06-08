@@ -139,3 +139,31 @@ trace_distrib_variable <- function(data_loc, x, fill, xlabel, ylabel,filllabel, 
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
   print(p) 
 }
+
+
+
+trace_courbes <- function(melted_loc, x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save){
+  ### Trace les points contenus dans melted_loc, et ajoute une courbe de fitting
+  
+  p <- ggplot(data = melted_loc, aes(x=melted_loc[[x]], y = melted_loc[[y]], color = melted_loc[[color]])) +
+    geom_point() +
+    geom_line() +
+    geom_smooth( method = 'gam', se = FALSE, span = 0.3) +
+    labs(title=titre,
+         x= xlabel,
+         y= ylabel,
+         color = colorlabel) + 
+    scale_y_continuous(labels = function(y) format(y, scientific = FALSE)) + 
+    scale_x_continuous(trans='log10', labels = scales::dollar_format(
+      prefix = "",
+      suffix = " €",
+      big.mark = " ",
+      decimal.mark = ",")) + 
+    scale_color_viridis(discrete = TRUE) +
+    theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=1)) +
+    facet_wrap(~factor(melted_loc[[facet]]))
+  
+  
+  ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
+  print(p)
+}

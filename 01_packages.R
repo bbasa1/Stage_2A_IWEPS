@@ -68,3 +68,10 @@ library(finalfit)
 library(xgboost)
 # library(xlsx)        
 library(openxlsx) # Load on each new session
+library(emdbook)
+
+
+
+
+
+
