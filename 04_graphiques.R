@@ -143,12 +143,12 @@ trace_distrib_variable <- function(data_loc, x, fill, xlabel, ylabel,filllabel, 
 
 
 trace_courbes <- function(melted_loc, x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save){
-  ### Trace les points contenus dans melted_loc, et ajoute une courbe de fitting
+  ### Trace les points contenus dans melted_loc
   
   p <- ggplot(data = melted_loc, aes(x=melted_loc[[x]], y = melted_loc[[y]], color = melted_loc[[color]])) +
     geom_point() +
     geom_line() +
-    geom_smooth( method = 'gam', se = FALSE, span = 0.3) +
+    # geom_smooth( method = 'gam', se = FALSE, span = 0.3) +
     labs(title=titre,
          x= xlabel,
          y= ylabel,
@@ -161,7 +161,7 @@ trace_courbes <- function(melted_loc, x, y, color, facet, xlabel, ylabel, colorl
       decimal.mark = ",")) + 
     scale_color_viridis(discrete = TRUE) +
     theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=1)) +
-    facet_wrap(~factor(melted_loc[[facet]]))
+    facet_wrap(~factor(melted_loc[[facet]]),  scales = "free", ncol = 2)
   
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
