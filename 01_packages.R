@@ -1,3 +1,41 @@
+
+dico_pays <- c(
+  "FR" ="France",
+  "AT" ="Autriche",
+  "BE" ="Belgique",
+  "BG" ="Bulgarie",
+  "CH" ="Suisse",
+  "CY" ="Chypre",
+  "CZ" ="République Tchèque",
+  "DE" ="Allemagne",
+  "DK" ="Dannemark",
+  "EE" ="Estonie",
+  "ES" ="Espagne",
+  "FI" ="Finlande",
+  "GR" ="Grèce",
+  "HR" ="Croatie",
+  "HU" ="Hongrie",
+  "IE" ="Irlande",
+  "IS" ="Islande",
+  "IT" ="Italie",
+  "LT" ="Lituanie",
+  "LU" ="Luxembourg",
+  "LV" ="Lettonie",
+  "MT" ="Malte",
+  "NL" ="Pays-bas",
+  "NO" ="Norvège",
+  "PL" ="Pologne",
+  "PT" ="Portugal",
+  "RO" ="Roumanie",
+  "SE" ="Suisse",
+  "SI" ="Slovénie",
+  "SK" ="Slovakie",
+  "UK" ="Royaume-Unis"
+)
+
+
+
+
 library(readr)
 # install.packages("data.table")
 library(data.table)
@@ -26,9 +64,7 @@ library(questionr)
 library(jtools)
 library(GoFKernel)
 library(finalfit)
-library(srvyr)
+# library(srvyr)
 library(xgboost)
-library(xlsx)        
+# library(xlsx)        
 library(openxlsx) # Load on each new session
-
-
