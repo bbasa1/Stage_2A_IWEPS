@@ -35,7 +35,7 @@ sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 num_table <- 1 ### Change les poids assignés par eurostat
 num_vague_max <- 4 ### Le nombre de vague qu'on veut concaténer ATTENTION la dernière vague a des noms de colonnes en MAJUSCULE Ca pose pbm dans la concaténation...
-pays <- "DE"
+pays <- "BE"
 
 montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
 
@@ -394,8 +394,14 @@ sous_data_pays[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_herita
 if(faire_tourner_recherche_pvalue_opti){
   liste_montant_initial <- lseq(100, 1000000, 250)
   data_loc <- copy(sous_data_pays)
-  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max)
+  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE)
 }
+
+
+### Si on a le montant optimal
+
+melted <- recherche_p_value_otpi(c(8000,9000,10000), copy(sous_data_pays), annee_min = annee_min, annee_max = annee_max, faire_tracer = FALSE)
+melted
 
 
 

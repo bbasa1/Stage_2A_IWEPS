@@ -4,7 +4,7 @@
 # Ici toutes les fonctions qui permettent de sortir des résultats d'économétrie
 
 
-recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = -1, annee_max = 3){
+recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = -1, annee_max = 3, faire_tracer = TRUE){
   ## Produit la courbe de pvalue et coeff associés à G dans la régression Y sur G pour trouver la valeur du montant minimal d'héritage optimal
   ## Utilise les deux fonctions ci-dessous
   
@@ -65,20 +65,24 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
   )
   ]
   
-  ### on trace
-  titre <- "Résultats des régressions de Y sur G"
-  xlabel <- "Montant d'héritage minimal pour être considéré comme conséquant"
-  ylabel <- ""
-  titre_save <- paste(pays,"_pval_coeff_G_reg_Y_sur_G.pdf", sep = "")
-  titre_save <- paste(repo_sorties, titre_save, sep ='/')
-  melted_loc <- melted_final
-  x <- "Montant_initial"
-  y <- 'value'
-  color <- "label_variable"
-  colorlabel <- "Régression"
-  facet <- "Statistique"
-  
-  trace_courbes(melted_loc, x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save)
+  if(faire_tracer){
+    ### on trace
+    titre <- "Résultats des régressions de Y sur G"
+    xlabel <- "Montant d'héritage minimal pour être considéré comme conséquant"
+    ylabel <- ""
+    titre_save <- paste(pays,"_pval_coeff_G_reg_Y_sur_G.pdf", sep = "")
+    titre_save <- paste(repo_sorties, titre_save, sep ='/')
+    melted_loc <- melted_final
+    x <- "Montant_initial"
+    y <- 'value'
+    color <- "label_variable"
+    colorlabel <- "Régression"
+    facet <- "Statistique"
+    
+    trace_courbes(melted_loc, x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save)
+  }else{
+    return(melted_final)
+  }
 }
 
 
