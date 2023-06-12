@@ -33,7 +33,7 @@ graphique_repartition_pat_quantile_sexe <- function(data_loc, var_decile, var_no
   sortby_x <- var_decile
   y <- "new"
   fill <- "Sexe"
-  ylabel <-"% de la population belge"
+  ylabel <-"% de la population"
   data_loc <- data_for_plot
   facet <- facet
   ordre_facet <- facet

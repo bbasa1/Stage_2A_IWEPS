@@ -67,7 +67,8 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
   
   if(faire_tracer){
     ### on trace
-    titre <- "Résultats des régressions de Y sur G"
+    # titre <- "Résultats des régressions de Y sur G"
+    titre <- paste( "Résultats des régressions de Y sur G (", nom_pays, ")", sep = "")
     xlabel <- "Montant d'héritage minimal pour être considéré comme conséquant"
     ylabel <- ""
     titre_save <- paste(pays,"_pval_coeff_G_reg_Y_sur_G.pdf", sep = "")

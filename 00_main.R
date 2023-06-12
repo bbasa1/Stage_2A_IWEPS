@@ -39,7 +39,7 @@ pays <- "BE"
 
 montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
 
-faire_tourner_recherche_pvalue_opti <- TRUE
+faire_tourner_recherche_pvalue_opti <- FALSE
 
 
 ################################################################################
@@ -121,6 +121,37 @@ sous_data_pays <- data_pays[,..liste_var_interet]
 sous_data_pays <- sous_data_pays %>% mutate_at(liste_var_continues, as.numeric)
 sous_data_pays <- sous_data_pays %>% mutate_at(liste_var_categorielles, as.factor)
 
+
+##### On ajoute la variable année d'achat - année d'héritage reçu
+sous_data_pays <- Ajout_premier_heritage(sous_data_pays)
+# En fait on ne veut pas le premier héritage obtenu mais le premier héritage CONSEQUANT obtenu
+sous_data_pays <- Ajout_premier_heritage_cons(sous_data_pays, montant_heritage_min)
+sous_data_pays[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
+
+
+## Petit histogramme pour visualiser
+sous_data_pays[, label_education := factor(
+  fcase(
+    DHEDUH1 == 1, "< Brevet",
+    DHEDUH1 == 2, "Brevet",
+    DHEDUH1 == 3, "Bac",
+    DHEDUH1 == 5, "> Bac"
+  )
+)
+]
+
+
+######### A-t-on bien des données de panel ?
+list_output <- Creation_donnees_panel(sous_data_pays)
+vague_12 <- as.data.table(list_output[1])
+vague_23 <- as.data.table(list_output[2])
+vague_34 <- as.data.table(list_output[3])
+vague_123 <- as.data.table(list_output[4])
+vague_234 <- as.data.table(list_output[5])
+vague_1234 <- as.data.table(list_output[6])
+
+
+
 ################################################################################
 # ====================== 04 STAT DES & GRAPHIQUES ==============================
 ################################################################################
@@ -197,26 +228,6 @@ graphique_variance_pat_age(data_loc, liste_type_patrimoines, titre, titre_save)
 
 
 ######################### Tracé : le date d'achat de la HMR - la date de l'héritage
-sous_data_pays <- Ajout_premier_heritage(sous_data_pays)
-# En fait on ne veut pas le premier héritage obtenu mais le premier héritage CONSEQUANT obtenu
-montant_heritage_min <- 10000
-sous_data_pays <- Ajout_premier_heritage_cons(sous_data_pays, montant_heritage_min)
-sous_data_pays[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
-
-
-## Petit histogramme pour visualiser
-sous_data_pays[, label_education := factor(
-  fcase(
-    DHEDUH1 == 1, "< Brevet",
-    DHEDUH1 == 2, "Brevet",
-    DHEDUH1 == 3, "Bac",
-    DHEDUH1 == 5, "> Bac"
-  )
-)
-]
-
-
-
 titre <- paste("Distribution de la variable :\ndate d'aquisition de la résidence principale actuelle - date du premier don ou héritage reçu\n(", nom_pays, ")", sep = "")
 xlabel <- "Année (coupé à 50) "
 ylabel <- "Nombre d'occurence"
@@ -250,14 +261,6 @@ trace_distrib_variable(data_loc, x, NaN, xlabel, ylabel,NaN, titre, titre_save, 
 
 
 
-######### A-t-on bien des données de panel ?
-list_output <- Creation_donnees_panel(sous_data_pays)
-vague_12 <- as.data.table(list_output[1])
-vague_23 <- as.data.table(list_output[2])
-vague_34 <- as.data.table(list_output[3])
-vague_123 <- as.data.table(list_output[4])
-vague_234 <- as.data.table(list_output[5])
-vague_1234 <- as.data.table(list_output[6])
 
 
 ####### Positions dans la distribution du patrimoine
