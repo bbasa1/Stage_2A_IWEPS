@@ -185,7 +185,7 @@ graphique_repartition_pat_quantile_sexe(data_loc, var_decile,var_normalisation, 
 
 # Dettes
 var_decile <- "DLTOP10"
-titre <- paste("Répartition des dettes, normalisé par sexe (", nom_pays, "& vague",num_vague,")", sep = "")
+titre <- paste("Répartition des dettes, normalisé par sexe (", nom_pays, " & vague",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Patrimoine_dettes_sexe.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <-"Quantile de dettes"
@@ -205,8 +205,8 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DL1000" = "Dettes",
                             "DN3001" = "Patrimoine net")
 
-titre_fig <- paste("Fonction de répartition de la richesse détenue par les ménages (", nom_pays, ")", sep = "")
-titre_save <- paste(pays,"_Concentration_patrimoine_par_type.pdf", sep = "")
+titre_fig <- paste("Fonction de répartition de la richesse détenue par les ménages (", nom_pays, " & vague",num_vague,")", sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Concentration_patrimoine_par_type.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 data_loc <- data_pays[VAGUE == num_vague]
 
@@ -298,7 +298,6 @@ graphique_contration_patrimoine(data_pays ,nb_quantiles, liste_type_patrimoines,
 
 
 ############################## Dispersion du patrimoine en fonction de l'âge
-num_vague <- 2
 liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DA1000" = "Patrimoine physique",
                             "DA2100" = "Patrimoine financier",
@@ -306,8 +305,8 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DN3001" = "Patrimoine net")
 
 data_loc <- data_pays[VAGUE == num_vague]
-titre <- paste("Variance du patrimoine détenu par les ménages\nIntervalles de confiance à 95% (", nom_pays, ")", sep = "")
-titre_save <- paste(pays,"_variance_patrimoine.pdf", sep = "")
+titre <- paste("Variance du patrimoine détenu par les ménages\nIntervalles de confiance à 95% (", nom_pays, " & vague",num_vague,")", sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_variance_patrimoine.pdf", sep = "")
 
 graphique_variance_pat_age(data_loc, liste_type_patrimoines, titre, titre_save)
 
@@ -315,31 +314,31 @@ graphique_variance_pat_age(data_loc, liste_type_patrimoines, titre, titre_save)
 
 
 ######################### Tracé : le date d'achat de la HMR - la date de l'héritage
-titre <- paste("Distribution de la variable :\ndate d'aquisition de la résidence principale actuelle - date du premier don ou héritage reçu\n(", nom_pays, ")", sep = "")
+titre <- paste("Distribution de la variable :\ndate d'aquisition de la résidence principale actuelle - date du premier don ou héritage reçu\n(", nom_pays, "& vague",num_vague,")", sep = "")
 xlabel <- "Année (coupé à 50) "
 ylabel <- "Nombre d'occurence"
 filllabel <- "Niveau d'éducation\nde la personne de\nréférence du ménage"
-titre_save <- paste(pays,"_Distrib_diff_annees_heritage_achat_detaille.pdf", sep = "")
+titre_save <-  paste(pays,"_V",num_vague,"_Distrib_diff_annees_heritage_achat_detaille.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 x <- "Annee_achat_heritage"
 fill <- "label_education"
 liste_breaks_fill <- c('< Brevet', 'Brevet', 'Bac', '> Bac')
-data_loc <- data_pays
+data_loc <- data_pays[VAGUE == num_vague]
 liste_breaks_x <- seq(-50, 50, 2)
 limits_x <- c(-50,50)
 trace_distrib_variable(data_loc, x, fill, xlabel, ylabel,filllabel, titre, titre_save, liste_breaks_fill, liste_breaks_x, limits_x)
 
 
-titre <- paste("Distribution de la variable :\ndate d'aquisition de la résidence principale actuelle - date du premier don ou héritage reçu\n (", nom_pays, ")", sep = "")
+titre <- paste("Distribution de la variable :\ndate d'aquisition de la résidence principale actuelle - date du premier don ou héritage reçu\n (", nom_pays, " & vague",num_vague,")", sep = "")
 xlabel <- "Année (coupé à 50) "
 ylabel <- "Nombre d'occurence"
 filllabel <- NaN
-titre_save <- paste(pays,"_Distrib_diff_annees_heritage_achat_non_detaille.pdf", sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Distrib_diff_annees_heritage_achat_non_detaille.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 x <- "Annee_achat_heritage"
 fill <- NaN
 liste_breaks_fill <- NaN
-data_loc <- data_pays
+data_loc <- data_pays[VAGUE == num_vague]
 liste_breaks_x <- seq(-50, 50, 2)
 limits_x <- c(-50,50)
 trace_distrib_variable(data_loc, x, NaN, xlabel, ylabel,NaN, titre, titre_save, liste_breaks_fill, liste_breaks_x, limits_x)
