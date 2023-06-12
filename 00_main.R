@@ -20,7 +20,6 @@ repo_inter <- paste(repgen, "Bases_intermediaires" , sep = "/")
 source(paste(repo_prgm , "01_packages.R" , sep = "/"))
 
 
-
 # Les sous-sous-dossiers qui contiennent les données
 liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_UDB_3_2_ASCII", "HFCS_UDB_4_0_early_diss_ASCII")
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
@@ -33,7 +32,6 @@ sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 # d = derivated variables files ==> Celui qu'on va principalement utiliser
 
 
-num_table <- 1 ### Change les poids assignés par eurostat
 num_vague_max <- 4 ### Le nombre de vague qu'on veut concaténer ATTENTION la dernière vague a des noms de colonnes en MAJUSCULE Ca pose pbm dans la concaténation...
 pays <- "BE"
 
@@ -45,11 +43,20 @@ faire_tourner_recherche_pvalue_opti <- FALSE
 ################################################################################
 # ============================ 02 IMPORTATION ==================================
 ################################################################################
+liste_var_continues <- c("HH0401", "HH0402", "HH0403", "HH0201", "HH0202", "HH0203", "HB0700","HW0010", "DA1000", "DA2100", "DA3001", "DI2000", "DI2100", "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120")
+liste_var_categorielles <- c("SA0100","DHHTYPE","DOINHERIT", "DA1110I","SA0110","SA0210", "SA0010" ,"DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DHLIFESATIS", "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE", "SA0200", "DHAGEH1B")
+liste_var_interet <- union(liste_var_continues, liste_var_categorielles)
 
 
 source(paste(repo_prgm , "02_importation_data.R" , sep = "/"))
+data_complete <- importation_toutes_vagues(num_table_loc = 1)
 data_pays <- data_complete[SA0100 == pays]
 nom_pays <- dico_pays[pays]
+
+
+# data_vague_2 <- importation_une_vagues(num_vague_loc = 2)
+# MIcombine(with(data_vague_2,svytotal(~DA3001)))
+# MIcombine(with(data_vague_2,svyratio(~DA3001,~DH0001)))
 
 
 repo_sorties <- paste(repo_sorties, nom_pays, sep = "/")
@@ -109,28 +116,23 @@ source(paste(repo_prgm , "03_nettoyage_preparation.R" , sep = "/"))
 # DHHTYPE = Household type
 
 
-liste_var_continues <- c("HH0401", "HH0402", "HH0403", "HH0201", "HH0202", "HH0203", "HB0700","HW0010", "DA1000", "DA2100", "DA3001", "DI2000", "DI2000EQ", "DI2100", "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120")
-liste_var_categorielles <- c("DHHTYPE","DOINHERIT", "DA1110I","SA0110","SA0210", "SA0010" ,"DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DHLIFESATIS", "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE", "SA0200", "DHAGEH1B")
-liste_var_interet <- union(liste_var_continues, liste_var_categorielles)
-
 intersection <- intersect(liste_var_interet, colnames(data_pays))
 if(length(setdiff(liste_var_interet, intersection)) > 0){
   print(paste("Attention les variables : ", setdiff(liste_var_interet, intersection), "ont été sélectionnées mais ne sont pas présentent dans la table initiale", sep = " "))
 }
-sous_data_pays <- data_pays[,..liste_var_interet]
-sous_data_pays <- sous_data_pays %>% mutate_at(liste_var_continues, as.numeric)
-sous_data_pays <- sous_data_pays %>% mutate_at(liste_var_categorielles, as.factor)
+data_pays <- data_pays %>% mutate_at(liste_var_continues, as.numeric)
+data_pays <- data_pays %>% mutate_at(liste_var_categorielles, as.factor)
 
 
 ##### On ajoute la variable année d'achat - année d'héritage reçu
-sous_data_pays <- Ajout_premier_heritage(sous_data_pays)
+data_pays <- Ajout_premier_heritage(data_pays)
 # En fait on ne veut pas le premier héritage obtenu mais le premier héritage CONSEQUANT obtenu
-sous_data_pays <- Ajout_premier_heritage_cons(sous_data_pays, montant_heritage_min)
-sous_data_pays[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
+data_pays <- Ajout_premier_heritage_cons(data_pays, montant_heritage_min)
+data_pays[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
 
 
 ## Petit histogramme pour visualiser
-sous_data_pays[, label_education := factor(
+data_pays[, label_education := factor(
   fcase(
     DHEDUH1 == 1, "< Brevet",
     DHEDUH1 == 2, "Brevet",
@@ -142,7 +144,7 @@ sous_data_pays[, label_education := factor(
 
 
 ######### A-t-on bien des données de panel ?
-list_output <- Creation_donnees_panel(sous_data_pays)
+list_output <- Creation_donnees_panel(data_pays)
 vague_12 <- as.data.table(list_output[1])
 vague_23 <- as.data.table(list_output[2])
 vague_34 <- as.data.table(list_output[3])
@@ -156,37 +158,41 @@ vague_1234 <- as.data.table(list_output[6])
 # ====================== 04 STAT DES & GRAPHIQUES ==============================
 ################################################################################
 source(paste(repo_prgm , "04_graphiques.R" , sep = "/"))
+num_vague <- 2
 
 
 # Patrimoine net
 var_decile <- "DNTOP10"
-titre <- paste("Répartition du patrimoine net, normalisé par sexe (", nom_pays, ")", sep = "")
-titre_save <- paste(pays,"_Patrimoine_net_sexe.pdf", sep = "")
+titre <- paste("Répartition du patrimoine net, normalisé par sexe (", nom_pays, "& vague",num_vague,")", sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Patrimoine_net_sexe.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <-"Quantile de patrimoine net"
 facet <- "DHHTYPE" # On facet par type de ménage
 var_normalisation <- c("DHGENDERH1","DHHTYPE") #On va mettre fill et normalisation par sexe
-graphique_repartition_pat_quantile_sexe(sous_data_pays[!is.na(get(var_decile))], var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 25)
+data_loc <- data_pays[!is.na(get(var_decile)) & VAGUE == num_vague]
+graphique_repartition_pat_quantile_sexe(data_loc, var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 35)
 
 # Patrimoine brut
 var_decile <- "DATOP10"
-titre <- paste("Répartition du patrimoine brut, normalisé par sexe (", nom_pays, ")", sep = "")
-titre_save <- paste(pays,"_Patrimoine_brut_sexe.pdf", sep = "")
+titre <- paste("Répartition du patrimoine brut, normalisé par sexe (", nom_pays, " & vague",num_vague,")", sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Patrimoine_brut_sexe.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <-"Quantile de patrimoine brut"
 facet <- "DHHTYPE"
 var_normalisation <- c("DHGENDERH1","DHHTYPE") #On va mettre fill et normalisation par sexe
-graphique_repartition_pat_quantile_sexe(sous_data_pays[!is.na(get(var_decile))], var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 25)
+data_loc <- data_pays[!is.na(get(var_decile)) & VAGUE == num_vague]
+graphique_repartition_pat_quantile_sexe(data_loc, var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 25)
 
 # Dettes
 var_decile <- "DLTOP10"
-titre <- paste("Répartition des dettes, normalisé par sexe (", nom_pays, ")", sep = "")
-titre_save <- paste(pays,"_Patrimoine_dettes_sexe.pdf", sep = "")
+titre <- paste("Répartition des dettes, normalisé par sexe (", nom_pays, "& vague",num_vague,")", sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Patrimoine_dettes_sexe.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <-"Quantile de dettes"
 facet <- "DHHTYPE"
 var_normalisation <- c("DHGENDERH1","DHHTYPE") #On va mettre fill et normalisation par sexe
-graphique_repartition_pat_quantile_sexe(sous_data_pays[!is.na(get(var_decile))], var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 25)
+data_loc <- data_pays[!is.na(get(var_decile)) & VAGUE == num_vague]
+graphique_repartition_pat_quantile_sexe(data_loc, var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 25)
 
 
 
@@ -202,10 +208,91 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
 titre_fig <- paste("Fonction de répartition de la richesse détenue par les ménages (", nom_pays, ")", sep = "")
 titre_save <- paste(pays,"_Concentration_patrimoine_par_type.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
+data_loc <- data_pays[VAGUE == num_vague]
+
+graphique_contration_patrimoine(data_pays ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save)
 
 
-try(graphique_contration_patrimoine(sous_data_pays ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save))
-  
+
+# # DA1000
+# 
+# data_loc[, quantiles_pat := 
+#           hutils::weighted_ntile(DA1000, weights =  sum(HW0010), nb_quantiles)]
+# data_for_plot <- data_loc[,
+#                            lapply(.SD, sum, na.rm = TRUE), 
+#                            by = .(quantiles_pat),
+#                            .SDcols = names(data_loc) == "DA1000"][order(quantiles_pat)]
+# data_for_plot[, cumsum_DA1000 := 100*cumsum(DA1000)/sum(DA1000, na.rm=TRUE)]
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# # On initialise
+# data_for_plot <- as.data.table(1:nb_quantiles)
+# setnames(data_for_plot, 'V1', "Quantiles")
+# data_for_plot$Quantiles <- as.numeric(data_for_plot$Quantiles)
+# # data_for_plot
+# 
+# # On boucle sur les types de patrimoines
+# for(type_pat in names(liste_type_patrimoines)){
+#   
+#   
+#   data_loc[, Quantiles := 
+#              hutils::weighted_ntile(get(type_pat), weights =  sum(HW0010), nb_quantiles)]
+#   data_for_plot_loc <- data_loc[,
+#                             lapply(.SD, sum, na.rm = TRUE), 
+#                             by = .(Quantiles),
+#                             .SDcols = names(data_loc) == type_pat][order(Quantiles)]
+#   data_for_plot_loc[, cum_sum := 100*cumsum(get(type_pat))/sum(get(type_pat), na.rm=TRUE)]
+#   setnames(data_for_plot_loc, "cum_sum", liste_type_patrimoines[[type_pat]])
+#   
+#   
+#   # Récupération des quantiles
+#   # data_loc[,Quantiles := cut(data_loc[[type_pat]],
+#   #                            breaks=quantile(data_loc[[type_pat]], probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
+#   #                            include.lowest= TRUE, labels=1:nb_quantiles)]
+#   
+#   # Traitement pour pouvoir merge
+#   # data_for_plot_loc <- data_loc[, mean(get(type_pat)), by = Quantiles]
+#   # setnames(data_for_plot_loc, "V1", liste_type_patrimoines[[type_pat]])
+#   data_for_plot_loc$Quantiles <- as.numeric(data_for_plot_loc$Quantiles)
+#   
+#   # Merge
+#   data_for_plot <- merge(data_for_plot, data_for_plot_loc, by = "Quantiles")
+# }
+# 
+# 
+# # Melt pour pouvoir tracer
+# melted <- melt(data_for_plot, 
+#                id.vars = "Quantiles", 
+#                measure.vars  = as.data.frame(liste_type_patrimoines)$liste_type_patrimoines,
+#                variable.name = "variable",
+#                value.name    = "value")
+# 
+# 
+# x <- "Quantiles"
+# y <- "value"
+# color <- "variable"
+# xlabel <- "Part des ménages"
+# ylabel <- "Richesse détenue (cumulatif)"
+# colorlabel <- "Type de richesse"
+# data_melted_loc <- melted
+# 
+# trace_concentration(data_melted_loc, x, y, color, xlabel, ylabel,colorlabel, titre_fig, titre_save)
+# 
+# 
+# 
+# 
+
+
+
 
 
 
@@ -218,7 +305,7 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DL1000" = "Dettes",
                             "DN3001" = "Patrimoine net")
 
-data_loc <- sous_data_pays[VAGUE == num_vague]
+data_loc <- data_pays[VAGUE == num_vague]
 titre <- paste("Variance du patrimoine détenu par les ménages\nIntervalles de confiance à 95% (", nom_pays, ")", sep = "")
 titre_save <- paste(pays,"_variance_patrimoine.pdf", sep = "")
 
@@ -237,7 +324,7 @@ titre_save <- paste(repo_sorties, titre_save, sep ='/')
 x <- "Annee_achat_heritage"
 fill <- "label_education"
 liste_breaks_fill <- c('< Brevet', 'Brevet', 'Bac', '> Bac')
-data_loc <- sous_data_pays
+data_loc <- data_pays
 liste_breaks_x <- seq(-50, 50, 2)
 limits_x <- c(-50,50)
 trace_distrib_variable(data_loc, x, fill, xlabel, ylabel,filllabel, titre, titre_save, liste_breaks_fill, liste_breaks_x, limits_x)
@@ -252,7 +339,7 @@ titre_save <- paste(repo_sorties, titre_save, sep ='/')
 x <- "Annee_achat_heritage"
 fill <- NaN
 liste_breaks_fill <- NaN
-data_loc <- sous_data_pays
+data_loc <- data_pays
 liste_breaks_x <- seq(-50, 50, 2)
 limits_x <- c(-50,50)
 trace_distrib_variable(data_loc, x, NaN, xlabel, ylabel,NaN, titre, titre_save, liste_breaks_fill, liste_breaks_x, limits_x)
@@ -302,7 +389,7 @@ try(graphique_evolution_pat_entre_vagues(vague_123, liste_type_patrimoines,liste
 ############################################################################################################################### 
 ########################## DiD ESSAI = EFFET DU FAIT D'AVOIR RECU UN HERITAGE SUR LE FAIT D'ACHETER UNE HMR ###################
 ########################## G = 1   <====> Reçu un héritage à la vague 3 MAIS PAS à la vague 2  ################################
-pop_initiale_tot <- copy(sous_data_pays[VAGUE %in% c(2,3),])
+pop_initiale_tot <- copy(data_pays[VAGUE %in% c(2,3),])
 nrow(pop_initiale_tot)
 
 pop_initiale_tot[, Reg_Y := 0]
@@ -348,7 +435,7 @@ write.xlsx(as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE), 
 
 
 ## Test de la common trend asumption sur les vagues 1 et 2
-pop_test_hyp <- copy(sous_data_pays[VAGUE %in% c(1,2),]) 
+pop_test_hyp <- copy(data_pays[VAGUE %in% c(1,2),]) 
 
 pop_test_hyp[, Reg_Y := 0]
 pop_test_hyp[(DA1110I == 1 & VAGUE == 2) | (DA1110I == 1 & VAGUE == 1), Reg_Y := 1] ## La population qui ont une HMR
@@ -389,28 +476,114 @@ annee_min = -1
 annee_max = 3
 
 
-sous_data_pays[(is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := - 99] # Pas d'achat mais un héritage
-sous_data_pays[(!is.na(HB0700) & is.na(Montant_heritage_1)), Annee_achat_heritage :=  99] # Achat mais pas d'héritage
-sous_data_pays[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
+data_pays[(is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := - 99] # Pas d'achat mais un héritage
+data_pays[(!is.na(HB0700) & is.na(Montant_heritage_1)), Annee_achat_heritage :=  99] # Achat mais pas d'héritage
+data_pays[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
 
+
+count(data_pays[Annee_achat_heritage %in% -98:98])
+count(data_pays[Annee_achat_heritage == 99])
+count(data_pays[Annee_achat_heritage == -99])
 
 if(faire_tourner_recherche_pvalue_opti){
   liste_montant_initial <- lseq(100, 1000000, 250)
-  data_loc <- copy(sous_data_pays)
+  data_loc <- copy(data_pays)
   recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE)
 }
 
 
 ### Si on a le montant optimal
 
-melted <- recherche_p_value_otpi(c(8000,9000,10000), copy(sous_data_pays), annee_min = annee_min, annee_max = annee_max, faire_tracer = FALSE)
+melted <- recherche_p_value_otpi(c(8000,9000,10000), copy(data_pays), annee_min = annee_min, annee_max = annee_max, faire_tracer = FALSE)
 melted
 
 
 
-# 
+############################################################################################################################### 
+#################################### MATCHING ##################################
+
+data_pays$DOINHERIT
+
+liste_cols <- c("DOINHERIT", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE", "DA3001")
+sous_data_loc <- data_pays[,..liste_cols]
+setnames(sous_data_loc, "DA3001", "outcome")
+setnames(sous_data_loc, "DOINHERIT", "treatment")
+
+sous_data_loc$DHAGEH1 <- as.numeric(sous_data_loc$DHAGEH1)
+
+# Sans matching
+no_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method=NULL, distance = 'glm')
+summary(no_match)
+
+
+
+# Nearest neighbot matching
+nearest_neighbor_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="nearest", ratio=1, replace=F, distance = 'glm', caliper=0.2)
+# Summary of nearest neighbor matching results
+summary(nearest_neighbor_match, un = FALSE)
+# Nearest neighbor matching is a type of greedy matching. It matches the nearest control at the moment, and remove the matched control from the rest of the matching.
+# Nearest neighbor matching is fast but sensitive to the order of samples. It is not optimal for minimizing the total distance because the samples that are matched later in the process can only choose from the contorl units that have not been matched.
+
+
+
+
+# Optimal matching ==> Marche beaucoup mieux mais prend du temps...
+optimal_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="optimal", ratio=1, replace=F, distance = 'glm')
+# Summary of optimal matching results
+summary(optimal_match, un = FALSE)
+# Optimal matching is also called optimal pair matching. Different from greedy matching, optimal matching minimizes the total distance across all pairs.
+# When there are not many close matches for the treatment group, optimal matching can be helpful for finding the best matches.
+
+
+
+
+# Full matching
+# Summary of full matching results
+summary(full_match, un = FALSE)
+# It is called full matching because all the test and control units are assigned to a subclass and are utilized in the matching.
+# It is optimal because the weighted average distances between the treated and control units in each subclass are minimized.
+# Full matching outputs weights that are computed based on subclasses. The weights can work similar to propensity score weights and be used to estimate a weighted treatment effect.
+
+full_match$match.matrix
+
+plot(full_match, type = "jitter", interactive = FALSE)
+plot(full_match, type = "density", interactive = FALSE,
+     which.xs = ~  DI2000 + DHHTYPE)
+plot(full_match, type = "density", interactive = FALSE,
+     which.xs = ~  DHAGEH1)
+
+
+plot(summary(full_match))
+
+
+full_match_data <- match.data(full_match)
+nrow(sous_data_loc) - nrow(full_match_data) ### Il ne manque que les unmatched !
+
+# Quid de l'effet du traitement ?
+fit <- lm(outcome ~ treatment * (DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE), data = full_match_data, weights = weights)
+
+avg_comparisons(fit,
+                variables = "treatment",
+                vcov = ~subclass,
+                newdata = subset(full_match_data, treatment == 1),
+                wts = "weights")
+
+
+
+# Genetic matching
+generic_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="genetic", pop.size=20)
+# Summary of genetic matching
+summary(generic_match, un = FALSE)
+# Genetic matching uses a generic search algorithm to find weights for each covariate to achieve optimal balance. The current matching is with replacement and the balance is evaluated using t-tests and Kolmogorov-Smirnov tests.
+
+
+
+
+
+
+
 # ############## On se place au montant minimum, et on regarde si on a des pbms de biais de sélection
-# data_loc <- copy(sous_data_pays)
+# data_loc <- copy(data_pays)
 # 
 # montant_heritage_min <- 8000
 # 
@@ -482,7 +655,7 @@ melted
 
 
 # ### La clé a l'air d'être l'héritage
-# data_loc <- copy(sous_data_pays)
+# data_loc <- copy(data_pays)
 # 
 # data_loc[(is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := - 99] # Pas d'achat mais un héritage
 # data_loc[(!is.na(HB0700) & is.na(Montant_heritage_1)), Annee_achat_heritage :=  99] # Achat mais pas d'héritage

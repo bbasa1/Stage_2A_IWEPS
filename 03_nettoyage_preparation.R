@@ -52,27 +52,22 @@ graphique_contration_patrimoine <- function(data_loc, nb_quantiles, liste_type_p
   
   # On boucle sur les types de patrimoines
   for(type_pat in names(liste_type_patrimoines)){
-    
     # Récupération des quantiles
-    data_loc[,Quantiles := cut(data_loc[[type_pat]],
-                                         breaks=quantile(data_loc[[type_pat]], probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
-                                         include.lowest= TRUE, labels=1:nb_quantiles)]
+    data_loc[, Quantiles := 
+               hutils::weighted_ntile(get(type_pat), weights =  sum(HW0010), nb_quantiles)]
+    data_for_plot_loc <- data_loc[,
+                                  lapply(.SD, sum, na.rm = TRUE), 
+                                  by = .(Quantiles),
+                                  .SDcols = names(data_loc) == type_pat][order(Quantiles)]
+    data_for_plot_loc[, cum_sum := 100*cumsum(get(type_pat))/sum(get(type_pat), na.rm=TRUE)]
+    setnames(data_for_plot_loc, "cum_sum", liste_type_patrimoines[[type_pat]])
     
-    # Traitement pour pouvoir merge
-    data_for_plot_loc <- data_loc[, mean(get(type_pat)), by = Quantiles]
-    setnames(data_for_plot_loc, "V1", liste_type_patrimoines[[type_pat]])
     data_for_plot_loc$Quantiles <- as.numeric(data_for_plot_loc$Quantiles)
     
     # Merge
     data_for_plot <- merge(data_for_plot, data_for_plot_loc, by = "Quantiles")
   }
   
-  # Calcul de la cumsum
-  for(type_pat in liste_type_patrimoines){
-    data_for_plot[, eval(paste(type_pat,"_non_norm", sep = "")) := get(type_pat)]
-    data_for_plot[, eval(type_pat) := 100*cumsum(get(type_pat))/sum(get(type_pat))]
-    
-  }
   
   # Melt pour pouvoir tracer
   melted <- melt(data_for_plot, 
@@ -410,7 +405,7 @@ nettoyage_type_menage <- function(data_loc, var_sum){ # Renome proprement les mo
     )
   )
   ]
-  data_loc[, Nb_personnes_conc := sum(get(var_sum)), by = DHHTYPE] #On ajoute le nb de personnes concernées
+  data_loc[, Nb_personnes_conc := length(get(var_sum)), by = DHHTYPE] #On ajoute le nb de personnes concernées
   data_loc$Nb_personnes_conc <- paste("\n(",round(data_loc$Nb_personnes_conc), " personnes concernées)", sep = "")
   data_loc$DHHTYPE <- paste(data_loc$DHHTYPE, data_loc$Nb_personnes_conc)
   return(data_loc)

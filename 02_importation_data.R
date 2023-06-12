@@ -22,165 +22,177 @@
 #                                ) ### A mettre en minuscule
 
 
-
-###### On prépare la boucle avec la première importation
-num_vague <- 1
-path_d <- paste(sous_repo_data,"/d",num_table,".csv", sep = "")
-data_derivated <- read_csv(path_d[num_vague], 
-                           locale = locale(encoding ="UTF-8"),
-                           show_col_types = FALSE)
-
-data_derivated <- as.data.table(data_derivated)
-data_derivated
-nrow(data_derivated)
-try(setnames(data_derivated, "id", "ID"), silent=TRUE) #Parfois les colonnes ont des noms en minuscule...
-try(setnames(data_derivated, "survey", "SURVEY"), silent=TRUE) # Cette variable peut avoir deux noms 
-try(setnames(data_derivated, "Survey", "SURVEY"), silent=TRUE) # Cette variable peut avoir deux noms
-
-
-
-###### Pour avoir le pays et l'année de référence il faut le household, mais on n'a pas besoin du reste
-path_h <- paste(sous_repo_data,"/h",num_table,".csv", sep = "")
-data_house <- read_csv(path_h[num_vague], 
-                       locale = locale(encoding ="UTF-8"),
-                       show_col_types = FALSE)
-
-data_house <- as.data.table(data_house)
-
-liste_cols_core_household <- colnames(data_house)
-for(nom_col in liste_cols_core_household){
-  try(setnames(data_house, nom_col, toupper(nom_col)), silent=TRUE)
-}
-liste_cols_core_household_new <- toupper(liste_cols_core_household)
-
-for(var in liste_cols_core_household_new){
-  if(is.null(data_house[[var]])){ #C'est ce qui concerne le past. Mais pour la première vague forcément il n'y en n'a pas...
-    data_house[, eval(var) := NaN]
-  }
-}
-
-data_house <- data_house[,..liste_cols_core_household_new]
-nrow(data_house)
-
-
-data_complete <- merge(data_derivated, data_house, by= c("ID", "SA0100", "SA0010", "HW0010"))
-data_complete[, VAGUE := 1]
-nrow(data_complete)
-
-
-print("=========================================")
-print(paste("Vague numéro", num_vague))
-print(paste("Validation par le nombre de ligne =", (nrow(data_complete) == nrow(data_derivated))&(nrow(data_complete) == nrow(data_house))))
-print(paste("Nombre de ligne tot =", nrow(data_complete)))
-print(paste("Nombre de colonnes tot =", length(colnames(data_complete))))
-print("=========================================")
-
-
-for(num_vague in 2:num_vague_max){
-
-  # Derivated
-  path_d <- paste(sous_repo_data,"/d",num_table,".csv", sep = "")
+importation_toutes_vagues <- function(num_table_loc){
+  ###### On prépare la boucle avec la première importation
+  num_vague <- 1
+  path_d <- paste(sous_repo_data,"/d",num_table_loc,".csv", sep = "")
   data_derivated <- read_csv(path_d[num_vague], 
                              locale = locale(encoding ="UTF-8"),
                              show_col_types = FALSE)
+  
   data_derivated <- as.data.table(data_derivated)
+  data_derivated
+  nrow(data_derivated)
+  try(setnames(data_derivated, "id", "ID"), silent=TRUE) #Parfois les colonnes ont des noms en minuscule...
+  try(setnames(data_derivated, "survey", "SURVEY"), silent=TRUE) # Cette variable peut avoir deux noms 
+  try(setnames(data_derivated, "Survey", "SURVEY"), silent=TRUE) # Cette variable peut avoir deux noms
   
-  ### On passe toutes les colonnes en majuscule...
-  for(nom_col in colnames(data_derivated)){
-    try(setnames(data_derivated, nom_col, toupper(nom_col)), silent=TRUE)
-  }
-  for(nom_col in colnames(data_complete)){
-    try(setnames(data_complete, nom_col, toupper(nom_col)), silent=TRUE)
-  }
   
-  # Household
-  path_h <- paste(sous_repo_data,"/h",num_table,".csv", sep = "")
+  
+  ###### Pour avoir le pays et l'année de référence il faut le household, mais on n'a pas besoin du reste
+  path_h <- paste(sous_repo_data,"/h",num_table_loc,".csv", sep = "")
   data_house <- read_csv(path_h[num_vague], 
                          locale = locale(encoding ="UTF-8"),
                          show_col_types = FALSE)
+  
   data_house <- as.data.table(data_house)
+  
   liste_cols_core_household <- colnames(data_house)
   for(nom_col in liste_cols_core_household){
     try(setnames(data_house, nom_col, toupper(nom_col)), silent=TRUE)
   }
   liste_cols_core_household_new <- toupper(liste_cols_core_household)
+  
   for(var in liste_cols_core_household_new){
     if(is.null(data_house[[var]])){ #C'est ce qui concerne le past. Mais pour la première vague forcément il n'y en n'a pas...
       data_house[, eval(var) := NaN]
     }
   }
+  
   data_house <- data_house[,..liste_cols_core_household_new]
-  
-  # Merge et concat
-  data_complete_loc <- merge(data_derivated, data_house, by= c("ID", "SA0100", "SA0010", "HW0010"))
-  
-  # colnames(data_complete_loc)
-  # colnames(data_complete)
-
-  data_complete_loc[, VAGUE := num_vague]
+  nrow(data_house)
   
   
-  data_complete <- rbindlist(list(data_complete,
-                                  data_complete_loc), fill=TRUE)
+  data_complete <- merge(data_derivated, data_house, by= c("ID", "SA0100", "SA0010", "HW0010"))
+  data_complete[, VAGUE := 1]
+  intersection_colnames <- intersect(liste_var_interet, colnames(data_complete))
+  data_complete <- data_complete[,..intersection_colnames]
   
   print("=========================================")
   print(paste("Vague numéro", num_vague))
-  print(paste("Validation par le nombre de ligne =", (nrow(data_complete_loc) == nrow(data_derivated))&(nrow(data_complete_loc) == nrow(data_house))))
+  print(paste("Validation par le nombre de ligne =", (nrow(data_complete) == nrow(data_derivated))&(nrow(data_complete) == nrow(data_house))))
   print(paste("Nombre de ligne tot =", nrow(data_complete)))
   print(paste("Nombre de colonnes tot =", length(colnames(data_complete))))
   print("=========================================")
   
+  
+  for(num_vague in 2:num_vague_max){
+  
+    # Derivated
+    path_d <- paste(sous_repo_data,"/d",num_table_loc,".csv", sep = "")
+    data_derivated <- read_csv(path_d[num_vague], 
+                               locale = locale(encoding ="UTF-8"),
+                               show_col_types = FALSE)
+    data_derivated <- as.data.table(data_derivated)
+    
+    ### On passe toutes les colonnes en majuscule...
+    for(nom_col in colnames(data_derivated)){
+      try(setnames(data_derivated, nom_col, toupper(nom_col)), silent=TRUE)
+    }
+    for(nom_col in colnames(data_complete)){
+      try(setnames(data_complete, nom_col, toupper(nom_col)), silent=TRUE)
+    }
+    
+    # Household
+    path_h <- paste(sous_repo_data,"/h",num_table_loc,".csv", sep = "")
+    data_house <- read_csv(path_h[num_vague], 
+                           locale = locale(encoding ="UTF-8"),
+                           show_col_types = FALSE)
+    data_house <- as.data.table(data_house)
+    liste_cols_core_household <- colnames(data_house)
+    for(nom_col in liste_cols_core_household){
+      try(setnames(data_house, nom_col, toupper(nom_col)), silent=TRUE)
+    }
+    liste_cols_core_household_new <- toupper(liste_cols_core_household)
+    for(var in liste_cols_core_household_new){
+      if(is.null(data_house[[var]])){ #C'est ce qui concerne le past. Mais pour la première vague forcément il n'y en n'a pas...
+        data_house[, eval(var) := NaN]
+      }
+    }
+    data_house <- data_house[,..liste_cols_core_household_new]
+    
+    # Merge et concat
+    data_complete_loc <- merge(data_derivated, data_house, by= c("ID", "SA0100", "SA0010", "HW0010"))
+    
+    # colnames(data_complete_loc)
+    # colnames(data_complete)
+  
+    data_complete_loc[, VAGUE := num_vague]
+    intersection_colnames <- intersect(liste_var_interet, colnames(data_complete_loc))
+    data_complete_loc <- data_complete_loc[,..intersection_colnames]
+    
+    
+    data_complete <- rbindlist(list(data_complete,
+                                    data_complete_loc), fill=TRUE)
+    
+    print("=========================================")
+    print(paste("Vague numéro", num_vague))
+    print(paste("Validation par le nombre de ligne =", (nrow(data_complete_loc) == nrow(data_derivated))&(nrow(data_complete_loc) == nrow(data_house))))
+    print(paste("Nombre de ligne tot =", nrow(data_complete)))
+    print(paste("Nombre de colonnes tot =", length(colnames(data_complete))))
+    print("=========================================")
+    
+  }
+
+  return(data_complete)
 }
 
 
-# 
-# num_vague <- 4
-# if(num_vague == 4){
-#   print("Dernière vague prise en compte ==> Toutes les colonnes sont passées en majuscules")
-#   for(nom_col in colnames(data_complete)){
-#     try(setnames(data_complete, nom_col, toupper(nom_col)), silent=TRUE)
-#   }
-# }
-# 
-# # Derivated
-# path_d <- paste(sous_repo_data,"/d",num_table,".csv", sep = "")
-# data_derivated <- read_csv(path_d[num_vague], 
-#                            locale = locale(encoding ="UTF-8"),
-#                            show_col_types = FALSE)
-# data_derivated <- as.data.table(data_derivated)
-# 
-# if(num_vague == 4){ ### On doit passer toutes les colonnes en majuscules dans ce cas
-#   for(nom_col in colnames(data_derivated)){
-#     try(setnames(data_derivated, nom_col, toupper(nom_col)), silent=TRUE)
-#   }
-# }
-# # data_derivated
-# # data_complete
-# # 
-# # colnames(data_derivated)
-# 
-# # Household
-# path_h <- paste(sous_repo_data,"/h",num_table,".csv", sep = "")
-# data_house <- read_csv(path_h[num_vague], 
-#                        locale = locale(encoding ="UTF-8"),
-#                        show_col_types = FALSE)
-# data_house <- as.data.table(data_house)
-# for(nom_col in liste_cols_core_household){
-#   try(setnames(data_house, nom_col, toupper(nom_col)), silent=TRUE)
-# }
-# liste_cols_core_household_new <- toupper(liste_cols_core_household)
-# data_house <- data_house[,..liste_cols_core_household_new]
-# 
-# # Merge et concat
-# data_complete_loc <- merge(data_derivated, data_house, by= c("ID", "SA0100"))
-# 
-# # colnames(data_complete_loc)
-# # colnames(data_complete)
-# 
-# data_complete_loc[, Vague := num_vague]
-# 
-# 
-# data_complete_2 <- rbindlist(list(data_complete,
-#                                 data_complete_loc), fill=TRUE)
-# 
-# length(colnames(data_complete_2))
+
+importation_une_vagues <- function(num_vague_loc){
+  ### N'importe qu'une seule vague de l'enquête, mais importe également les poids associés
+  ### Retourne une svyimputationList
+  path_H <- paste(sous_repo_data[num_vague_loc],"/h",1:5,".csv", sep = "")
+  path_D <- paste(sous_repo_data[num_vague_loc],"/d",1:5,".csv", sep = "")
+  list_tab = c("H","D")
+  
+  
+  for (i in list_tab){
+    for (k in 1:5){
+      txt1 <- paste("Table_",i, k,"<-", sep ="")
+      txt2 <- paste("read_csv(path_",i,"[",k,"], locale = locale(encoding ='UTF-8'), show_col_types = FALSE)", sep = "")
+      txt <- paste(txt1, txt2)
+      eval(parse(text = txt))
+    }
+  }
+  
+  for (k in 1:5){
+    txt1 <- paste("imp",k,"<-", sep ="")
+    txt2 <- paste("merge(Table_H",k,", Table_D",k,", by = c('SA0010','SA0100', 'IM0100', 'HW0010'))", sep = "")
+    txt <- paste(txt1, txt2)
+    eval(parse(text = txt))
+    
+    
+    col_intersection <- intersect(liste_var_interet, colnames(paste("imp",k, sep ="")))
+    txt2 <- paste(paste("imp",k,"[,..col_intersection]", sep =""))
+    
+  }
+  
+  path_W <- paste(sous_repo_data[num_vague_loc],"/w",".csv", sep = "")
+  W_complete <- read_csv(path_W,
+                         locale = locale(encoding ="UTF-8"),
+                         show_col_types = FALSE)
+  W_complete <- as.data.table(W_complete)
+  
+  
+  
+  liste_repweg <- names(W_complete)[names(W_complete) %like% "wr"]
+  repweg <- W_complete[,..liste_repweg]
+  
+  f_dowle2 <- function(DT){
+    for (i in names(DT))
+      DT[is.na(get(i)), (i):=0]
+    return(DT)
+  }
+  
+  repweg <- f_dowle2(repweg)
+  
+  
+  hfcs.design = svrepdesign(repweights=repweg, weights= ~HW0010,
+                            data=imputationList(list(imp1,imp2,imp3,imp4,imp5)),
+                            scale=1,rscale=rep(1/999,1000),mse=FALSE,type='other',
+                            combined.weights=TRUE)
+  
+  return(hfcs.design)
+}
+  
