@@ -44,7 +44,7 @@ faire_tourner_recherche_pvalue_opti <- FALSE
 # ============================ 02 IMPORTATION ==================================
 ################################################################################
 liste_var_continues <- c("HH0401", "HH0402", "HH0403", "HH0201", "HH0202", "HH0203", "HB0700","HW0010", "DA1000", "DA2100", "DA3001", "DI2000", "DI2100", "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120")
-liste_var_categorielles <- c("SA0100","DHHTYPE","DOINHERIT", "DA1110I","SA0110","SA0210", "SA0010" ,"DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DHLIFESATIS", "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE", "SA0200", "DHAGEH1B")
+liste_var_categorielles <- c("SA0100","DHHTYPE","DOINHERIT", "DA1110I","SA0110","SA0210", "SA0010" ,"DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DHLIFESATIS", "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE", "SA0200", "DHAGEH1B", "HH0301", "HH0302", "HH0303")
 liste_var_interet <- union(liste_var_continues, liste_var_categorielles)
 
 
@@ -52,11 +52,6 @@ source(paste(repo_prgm , "02_importation_data.R" , sep = "/"))
 data_complete <- importation_toutes_vagues(num_table_loc = 1)
 data_pays <- data_complete[SA0100 == pays]
 nom_pays <- dico_pays[pays]
-
-
-# data_vague_2 <- importation_une_vagues(num_vague_loc = 2)
-# MIcombine(with(data_vague_2,svytotal(~DA3001)))
-# MIcombine(with(data_vague_2,svyratio(~DA3001,~DH0001)))
 
 
 repo_sorties <- paste(repo_sorties, nom_pays, sep = "/")
@@ -106,13 +101,16 @@ source(paste(repo_prgm , "03_nettoyage_preparation.R" , sep = "/"))
 # SA0210 = Vintage of last interview (household)
 # SA0110 = Past household ID
 # DA1110i = Fait d'être propriétaire
-# "HB0700 = year of property acquisition
-# "HH0201 = year gift/inheritance received
-# "HH0202"
-# "HH0203"
+# HB0700 = year of property acquisition
+# HH0201 = year gift/inheritance received
+# HH0202
+# HH0203
 # HH0401 = Value of gift
 # HH0402
 # HH0403
+# HH0301 = what kind of assets received ?
+# HH0302
+# HH0303
 # DHHTYPE = Household type
 
 
@@ -211,89 +209,6 @@ titre_save <- paste(repo_sorties, titre_save, sep ='/')
 data_loc <- data_pays[VAGUE == num_vague]
 
 graphique_contration_patrimoine(data_pays ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save)
-
-
-
-# # DA1000
-# 
-# data_loc[, quantiles_pat := 
-#           hutils::weighted_ntile(DA1000, weights =  sum(HW0010), nb_quantiles)]
-# data_for_plot <- data_loc[,
-#                            lapply(.SD, sum, na.rm = TRUE), 
-#                            by = .(quantiles_pat),
-#                            .SDcols = names(data_loc) == "DA1000"][order(quantiles_pat)]
-# data_for_plot[, cumsum_DA1000 := 100*cumsum(DA1000)/sum(DA1000, na.rm=TRUE)]
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# # On initialise
-# data_for_plot <- as.data.table(1:nb_quantiles)
-# setnames(data_for_plot, 'V1', "Quantiles")
-# data_for_plot$Quantiles <- as.numeric(data_for_plot$Quantiles)
-# # data_for_plot
-# 
-# # On boucle sur les types de patrimoines
-# for(type_pat in names(liste_type_patrimoines)){
-#   
-#   
-#   data_loc[, Quantiles := 
-#              hutils::weighted_ntile(get(type_pat), weights =  sum(HW0010), nb_quantiles)]
-#   data_for_plot_loc <- data_loc[,
-#                             lapply(.SD, sum, na.rm = TRUE), 
-#                             by = .(Quantiles),
-#                             .SDcols = names(data_loc) == type_pat][order(Quantiles)]
-#   data_for_plot_loc[, cum_sum := 100*cumsum(get(type_pat))/sum(get(type_pat), na.rm=TRUE)]
-#   setnames(data_for_plot_loc, "cum_sum", liste_type_patrimoines[[type_pat]])
-#   
-#   
-#   # Récupération des quantiles
-#   # data_loc[,Quantiles := cut(data_loc[[type_pat]],
-#   #                            breaks=quantile(data_loc[[type_pat]], probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
-#   #                            include.lowest= TRUE, labels=1:nb_quantiles)]
-#   
-#   # Traitement pour pouvoir merge
-#   # data_for_plot_loc <- data_loc[, mean(get(type_pat)), by = Quantiles]
-#   # setnames(data_for_plot_loc, "V1", liste_type_patrimoines[[type_pat]])
-#   data_for_plot_loc$Quantiles <- as.numeric(data_for_plot_loc$Quantiles)
-#   
-#   # Merge
-#   data_for_plot <- merge(data_for_plot, data_for_plot_loc, by = "Quantiles")
-# }
-# 
-# 
-# # Melt pour pouvoir tracer
-# melted <- melt(data_for_plot, 
-#                id.vars = "Quantiles", 
-#                measure.vars  = as.data.frame(liste_type_patrimoines)$liste_type_patrimoines,
-#                variable.name = "variable",
-#                value.name    = "value")
-# 
-# 
-# x <- "Quantiles"
-# y <- "value"
-# color <- "variable"
-# xlabel <- "Part des ménages"
-# ylabel <- "Richesse détenue (cumulatif)"
-# colorlabel <- "Type de richesse"
-# data_melted_loc <- melted
-# 
-# trace_concentration(data_melted_loc, x, y, color, xlabel, ylabel,colorlabel, titre_fig, titre_save)
-# 
-# 
-# 
-# 
-
-
-
-
 
 
 
@@ -517,7 +432,44 @@ if(faire_tourner_recherche_pvalue_opti){
 ### Si on a le montant optimal
 
 melted <- recherche_p_value_otpi(c(8000,9000,10000), copy(data_pays), annee_min = annee_min, annee_max = annee_max, faire_tracer = FALSE)
-melted
+# melted
+
+
+
+
+
+
+#### Les odds ratios
+
+sous_data_loc <- data_pays[Annee_achat_heritage <= 98]
+montant_ini_loc <- 9000
+
+
+# On créé les groupes
+sous_data_loc[, Reg_Y := 0]
+sous_data_loc[Annee_achat_heritage %in% annee_min:annee_max, Reg_Y := 1] # Ont acheté qq années après
+
+sous_data_loc[, Reg_G := 0]
+sous_data_loc[Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage conséquant
+
+
+denylogit <- glm(Reg_Y ~ Reg_G, 
+                  family = binomial(link = "logit"), 
+                  data = sous_data_loc)
+
+summary(denylogit)
+
+dt_prep_logit <- as.data.table(summary(denylogit)$coefficients, keep.rownames = TRUE)
+setnames(dt_prep_logit, "Pr(>|z|)", "pvalue")
+
+G = 1
+exp(dt_prep_logit$Estimate[1]*1 + G*dt_prep_logit$Estimate[2])
+
+G=0
+exp(dt_prep_logit$Estimate[1]*1 + G*dt_prep_logit$Estimate[2])
+
+
+exp(dt_prep_logit$Estimate[2]) # ==> exp(beta_{0,j}) = Avoir un héritage conséquant multiplie par exp(beta_{0,j}) la chance d'acheter une HMR dans les trois ans par rapport à recevoir un héritage faible
 
 
 
@@ -601,74 +553,67 @@ summary(generic_match, un = FALSE)
 
 
 
+############################################################################################################################### 
+######################### EXPLORATION : QUI POSSEDE QUOI ? QUI HERITE DE QUOI ? ############################################### 
+############################################################################################################################### 
+
+colnames(data_pays)
+f_dowle2 <- function(DT){
+  for (i in names(DT))
+    DT[is.na(get(i)), (i):=0]
+  return(DT)
+}
+
+data_loc <- data_pays
+data_loc <- f_dowle2(data_loc)
+
+dw_tot <- svydesign(ids = ~1, data = data_loc, weights = ~ HW0010)
+dw_V1 <- svydesign(ids = ~1, data = data_loc[VAGUE == 1], weights = ~ HW0010)
+dw_V2 <- svydesign(ids = ~1, data = data_loc[VAGUE == 2], weights = ~ HW0010)
+dw_V3 <- svydesign(ids = ~1, data = data_loc[VAGUE == 3], weights = ~ HW0010)
+dw_V4 <- svydesign(ids = ~1, data = data_loc[VAGUE == 4], weights = ~ HW0010)
+
+lprop(svytable(~ VAGUE + DOINHERIT, dw))
+
+
+
+lprop(svytable(~ DOINHERIT + DA1110I, dw_V1))
 
 
 
 
-# ############## On se place au montant minimum, et on regarde si on a des pbms de biais de sélection
-# data_loc <- copy(data_pays)
-# 
-# montant_heritage_min <- 8000
-# 
-# sous_data <- data_loc[Annee_achat_heritage <= 98] ## Uniquement les ménages qui ONT reçu un héritage
-# 
-# sous_data[, Reg_Y := 0]
-# sous_data[Annee_achat_heritage %in% annee_min:annee_max, Reg_Y := 1] # Ont acheté qq années après
-# table(sous_data$Reg_Y)
-# 
-# 
-# sous_data[, Reg_G := 0]
-# sous_data[Montant_heritage_1 >= montant_heritage_min, Reg_G := 1] # Reçu un héritage conséquant
-# table(sous_data$Reg_G)
-# 
-# 
-# # DHAGEH1B = Tranche d'âge de la personne de référence
-# # DHEDUH1 = Education de la personne de référence
-# # DHGENDERH1 = Genre de la personne de référence
-# # DI2000 = Revenu total du ménage
-# # DHHTYPE = Type du ménage
-# 
-# liste_cols_reg_poids <- c("HW0010", "Reg_G", "DHAGEH1B", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE")
-# dw <- svydesign(ids = ~1, data = sous_data[,..liste_cols_reg_poids], weights = ~ HW0010)
-# 
-# # Régression linéaire
-# mysvyglm <- svyglm(formula = Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE, design = dw)
-# titre <- paste(pays,"_DD_3_preparation_heritage_consequant_achat_reg_lin_",as.character(montant_heritage_min),".xlsx", sep = "")
-# titre <- paste(repo_sorties,titre, sep = "/")
-# write.xlsx(as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE), titre)
-# 
-# # Logit
-# denylogit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE, 
-#                   family = binomial(link = "logit"), 
-#                   data = sous_data)
-# summary(denylogit)
-# titre <- paste(pays,"_DD_3_preparation_heritage_consequant_achat_logit_",as.character(montant_heritage_min),".xlsx", sep = "")
-# titre <- paste(repo_sorties,titre, sep = "/")
-# write.xlsx(as.data.table(summary(denylogit)$coefficients, keep.rownames = TRUE), titre)
-# 
-# # Probit
-# denyprobit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE, 
-#                   family = binomial(link = "probit"), 
-#                   data = sous_data)
-# summary(denyprobit)
-# titre <- paste(pays,"_DD_3_preparation_heritage_consequant_achat_probit_",as.character(montant_heritage_min),".xlsx", sep = "")
-# titre <- paste(repo_sorties,titre, sep = "/")
-# write.xlsx(as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE), titre)
-# 
-# 
-# 
-# dt_reg_lin <- as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE)
-# setnames(dt_reg_lin, "Pr(>|t|)", "pvalue")
-# dt_logit <- as.data.table(summary(denylogit)$coefficients, keep.rownames = TRUE)
-# setnames(dt_logit, "Pr(>|z|)", "pvalue")
-# dt_probit <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)
-# setnames(dt_probit, "Pr(>|z|)", "pvalue")
-# 
-# count(dt_reg_lin[pvalue < 0.01 & abs(Estimate) > 0.1])
-# count(dt_logit[pvalue < 0.01 & abs(Estimate) > 0])
-# count(dt_probit[pvalue < 0.01 & abs(Estimate) > 0])
-# 
-# 
+table(data_loc[VAGUE == 1]$DA1110I)
+
+
+
+
+
+
+#################### Avec l'objet d'imputations multiples ##########
+table(data_pays$DA1110I)
+
+data_vague_2 <- importation_une_vagues(num_vague_loc = 2)
+MIcombine(with(data_vague_2,svytotal(~DA3001)))
+MIcombine(with(data_vague_2,svyratio(~DA3001,~DH0001)))
+
+
+with(data_vague_2, table(DA1110I, DOINHERIT))
+
+
+model <- with(data_vague_2, glm(DA1110i~ DOINHERIT))
+MIcombine(model)
+
+
+
+MIcombine(with(data_vague_2,svytable(~ DA1110i + DOINHERIT)))
+
+svytotal(~DA3001, data_vague_2)
+
+
+
+res <- with(subset(data_vague_2, DOINHERIT == 1),
+            svyby(~DA1110I, svymean))
+summary(MIcombine(res))
 
 
 
@@ -677,106 +622,23 @@ summary(generic_match, un = FALSE)
 
 
 
-# ### La clé a l'air d'être l'héritage
-# data_loc <- copy(data_pays)
-# 
-# data_loc[(is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := - 99] # Pas d'achat mais un héritage
-# data_loc[(!is.na(HB0700) & is.na(Montant_heritage_1)), Annee_achat_heritage :=  99] # Achat mais pas d'héritage
-# data_loc[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
-# 
-# sous_data <- data_loc[Annee_achat_heritage <= 98] ## Uniquement les ménages qui ONT reçu un héritage
-# 
-# sous_data[, Reg_Y := 0]
-# sous_data[Annee_achat_heritage %in% -1:3, Reg_Y := 1] # Ont acheté qq années après
-# table(sous_data$Reg_Y)
-# 
-# 
-# sous_data[, Reg_G := 0]
-# sous_data[Montant_heritage_1 >= montant_heritage_min, Reg_G := 1] # Reçu un héritage conséquant
-# table(sous_data$Reg_G)
-# 
-# ##### Est-ce qu'on a un problème de biais de sélection des traités ????
-# 
-# 
-# # DHAGEH1B = Tranche d'âge de la personne de référence
-# # DHEDUH1 = Education de la personne de référence
-# # DHGENDERH1 = Genre de la personne de référence
-# # DI2000 = Revenu total du ménage
-# # DHHTYPE = Type du ménage
-# # lm_her <- lm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE, data = sous_data)
-# # summary(lm_her) ### A priori à part le salaire pas beaucoup de variables ne jouent sur le fait d'être traité ou non. Sauf sur le niveau d'éducation...
-# 
-# liste_cols_reg_poids <- c("HW0010", "Reg_G", "DHAGEH1B", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE")
-# dw <- svydesign(ids = ~1, data = sous_data[,..liste_cols_reg_poids], weights = ~ HW0010)
-# mysvyglm <- svyglm(formula = Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE, design = dw)
-# summary(mysvyglm)
-# 
-# titre <- paste(pays,"_DD_3_preparation_heritage_consequant_achat_",as.character(montant_heritage_min),".xlsx", sep = "")
-# titre <- paste(repo_sorties,titre, sep = "/")
-# write.xlsx(as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE), titre)
-# 
-# 
-# # Mêmes conclusions avec logit et probit...
-# denyprobit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE, 
-#                   family = binomial(link = "logit"), 
-#                   data = sous_data)
-# summary(denyprobit)
-# 
-# 
-# 
-# ###### Est-ce que G est significatif pour prévoir Y ?
-# 
-# # lm_her <- lm(Reg_Y ~ Reg_G, data = sous_data)
-# # summary(lm_her)
-# 
-# liste_cols_reg_poids <- c("HW0010", "Reg_Y", "Reg_G")
-# dw <- svydesign(ids = ~1, data = sous_data[,..liste_cols_reg_poids], weights = ~ HW0010)
-# mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G, design = dw)
-# summary(mysvyglm)
-# 
-# titre <- paste(pays,"_DD_3_reg_lin_heritage_consequant_achat_",as.character(montant_heritage_min),".xlsx", sep = "")
-# titre <- paste(repo_sorties,titre, sep = "/")
-# write.xlsx(as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE), titre)
-# 
-# denyprobit <- glm(Reg_Y ~ Reg_G, 
-#                   family = binomial(link = "probit"), 
-#                   data = sous_data)
-# summary(denyprobit)
-# 
-# titre <- paste(pays,"_DD_3_probit_heritage_consequant_achat_",as.character(montant_heritage_min),".xlsx", sep = "")
-# titre <- paste(repo_sorties,titre, sep = "/")
-# write.xlsx(as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE), titre)
-# beta_0 <- as.numeric(denyprobit$coefficients[1])
-# beta_g <- as.numeric(denyprobit$coefficients[2])
-# 
-# dnorm(beta_0 + beta_g, mean=1, sd=1)*beta_g
-# dnorm(beta_0, mean=1, sd=1)*beta_g
-# 
-# 
-# denyprobit <- glm(Reg_Y ~ Reg_G, 
-#                   family = binomial(link = "logit"), 
-#                   data = sous_data)
-# summary(denyprobit)
-# 
-# titre <- paste(pays,"_DD_3_logit_heritage_consequant_achat_",as.character(montant_heritage_min),".xlsx", sep = "")
-# titre <- paste(repo_sorties,titre, sep = "/")
-# write.xlsx(as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE), titre)
-# beta_0 <- as.numeric(denyprobit$coefficients[1])
-# beta_g <- as.numeric(denyprobit$coefficients[2])
-# 
-# f <- function(x){return(exp(-x)/(1+exp(-x))^2)}
-# f(beta_0 + beta_g)*beta_g
-# f(beta_0)*beta_g
-# 
-# 
-# #### Conclusion :
-# # G est significatif pour prédire Y
-# # Seuls 2 modalités sur les 4 de la variable d'éducation sont significative pour prédire G à partir de variables socio-éco du ménage
-# # Donc on peut se dire qu'on a identifié un effet causal ???
-# 
-# # Quid d'un éventuel biais de sélection ?
-# 
-# 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
