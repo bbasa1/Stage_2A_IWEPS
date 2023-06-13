@@ -162,118 +162,124 @@ graphique_variance_pat_age <- function(data_loc, liste_type_patrimoines_loc, tit
 }
 
 
-graphique_evolution_position_vagues <- function(data_vagues, nb_quantiles, liste_type_patrimoines, titre_fig, titre_save){
+graphique_evolution_position_vagues <- function(data_vagues, nb_quantiles, liste_type_patrimoines, titre_fig, titre_save, faire_rang = TRUE){
   liste_cols <- apply(expand.grid(names(liste_type_patrimoines), c("_V1", "_V2", "_V3")), 1, paste, collapse="")
+  liste_cols <- append(liste_cols, c("HW0010_V1"))
   data_for_plot_loc <- data_vagues[,..liste_cols]
   
+  if(faire_rang){
+    # On va tracer en fonction des rangs des ménages dans la distribution
+    for(type_pat in names(liste_type_patrimoines)){
+      # Rang de chaque ménage
+      data_for_plot_loc[, RANG_V1 := rank(data_for_plot_loc[[paste(type_pat, "_V1", sep = "")]])]
+      data_for_plot_loc[, RANG_V2 := rank(data_for_plot_loc[[paste(type_pat, "_V2", sep = "")]])]
+      data_for_plot_loc[, RANG_V3 := rank(data_for_plot_loc[[paste(type_pat, "_V3", sep = "")]])]
+      
+      setnames(data_for_plot_loc, "RANG_V1", paste("Rang_",type_pat,"_V1", sep = ""))
+      setnames(data_for_plot_loc, "RANG_V2", paste("Rang_",type_pat,"_V2", sep = ""))
+      setnames(data_for_plot_loc, "RANG_V3", paste("Rang_",type_pat,"_V3", sep = ""))
+      }
+    }else{
+      for(type_pat in names(liste_type_patrimoines)){
+      setnames(data_for_plot_loc, paste(type_pat, "_V1", sep = ""), paste("Rang_",type_pat,"_V1", sep = ""))
+      setnames(data_for_plot_loc, paste(type_pat, "_V2", sep = ""), paste("Rang_",type_pat,"_V2", sep = ""))
+      setnames(data_for_plot_loc, paste(type_pat, "_V3", sep = ""), paste("Rang_",type_pat,"_V3", sep = ""))
+      }
+    }
+
+  
+  # Mise en forme pour plot
+  melted <- data.table(Rang_V1 = integer(),
+                       Vague = factor(),
+                       Quantile_vagues_suivantes  = integer(),
+                       Type_patrimoine =  factor())
+  
   for(type_pat in names(liste_type_patrimoines)){
-    # Rang de chaque ménage
-    data_for_plot_loc[, RANG_V1 := rank(data_for_plot_loc[[paste(type_pat, "_V1", sep = "")]])]
-    data_for_plot_loc[, RANG_V2 := rank(data_for_plot_loc[[paste(type_pat, "_V2", sep = "")]])]
-    data_for_plot_loc[, RANG_V3 := rank(data_for_plot_loc[[paste(type_pat, "_V3", sep = "")]])]
+    melted_loc <- melt(data_for_plot_loc, 
+                       id.vars = c(paste("Rang_",type_pat,"_V1", sep = ""), "HW0010_V1"),
+                       measure.vars  = names(data_for_plot_loc)[names(data_for_plot_loc) %in% c(paste("Rang_",type_pat,"_V2", sep = ""), paste("Rang_",type_pat,"_V3", sep = ""))],
+                       variable.name = "Vague",
+                       value.name    = "Quantile_vagues_suivantes")
     
-    data_for_plot_loc[,Quantiles_V1 := cut(data_for_plot_loc$RANG_V1,
-                                           breaks=quantile(data_for_plot_loc$RANG_V1, probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
-                                           include.lowest= TRUE, labels=1:nb_quantiles)]
-    data_for_plot_loc$Quantiles_V1 <- as.numeric(data_for_plot_loc$Quantiles_V1)
+    melted_loc[, Vague := factor(
+      fcase(
+        Vague == paste("Rang_",type_pat,"_V2", sep = ""), "Vague 2",
+        Vague == paste("Rang_",type_pat,"_V3", sep = ""), "Vague 3"
+      ))]
     
-    data_for_plot_loc[,Quantiles_V2 := cut(data_for_plot_loc$RANG_V2,
-                                           breaks=quantile(data_for_plot_loc$RANG_V2, probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
-                                           include.lowest= TRUE, labels=1:nb_quantiles)]
-    data_for_plot_loc$Quantiles_V2 <- as.numeric(data_for_plot_loc$Quantiles_V2)
+    melted_loc[, Type_patrimoine := liste_type_patrimoines[type_pat]]
+    setnames(melted_loc, paste("Rang_",type_pat,"_V1", sep = ""), "Rang_V1")
     
-    data_for_plot_loc[,Quantiles_V3 := cut(data_for_plot_loc$RANG_V3,
-                                           breaks=quantile(data_for_plot_loc$RANG_V2, probs=seq(0, 1, by=1/nb_quantiles), na.rm=T),
-                                           include.lowest= TRUE, labels=1:nb_quantiles)]
-    data_for_plot_loc$Quantiles_V3 <- as.numeric(data_for_plot_loc$Quantiles_V3)
-    
-    
-    setnames(data_for_plot_loc, "Quantiles_V1", paste(type_pat,"_QV1", sep = ""))
-    setnames(data_for_plot_loc, "Quantiles_V2", paste(type_pat,"_QV2", sep = ""))
-    setnames(data_for_plot_loc, "Quantiles_V3", paste(type_pat,"_QV3", sep = ""))
+    melted <- rbindlist(list(melted,melted_loc), fill=TRUE)
   }
-  
-  ### On transforme le data.table obtenu pour pouvoir faire les graphiques
-  
-  ### Médiane pour le patrimoine net
-  data_for_plot <- data_for_plot_loc[, median(DN3001_QV2), by = DN3001_QV1 ]
-  setnames(data_for_plot, "V1", "Médiane vague 2")
-  data_for_plot_loc_bis <- data_for_plot_loc[, median(DN3001_QV3), by = DN3001_QV1 ]
-  setnames(data_for_plot_loc_bis, "V1", "Médiane vague 3")
-  data_for_plot <- merge(data_for_plot, data_for_plot_loc_bis, by = "DN3001_QV1")
-  
-  ### Moyenne pour le patrimoine net
-  data_for_plot_loc_bis <- data_for_plot_loc[, mean(DN3001_QV2), by = DN3001_QV1 ]
-  setnames(data_for_plot_loc_bis, "V1", "Moyenne vague 2")
-  data_for_plot <- merge(data_for_plot, data_for_plot_loc_bis, by = "DN3001_QV1")
-  data_for_plot_loc_bis <- data_for_plot_loc[, mean(DN3001_QV3), by = DN3001_QV1 ]
-  setnames(data_for_plot_loc_bis, "V1", "Moyenne vague 3")
-  data_for_plot <- merge(data_for_plot, data_for_plot_loc_bis, by = "DN3001_QV1")
-  
-  melted <- melt(data_for_plot, 
-                 id.vars = "DN3001_QV1", 
-                 measure.vars  = names(data_for_plot)[names(data_for_plot) %like% "vague"],
-                 variable.name = "Vague",
-                 value.name    = "Quantile_vagues_suivantes")
-  setnames(melted, "DN3001_QV1", "Quantile vague 1")
-  
-  melted[Vague %like% "Médiane", Operation := "Médiane"]
-  melted[Vague %like% "Moyenne", Operation := "Moyenne"]
-  melted$Vague <- gsub("Médiane","",melted$Vague)
-  melted$Vague <- gsub("Moyenne","",melted$Vague)
-  melted[, Patrimoine := "Net"]
-  
-  ### Médiane pour le patrimoine brut
-  data_for_plot <- data_for_plot_loc[, median(DA3001_QV2), by = DA3001_QV1 ]
-  setnames(data_for_plot, "V1", "Médiane vague 2")
-  data_for_plot_loc_bis <- data_for_plot_loc[, median(DA3001_QV3), by = DA3001_QV1 ]
-  setnames(data_for_plot_loc_bis, "V1", "Médiane vague 3")
-  data_for_plot <- merge(data_for_plot, data_for_plot_loc_bis, by = "DA3001_QV1")
-  
-  ### Moyenne pour le patrimoine brut
-  data_for_plot_loc_bis <- data_for_plot_loc[, mean(DA3001_QV2), by = DA3001_QV1 ]
-  setnames(data_for_plot_loc_bis, "V1", "Moyenne vague 2")
-  data_for_plot <- merge(data_for_plot, data_for_plot_loc_bis, by = "DA3001_QV1")
-  data_for_plot_loc_bis <- data_for_plot_loc[, mean(DA3001_QV3), by = DA3001_QV1 ]
-  setnames(data_for_plot_loc_bis, "V1", "Moyenne vague 3")
-  data_for_plot <- merge(data_for_plot, data_for_plot_loc_bis, by = "DA3001_QV1")
-  
-  melted_bis <- melt(data_for_plot, 
-                     id.vars = "DA3001_QV1", 
-                     measure.vars  = names(data_for_plot)[names(data_for_plot) %like% "vague"],
-                     variable.name = "Vague",
-                     value.name    = "Quantile_vagues_suivantes")
-  setnames(melted_bis, "DA3001_QV1", "Quantile vague 1")
-  melted_bis[Vague %like% "Médiane", Operation := "Médiane"]
-  melted_bis[Vague %like% "Moyenne", Operation := "Moyenne"]
-  melted_bis$Vague <- gsub("Médiane","",melted$Vague)
-  melted_bis$Vague <- gsub("Moyenne","",melted$Vague)
-  melted_bis[, Patrimoine := "Brut"]
-  
-  melted <- rbindlist(list(melted_bis,melted), fill=TRUE)
-  
-  melted$Operation <- as.factor(melted$Operation)
-  melted$Patrimoine <- as.factor(melted$Patrimoine)
-  
+
+  melted$HW0010_V1 <- as.numeric(melted$HW0010_V1)
   
   ### La partie graphique
-  x <- "Quantile vague 1"
+  x <- "Rang_V1"
   y <- "Quantile_vagues_suivantes"
   color <- "Vague"
-  xlabel <- "Quantile de patrimoine net à la vague 1"
-  ylabel <- "Quantile de patrimoine net aux vagues 2 et 3"
-  colorlabel <- "Vague"
+  xlabel <- "Quantile de patrimoine à la vague 1"
+  ylabel <- "Quantile de patrimoine aux vagues 2 et 3"
+  scalelabel <- "Vague"
+  facet <- "Type_patrimoine"
+  size <- "HW0010_V1"
+  sizelabel <- "Poids du ménage à la vague 1"
   
-  p <- ggplot(data = melted, aes(x = melted[[x]], y= melted[[y]], color = melted[[color]])) + 
-    geom_point() +
-    geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
-    labs(title=titre,
-         x= xlabel,
-         y= ylabel,
-         color = colorlabel) +
-    facet_grid( Operation ~  Patrimoine) +
-    stat_poly_eq(formula = y ~ x, use_label(c("eq", "R2", "R2.confint"))) +
-    stat_poly_line()
+  # p <- ggplot(data = melted, aes(x = melted[[x]], y= melted[[y]], color = melted[[color]])) + 
+  #   geom_point() +
+  #   geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  #   labs(title=titre,
+  #        x= xlabel,
+  #        y= ylabel,
+  #        color = colorlabel) +
+  #   facet_wrap(~factor(.data[[facet]]), ncol = 2) +
+  #   stat_poly_eq(formula = y ~ x, use_label(c("eq", "R2", "R2.confint"))) +
+  #   stat_poly_line(se = FALSE)
+  
+  if(faire_rang){
+    # On peut tracer tel quel
+    p <- ggplot(data = melted, aes(x = melted[[x]], y= melted[[y]], color = melted[[color]], size = melted[[size]])) +
+      geom_point() +
+      geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+      labs(title=titre,
+           x= xlabel,
+           y= ylabel,
+           color = colorlabel,
+           size = sizelabel) +
+      facet_wrap(~factor(.data[[facet]]), ncol = 2) +
+      scale_size(range = c(1,3))
+    }else{
+      # Il faut passer en échelle log sinon c'est illisible
+      melted[Rang_V1 <= 0, Rang_V1 := 1]
+      melted[Quantile_vagues_suivantes <=  0, Quantile_vagues_suivantes := 1]
+      
+      p <- ggplot(data = melted, aes(x = melted[[x]], y= melted[[y]], color = melted[[color]], size = melted[[size]])) +
+        geom_point() +
+        geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+        labs(title=titre,
+             x= xlabel,
+             y= ylabel,
+             color = colorlabel,
+             size = sizelabel) +
+        facet_wrap(~factor(.data[[facet]]), ncol = 2) +
+        scale_size(range = c(1,3)) +
+        scale_x_continuous(trans='log10', labels = scales::dollar_format(
+          prefix = "",
+          suffix = " €",
+          big.mark = " ",
+          decimal.mark = ",")) +
+        scale_y_continuous(trans='log10', labels = scales::dollar_format(
+          prefix = "",
+          suffix = " €",
+          big.mark = " ",
+          decimal.mark = ",")) +
+        labs(caption = "Les ménages ayant un patrimoine négatif se sont vu assigner un patrimoine de 1€") +
+        theme(legend.text = element_text(angle = 0, vjust = 0.7, hjust = 0),
+              axis.text.x = element_text(angle = 45, vjust = 0.5),
+              legend.position = "right")
+      
+      }
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
   print(p)

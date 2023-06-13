@@ -158,7 +158,7 @@ vague_1234 <- as.data.table(list_output[6])
 # ====================== 04 STAT DES & GRAPHIQUES ==============================
 ################################################################################
 source(paste(repo_prgm , "04_graphiques.R" , sep = "/"))
-num_vague <- 2
+num_vague <- 3
 
 
 # Patrimoine net
@@ -351,16 +351,29 @@ trace_distrib_variable(data_loc, x, NaN, xlabel, ylabel,NaN, titre, titre_save, 
 
 ####### Positions dans la distribution du patrimoine
 liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
-                            "DN3001" = "Patrimoine net")
+                            "DA1000" = "Patrimoine physique",
+                            "DA2100" = "Patrimoine financier",
+                            "DL1000" = "Dettes",
+                            "DN3001" = "Patrimoine net",
+                            "DI2000" = "Revenu net du ménage")
 nb_quantiles <- 100
 
-titre_fig <- paste("Evolution des rangs d'appartenance des ménages entre les différentes vagues, en patrimoine net (", nom_pays, ")", sep = "")
+titre_fig <- paste("Evolution des rangs d'appartenance des ménages entre les différentes vagues (", nom_pays, ")", sep = "")
 titre_save <- paste(pays,"_evolution_rang_appartenance.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 data_vagues <- vague_123
-
-try(graphique_evolution_position_vagues(vague_123 ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save))
+faire_rang = TRUE
+try(graphique_evolution_position_vagues(vague_123 ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save, faire_rang))
   
+
+titre_fig <- paste("Evolution des patrimoines des ménages entre les différentes vagues (", nom_pays, ")", sep = "")
+titre_save <- paste(pays,"_evolution_pat_appartenance.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+data_vagues <- vague_123
+faire_rang = FALSE
+
+try(graphique_evolution_position_vagues(vague_123 ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save, faire_rang))
+
 
 
 ######### Evolution du patrimoine des ménages entre les vagues ##############
@@ -371,13 +384,13 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DN3001" = "Patrimoine net")
 
 liste_quantiles <- seq(0.2, 0.8, 0.2)
-titre <- paste("Quantiles de l'évolution du patrimoine des ménages entre les vagues (", nom_pays, ")", sep = "")
+titre <- paste("Quantiles de l'évolution du patrimoine des ménages entre les vagues (", nom_pays, ") \n", sep = "")
 titre_save <- paste(pays,"_quantiles_evolution_richesse_panel.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 
-
 try(graphique_evolution_pat_entre_vagues(vague_123, liste_type_patrimoines,liste_quantiles, titre, titre_save))
 
+hist(vague_123$DA1000_V1)
 
 
 ################################################################################
@@ -537,6 +550,7 @@ summary(optimal_match, un = FALSE)
 
 
 # Full matching
+full_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="full", ratio=1, replace=F, distance = 'glm')
 # Summary of full matching results
 summary(full_match, un = FALSE)
 # It is called full matching because all the test and control units are assigned to a subclass and are utilized in the matching.
