@@ -349,6 +349,139 @@ graphique_evolution_pat_entre_vagues <- function(data_loc, liste_type_patrimoine
 
 
 
+trace_distribution_prop_non_prop <- function(data_loc, liste_variables_loc, titre, titre_save, num_vague_loc){
+  # Nettoyage préalable pour éviter les modalités en trop
+  f_dowle2 <- function(DT){
+    for (i in names(DT))
+      DT[is.na(get(i)), (i):= "NAN"]
+  }
+  
+  f_dowle2(data_loc)
+  
+  try(data_loc[DOEINHERIT == "A", DOEINHERIT := "NAN"], silent = TRUE)
+  
+  # try(data_loc <- nettoyage_sexe(data_loc), silent = TRUE)
+  # try(data_loc <- nettoyage_classe_age(data_loc), silent = TRUE)
+  # try(data_loc <- nettoyage_education(data_loc), silent = TRUE)
+  # try(data_loc <- nettoyage_DOINHERIT(data_loc), silent = TRUE)
+  # try(data_loc <- nettoyage_DOEINHERIT(data_loc), silent = TRUE)
+  
+  
+  # On prépare les tables d'effectifs de ménages
+  dw_V2 <- svydesign(ids = ~1, data = data_loc[VAGUE == 2], weights = ~ HW0010)
+  dw_V3 <- svydesign(ids = ~1, data = data_loc[VAGUE == 3], weights = ~ HW0010)
+  dw_V4 <- svydesign(ids = ~1, data = data_loc[VAGUE == 4], weights = ~ HW0010)
+  
+  
+  # On empile tout
+  dt_tableau <- data.table(Valeur = factor(),
+                           Non_prop = numeric(),
+                           Prop = numeric(),
+                           # N.total = numeric(),
+                           Variable = factor(),
+                           Vague = factor())
+  for(i in 2:4){
+    for(var in names(liste_variables_loc)){
+      txt <- paste("as.data.table(svytable(~ DA1110I +",var,", dw_V",i,"))", sep = "")
+      dt_loc <- eval(parse(text = txt))
+      dt_loc <- reshape(dt_loc, idvar = var, timevar = "DA1110I", direction = "wide")
+      setnames(dt_loc, "N.0", "Non_prop")
+      setnames(dt_loc, "N.1", "Prop")
+      setnames(dt_loc, var, "Valeur")
+      dt_loc[, Variable := var]
+      dt_loc[, Vague := i]
+      
+      dt_tableau <- rbindlist(list(dt_tableau, dt_loc), fill=TRUE)
+    }
+  }
+  dt_tableau[, Total := Non_prop + Prop]
+  
+  # On melt pour avoir le bon format
+  melted <- melt(dt_tableau, 
+                 id.vars = c("Valeur", "Variable", "Vague"),
+                 measure.vars  = c("Non_prop", "Prop", "Total"),
+                 variable.name = "Type",
+                 value.name    = "Effectifs")
+  
+  melted[,Valeur_num := as.numeric(as.character(Valeur))]
+  
+  melted[Variable == "DHAGEH1" & Valeur_num <= 24, Valeur := "16 - 24 ans"]
+  melted[Variable == "DHAGEH1" & Valeur_num %in% 25:34, Valeur := "25 - 34 ans"]
+  melted[Variable == "DHAGEH1" & Valeur_num %in% 35:44, Valeur := "35 - 44 ans"]
+  melted[Variable == "DHAGEH1" & Valeur_num %in% 45:54, Valeur := "45 - 54 ans"]
+  melted[Variable == "DHAGEH1" & Valeur_num %in% 55:64, Valeur := "55 - 64 ans"]
+  melted[Variable == "DHAGEH1" & Valeur_num >= 65, Valeur := "+ 65 ans"]
+  
+  
+  melted[Variable == "DHGENDERH1" & Valeur_num == 1, Valeur := "Homme"]
+  melted[Variable == "DHGENDERH1" & Valeur_num == 2, Valeur := "Femme"]
+  
+  melted[Variable == "DHEDUH1" & Valeur_num == 1, Valeur := "< Brevet"]
+  melted[Variable == "DHEDUH1" & Valeur_num == 2, Valeur := "Brevet"]
+  melted[Variable == "DHEDUH1" & Valeur_num == 3, Valeur := "Bac"]
+  melted[Variable == "DHEDUH1" & Valeur_num == 5, Valeur := "> Bac"]
+  
+  melted[Variable == "DOEINHERIT" & Valeur_num == 0, Valeur := "Non"]
+  melted[Variable == "DOEINHERIT" & Valeur_num == 1, Valeur := "Oui"]
+  
+  melted[Variable == "DOINHERIT" & Valeur_num == 0, Valeur := "Non"]
+  melted[Variable == "DOINHERIT" & Valeur_num == 1, Valeur := "Oui"]
+  
+  
+  
+  # melted[is.na(Valeur_num)]
+  
+  # On renome pour le facet
+  for(var in names(liste_variables_loc)){
+    melted[Variable == var, Variable := liste_variables_loc[var]]
+  }
+  
+  melted[, Type := factor(
+    fcase(
+      Type == "Non_prop" , "Non propriétaire",
+      Type == "Prop" , "Propriétaire",
+      Type == "Total" , "Total"
+    ))]
+  
+  setnames(melted, "Type", "Type de ménage")
+  
+  
+  # Et on trace
+  data_pour_plot <- melted[Vague == num_vague_loc]
+  x <- "Valeur"
+  sortby_x <- "Valeur_num"
+  y <- "Effectifs"
+  fill <- "Type de ménage"
+  facet <- "Variable"
+  xlabel <- "Valeur"
+  ylabel <- "Effectifs"
+  
+  
+  p <- ggplot(data = data_pour_plot, aes(x = reorder(.data[[x]], .data[[sortby_x]]), y = .data[[y]], fill = .data[[fill]])) +
+    geom_bar(stat="identity", position=position_dodge()) + 
+    labs(title=titre,
+         x= xlabel,
+         y= ylabel) + 
+    scale_y_continuous(labels = scales::dollar_format(
+      prefix = "",
+      suffix = "",
+      big.mark = " ",
+      decimal.mark = ",")) + 
+    scale_fill_viridis(discrete = TRUE) +
+    # theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+    facet_wrap(~factor(.data[[facet]]), ncol = 2, scales="free") +
+    labs(caption = "")
+  
+  print(p)
+  
+  ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
+  
+}
+
+
+
+
+
 ################################################################################
 # -------------------------- LES SOUS-FONCTIONS  -------------------------------
 ################################################################################
@@ -395,6 +528,39 @@ nettoyage_sexe <- function(data_loc){ # Renome les modalités de DHGENDERH1
 }
 
 
+nettoyage_education <- function(data_loc){
+  data_loc[, label_education := factor(
+    fcase(
+      DHEDUH1 == 1, "< Brevet",
+      DHEDUH1 == 2, "Brevet",
+      DHEDUH1 == 3, "Bac",
+      DHEDUH1 == 5, "> Bac"
+    )
+  )]
+  return(data_loc)
+}
+
+nettoyage_DOINHERIT <- function(data_loc){
+  data_loc[, label_DOINHERIT := factor(
+    fcase(
+      DOINHERIT == 0, "Non",
+      DOINHERIT == 1, "Oui"
+    )
+  )]
+  return(data_loc)
+}
+
+nettoyage_DOEINHERIT <- function(data_loc){
+  data_loc[, label_DOEINHERIT := factor(
+    fcase(
+      DOEINHERIT == 0, "Non",
+      DOEINHERIT == 1, "Oui"
+    )
+  )]
+  return(data_loc)
+}
+
+
 nettoyage_type_menage <- function(data_loc, var_sum){ # Renome proprement les modalités de DHHTYPE pour en faire une appélation compréhensible avec le nb de ménages concernés
   data_loc[, DHHTYPE:= factor( # On renome proprement
     fcase(
@@ -435,6 +601,38 @@ Ajout_premier_heritage <- function(data_loc){
   )
   ]
   data_loc$Montant_heritage_1 <- as.numeric(as.character(data_loc$Montant_heritage_1)) ### ATTENTION laisser le as.character sinon ça bug je sais pas pourquoi...
+  
+  
+  
+  # Puis les objets qui ont été hérités
+  for(lettre in c("A","B","C","D","E","F","G","H","I","J")){
+    # Pour se protéger des modalités manquantes
+    for(chiffre in 1:3){
+      if(is.null(data_loc[[paste("HH030",chiffre, lettre, sep = "")]])){
+        data_loc[[paste("HH030",chiffre, lettre, sep = "")]] <- as.factor(2)
+      }
+    }
+    txt1 <- paste("levels(data_loc$HH0301",lettre,") <- c(1,2)", sep = "")
+    txt2 <- paste("levels(data_loc$HH0302",lettre,") <- c(1,2)", sep = "")
+    txt3 <- paste("levels(data_loc$HH0303",lettre,") <- c(1,2)", sep = "")
+    eval(parse(text = txt1))
+    eval(parse(text = txt2))
+    eval(parse(text = txt3))
+    
+    
+    txt <- paste("data_loc[, HH030",lettre,"_1 := factor(fcase(
+        Annee_heritage_1 == HH0201, HH0301",lettre,",
+        Annee_heritage_1 == HH0202, HH0302",lettre,",
+        Annee_heritage_1 == HH0203, HH0303",lettre,"
+      )
+    )
+    ]", sep = "")
+    # print(txt)
+    eval(parse(text = txt))
+  }
+  
+  
+  
   return(data_loc)
 }
 
@@ -454,6 +652,35 @@ Ajout_premier_heritage_cons <- function(data_loc, montant_heritage_min){
     )
   )
   ]
+  
+  
+  # Puis les objets qui ont été hérités
+  for(lettre in c("A","B","C","D","E","F","G","H","I","J")){
+    # Pour se protéger des modalités manquantes
+    for(chiffre in 1:3){
+      if(is.null(data_loc[[paste("HH030",chiffre, lettre, sep = "")]])){
+        data_loc[[paste("HH030",chiffre, lettre, sep = "")]] <- as.factor(2)
+      }
+    }
+    txt1 <- paste("levels(data_loc$HH0301",lettre,") <- c(1,2)", sep = "")
+    txt2 <- paste("levels(data_loc$HH0302",lettre,") <- c(1,2)", sep = "")
+    txt3 <- paste("levels(data_loc$HH0303",lettre,") <- c(1,2)", sep = "")
+    eval(parse(text = txt1))
+    eval(parse(text = txt2))
+    eval(parse(text = txt3))
+    
+    
+    txt <- paste("data_loc[, HH030",lettre,"_cons := factor(fcase(
+        Annee_heritage_1_cons == HH0201, HH0301",lettre,",
+        Annee_heritage_1_cons == HH0202, HH0302",lettre,",
+        Annee_heritage_1_cons == HH0203, HH0303",lettre,"
+      )
+    )
+    ]", sep = "")
+    # print(txt)
+    eval(parse(text = txt))
+  }
+  
   data_loc$Montant_heritage_1_cons <- as.numeric(as.character(data_loc$Montant_heritage_1_cons)) ### ATTENTION laisser le as.character sinon ça bug je sais pas pourquoi...
   return(data_loc)
 }

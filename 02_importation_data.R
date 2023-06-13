@@ -31,7 +31,6 @@ importation_toutes_vagues <- function(num_table_loc){
                              show_col_types = FALSE)
   
   data_derivated <- as.data.table(data_derivated)
-  data_derivated
   nrow(data_derivated)
   try(setnames(data_derivated, "id", "ID"), silent=TRUE) #Parfois les colonnes ont des noms en minuscule...
   try(setnames(data_derivated, "survey", "SURVEY"), silent=TRUE) # Cette variable peut avoir deux noms 

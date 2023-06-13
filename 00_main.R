@@ -43,8 +43,19 @@ faire_tourner_recherche_pvalue_opti <- FALSE
 ################################################################################
 # ============================ 02 IMPORTATION ==================================
 ################################################################################
-liste_var_continues <- c("HH0401", "HH0402", "HH0403", "HH0201", "HH0202", "HH0203", "HB0700","HW0010", "DA1000", "DA2100", "DA3001", "DI2000", "DI2100", "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120")
-liste_var_categorielles <- c("SA0100","DHHTYPE","DOINHERIT", "DA1110I","SA0110","SA0210", "SA0010" ,"DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DHLIFESATIS", "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE", "SA0200", "DHAGEH1B", "HH0301", "HH0302", "HH0303")
+liste_var_continues <- c("HH0401", "HH0402", "HH0403", "HH0201", "HH0202", "HH0203",
+                         "HB0700","HW0010", "DA1000", "DA2100", "DA3001", "DI2000", "DI2100",
+                         "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120")
+liste_var_categorielles <- c("SA0100","DHHTYPE","DOINHERIT", "DA1110I","SA0110","SA0210",
+                             "SA0010" ,"DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1",
+                             "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE",
+                             "SA0200", "DHAGEH1B",
+                             "HH0301A", "HH0301B", "HH0301C", "HH0301D",
+                             "HH0301E", "HH0301F", "HH0301H", "HH0301I", "HH0301J",
+                             "HH0302A", "HH0302B", "HH0302C", "HH0302D",
+                             "HH0302E", "HH0302F", "HH0302H", "HH0302I", "HH0302J",
+                             "HH0303A", "HH0303B", "HH0303C", "HH0303D",
+                             "HH0303E", "HH0303F", "HH0303H", "HH0303I", "HH0303J")
 liste_var_interet <- union(liste_var_continues, liste_var_categorielles)
 
 
@@ -108,9 +119,17 @@ source(paste(repo_prgm , "03_nettoyage_preparation.R" , sep = "/"))
 # HH0401 = Value of gift
 # HH0402
 # HH0403
-# HH0301 = what kind of assets received ?
-# HH0302
-# HH0303
+## Héritage == remplacer x par 1, 2 ou 3...
+# HH030xA = what kind of assets received ? Money
+# HH030xB = what kind of assets received ? Dwelling
+# HH030xC = what kind of assets received ? Use of a dwelling (under reserve or usufruct)
+# HH030xD = what kind of assets received ? Land
+# HH030xE = what kind of assets received ? Business
+# HH030xF = what kind of assets received ? Securities, shares
+# HH030xG = what kind of assets received ? Jewellery, furniture, artwork
+# HH030xH = what kind of assets received ? Life insurance
+# HH030xJ = what kind of assets received ? Car / vehicle I - Other assets (specify)
+
 # DHHTYPE = Household type
 
 
@@ -121,7 +140,6 @@ if(length(setdiff(liste_var_interet, intersection)) > 0){
 data_pays <- data_pays %>% mutate_at(liste_var_continues, as.numeric)
 data_pays <- data_pays %>% mutate_at(liste_var_categorielles, as.factor)
 
-
 ##### On ajoute la variable année d'achat - année d'héritage reçu
 data_pays <- Ajout_premier_heritage(data_pays)
 # En fait on ne veut pas le premier héritage obtenu mais le premier héritage CONSEQUANT obtenu
@@ -130,15 +148,11 @@ data_pays[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage :=
 
 
 ## Petit histogramme pour visualiser
-data_pays[, label_education := factor(
-  fcase(
-    DHEDUH1 == 1, "< Brevet",
-    DHEDUH1 == 2, "Brevet",
-    DHEDUH1 == 3, "Bac",
-    DHEDUH1 == 5, "> Bac"
-  )
-)
-]
+data_pays <- nettoyage_education(data_pays)
+
+
+
+
 
 
 ######### A-t-on bien des données de panel ?
@@ -172,7 +186,7 @@ graphique_repartition_pat_quantile_sexe(data_loc, var_decile,var_normalisation, 
 
 # Patrimoine brut
 var_decile <- "DATOP10"
-titre <- paste("Répartition du patrimoine brut, normalisé par sexe (", nom_pays, " & vague",num_vague,")", sep = "")
+titre <- paste("Répartition du patrimoine brut, normalisé par sexe (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Patrimoine_brut_sexe.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <-"Quantile de patrimoine brut"
@@ -183,7 +197,7 @@ graphique_repartition_pat_quantile_sexe(data_loc, var_decile,var_normalisation, 
 
 # Dettes
 var_decile <- "DLTOP10"
-titre <- paste("Répartition des dettes, normalisé par sexe (", nom_pays, " & vague",num_vague,")", sep = "")
+titre <- paste("Répartition des dettes, normalisé par sexe (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Patrimoine_dettes_sexe.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <-"Quantile de dettes"
@@ -203,7 +217,7 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DL1000" = "Dettes",
                             "DN3001" = "Patrimoine net")
 
-titre_fig <- paste("Fonction de répartition de la richesse détenue par les ménages (", nom_pays, " & vague",num_vague,")", sep = "")
+titre_fig <- paste("Fonction de répartition de la richesse détenue par les ménages (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Concentration_patrimoine_par_type.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 data_loc <- data_pays[VAGUE == num_vague]
@@ -220,7 +234,7 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DN3001" = "Patrimoine net")
 
 data_loc <- data_pays[VAGUE == num_vague]
-titre <- paste("Variance du patrimoine détenu par les ménages\nIntervalles de confiance à 95% (", nom_pays, " & vague",num_vague,")", sep = "")
+titre <- paste("Variance du patrimoine détenu par les ménages\nIntervalles de confiance à 95% (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_variance_patrimoine.pdf", sep = "")
 
 graphique_variance_pat_age(data_loc, liste_type_patrimoines, titre, titre_save)
@@ -244,7 +258,7 @@ limits_x <- c(-50,50)
 trace_distrib_variable(data_loc, x, fill, xlabel, ylabel,filllabel, titre, titre_save, liste_breaks_fill, liste_breaks_x, limits_x)
 
 
-titre <- paste("Distribution de la variable :\ndate d'aquisition de la résidence principale actuelle - date du premier don ou héritage reçu\n (", nom_pays, " & vague",num_vague,")", sep = "")
+titre <- paste("Distribution de la variable :\ndate d'aquisition de la résidence principale actuelle - date du premier don ou héritage reçu\n (", nom_pays, " & vague ",num_vague,")", sep = "")
 xlabel <- "Année (coupé à 50) "
 ylabel <- "Nombre d'occurence"
 filllabel <- NaN
@@ -475,145 +489,163 @@ exp(dt_prep_logit$Estimate[2]) # ==> exp(beta_{0,j}) = Avoir un héritage consé
 
 ############################################################################################################################### 
 #################################### MATCHING ##################################
-
-data_pays$DOINHERIT
-
-liste_cols <- c("DOINHERIT", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE", "DA3001")
-sous_data_loc <- data_pays[,..liste_cols]
-setnames(sous_data_loc, "DA3001", "outcome")
-setnames(sous_data_loc, "DOINHERIT", "treatment")
-
-sous_data_loc$DHAGEH1 <- as.numeric(sous_data_loc$DHAGEH1)
-
-# Sans matching
-no_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method=NULL, distance = 'glm')
-summary(no_match)
-
-
-
-# Nearest neighbot matching
-nearest_neighbor_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="nearest", ratio=1, replace=F, distance = 'glm', caliper=0.2)
-# Summary of nearest neighbor matching results
-summary(nearest_neighbor_match, un = FALSE)
-# Nearest neighbor matching is a type of greedy matching. It matches the nearest control at the moment, and remove the matched control from the rest of the matching.
-# Nearest neighbor matching is fast but sensitive to the order of samples. It is not optimal for minimizing the total distance because the samples that are matched later in the process can only choose from the contorl units that have not been matched.
-
-
-
-
-# Optimal matching ==> Marche beaucoup mieux mais prend du temps...
-optimal_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="optimal", ratio=1, replace=F, distance = 'glm')
-# Summary of optimal matching results
-summary(optimal_match, un = FALSE)
-# Optimal matching is also called optimal pair matching. Different from greedy matching, optimal matching minimizes the total distance across all pairs.
-# When there are not many close matches for the treatment group, optimal matching can be helpful for finding the best matches.
-
-
-
-
-# Full matching
-full_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="full", ratio=1, replace=F, distance = 'glm')
-# Summary of full matching results
-summary(full_match, un = FALSE)
-# It is called full matching because all the test and control units are assigned to a subclass and are utilized in the matching.
-# It is optimal because the weighted average distances between the treated and control units in each subclass are minimized.
-# Full matching outputs weights that are computed based on subclasses. The weights can work similar to propensity score weights and be used to estimate a weighted treatment effect.
-
-full_match$match.matrix
-
-plot(full_match, type = "jitter", interactive = FALSE)
-plot(full_match, type = "density", interactive = FALSE,
-     which.xs = ~  DI2000 + DHHTYPE)
-plot(full_match, type = "density", interactive = FALSE,
-     which.xs = ~  DHAGEH1)
-
-
-plot(summary(full_match))
-
-
-full_match_data <- match.data(full_match)
-nrow(sous_data_loc) - nrow(full_match_data) ### Il ne manque que les unmatched !
-
-# Quid de l'effet du traitement ?
-fit <- lm(outcome ~ treatment * (DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE), data = full_match_data, weights = weights)
-
-avg_comparisons(fit,
-                variables = "treatment",
-                vcov = ~subclass,
-                newdata = subset(full_match_data, treatment == 1),
-                wts = "weights")
-
-
-
-# Genetic matching
-generic_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="genetic", pop.size=20)
-# Summary of genetic matching
-summary(generic_match, un = FALSE)
-# Genetic matching uses a generic search algorithm to find weights for each covariate to achieve optimal balance. The current matching is with replacement and the balance is evaluated using t-tests and Kolmogorov-Smirnov tests.
-
-
+# 
+# data_pays$DOINHERIT
+# 
+# liste_cols <- c("DOINHERIT", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE", "DA3001")
+# sous_data_loc <- data_pays[,..liste_cols]
+# setnames(sous_data_loc, "DA3001", "outcome")
+# setnames(sous_data_loc, "DOINHERIT", "treatment")
+# 
+# sous_data_loc$DHAGEH1 <- as.numeric(sous_data_loc$DHAGEH1)
+# 
+# # Sans matching
+# no_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method=NULL, distance = 'glm')
+# summary(no_match)
+# 
+# 
+# 
+# # Nearest neighbot matching
+# nearest_neighbor_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="nearest", ratio=1, replace=F, distance = 'glm', caliper=0.2)
+# # Summary of nearest neighbor matching results
+# summary(nearest_neighbor_match, un = FALSE)
+# # Nearest neighbor matching is a type of greedy matching. It matches the nearest control at the moment, and remove the matched control from the rest of the matching.
+# # Nearest neighbor matching is fast but sensitive to the order of samples. It is not optimal for minimizing the total distance because the samples that are matched later in the process can only choose from the contorl units that have not been matched.
+# 
+# 
+# 
+# 
+# # Optimal matching ==> Marche beaucoup mieux mais prend du temps...
+# optimal_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="optimal", ratio=1, replace=F, distance = 'glm')
+# # Summary of optimal matching results
+# summary(optimal_match, un = FALSE)
+# # Optimal matching is also called optimal pair matching. Different from greedy matching, optimal matching minimizes the total distance across all pairs.
+# # When there are not many close matches for the treatment group, optimal matching can be helpful for finding the best matches.
+# 
+# 
+# 
+# 
+# # Full matching
+# full_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="full", ratio=1, replace=F, distance = 'glm')
+# # Summary of full matching results
+# summary(full_match, un = FALSE)
+# # It is called full matching because all the test and control units are assigned to a subclass and are utilized in the matching.
+# # It is optimal because the weighted average distances between the treated and control units in each subclass are minimized.
+# # Full matching outputs weights that are computed based on subclasses. The weights can work similar to propensity score weights and be used to estimate a weighted treatment effect.
+# 
+# full_match$match.matrix
+# 
+# plot(full_match, type = "jitter", interactive = FALSE)
+# plot(full_match, type = "density", interactive = FALSE,
+#      which.xs = ~  DI2000 + DHHTYPE)
+# plot(full_match, type = "density", interactive = FALSE,
+#      which.xs = ~  DHAGEH1)
+# 
+# 
+# plot(summary(full_match))
+# 
+# 
+# full_match_data <- match.data(full_match)
+# nrow(sous_data_loc) - nrow(full_match_data) ### Il ne manque que les unmatched !
+# 
+# # Quid de l'effet du traitement ?
+# fit <- lm(outcome ~ treatment * (DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE), data = full_match_data, weights = weights)
+# 
+# avg_comparisons(fit,
+#                 variables = "treatment",
+#                 vcov = ~subclass,
+#                 newdata = subset(full_match_data, treatment == 1),
+#                 wts = "weights")
+# 
+# 
+# 
+# # Genetic matching
+# generic_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="genetic", pop.size=20)
+# # Summary of genetic matching
+# summary(generic_match, un = FALSE)
+# # Genetic matching uses a generic search algorithm to find weights for each covariate to achieve optimal balance. The current matching is with replacement and the balance is evaluated using t-tests and Kolmogorov-Smirnov tests.
+# 
+# 
 
 ############################################################################################################################### 
 ######################### EXPLORATION : QUI POSSEDE QUOI ? QUI HERITE DE QUOI ? ############################################### 
 ############################################################################################################################### 
 
 colnames(data_pays)
-f_dowle2 <- function(DT){
-  for (i in names(DT))
-    DT[is.na(get(i)), (i):=0]
-  return(DT)
-}
+
+
+
+liste_variables_loc <-c("DITOP10" = "Décile de revenu",
+              "DLTOP10" = "Décile de dette",
+              "DNTOP10" = "Décile de patrimoine net",
+              "DOEINHERIT" = "S'attend à hériter",
+              "DOINHERIT" = "A hérité",
+              "DHEDUH1" = "Niveau d'éducation",
+              "DHAGEH1" = "Tranche d'âge",
+              "DATOP10" = "Décile de patrimoine brut",
+              "DHGENDERH1" = 'Sexe')
 
 data_loc <- data_pays
-data_loc <- f_dowle2(data_loc)
-
-dw_tot <- svydesign(ids = ~1, data = data_loc, weights = ~ HW0010)
-dw_V1 <- svydesign(ids = ~1, data = data_loc[VAGUE == 1], weights = ~ HW0010)
-dw_V2 <- svydesign(ids = ~1, data = data_loc[VAGUE == 2], weights = ~ HW0010)
-dw_V3 <- svydesign(ids = ~1, data = data_loc[VAGUE == 3], weights = ~ HW0010)
-dw_V4 <- svydesign(ids = ~1, data = data_loc[VAGUE == 4], weights = ~ HW0010)
-
-lprop(svytable(~ VAGUE + DOINHERIT, dw))
+titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui sont propriétaires de leur résidence principale, \net ceux qui ne le sont pas (", nom_pays, " & vague ",num_vague,")", sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+num_vague_loc <- 2
 
 
-
-lprop(svytable(~ DOINHERIT + DA1110I, dw_V1))
-
-
-
-
-table(data_loc[VAGUE == 1]$DA1110I)
+trace_distribution_prop_non_prop(data_loc, liste_variables_loc, titre, titre_save, num_vague_loc)
 
 
 
 
 
 
-#################### Avec l'objet d'imputations multiples ##########
-table(data_pays$DA1110I)
+# 
+# melted[, Variable := factor(
+#   fcase(
+#     Variable == "DITOP10" , "Décile de revenu",
+#     Variable == "DLTOP10" , "Décile de dette",
+#     Variable == "DNTOP10" , "Décile de patrimoine net",
+#     Variable == "DOEINHERIT" , "S'attend à hériter",
+#     Variable == "DOINHERIT" , "A hérité",
+#     Variable == "DHAGEH1B" , "Tranche d'âge",
+#     Variable == "DATOP10" , "Décile de patrimoine brut",
+#     Variable == "DHEDUH1", "Niveau d'éducation",
+#     Variable == "DHGENDERH1", 'Sexe'
+#   ))]
 
-data_vague_2 <- importation_une_vagues(num_vague_loc = 2)
-MIcombine(with(data_vague_2,svytotal(~DA3001)))
-MIcombine(with(data_vague_2,svyratio(~DA3001,~DH0001)))
 
-
-with(data_vague_2, table(DA1110I, DOINHERIT))
-
-
-model <- with(data_vague_2, glm(DA1110i~ DOINHERIT))
-MIcombine(model)
-
-
-
-MIcombine(with(data_vague_2,svytable(~ DA1110i + DOINHERIT)))
-
-svytotal(~DA3001, data_vague_2)
+# melted[, sum(Effectifs), by = c("Variable", "Vague")]
 
 
 
-res <- with(subset(data_vague_2, DOINHERIT == 1),
-            svyby(~DA1110I, svymean))
-summary(MIcombine(res))
+
+
+
+# #################### Avec l'objet d'imputations multiples ##########
+# table(data_pays$DA1110I)
+# 
+# data_vague_2 <- importation_une_vagues(num_vague_loc = 2)
+# MIcombine(with(data_vague_2,svytotal(~DA3001)))
+# MIcombine(with(data_vague_2,svyratio(~DA3001,~DH0001)))
+# 
+# 
+# with(data_vague_2, table(DA1110I, DOINHERIT))
+# 
+# 
+# model <- with(data_vague_2, glm(DA1110i~ DOINHERIT))
+# MIcombine(model)
+# 
+# 
+# 
+# MIcombine(with(data_vague_2,svytable(~ DA1110i + DOINHERIT)))
+# 
+# svytotal(~DA3001, data_vague_2)
+# 
+# 
+# 
+# res <- with(subset(data_vague_2, DOINHERIT == 1),
+#             svyby(~DA1110I, svymean))
+# summary(MIcombine(res))
 
 
 
