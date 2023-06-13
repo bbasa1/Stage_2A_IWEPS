@@ -403,6 +403,11 @@ hist(vague_123$DA1000_V1)
 ########################## G = 1   <====> Reçu un héritage à la vague 3 MAIS PAS à la vague 2  ################################
 pop_initiale_tot <- copy(data_pays[VAGUE %in% c(2,3),])
 nrow(pop_initiale_tot)
+SA0110_V3 <- vague_23$SA0110_V3 ## On récupère les identifiants ménages qui sont présents dans les deux vagues
+pop_initiale_tot <- pop_initiale_tot[SA0110 %in% SA0110_V3 & VAGUE == 3]
+nrow(pop_initiale_tot)
+
+
 
 pop_initiale_tot[, Reg_Y := 0]
 pop_initiale_tot[(DA1110I == 1 & VAGUE == 3) | (DA1110I == 1 & VAGUE == 2), Reg_Y := 1] ## La population qui ont une HMR
@@ -448,6 +453,11 @@ write.xlsx(as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE), 
 
 ## Test de la common trend asumption sur les vagues 1 et 2
 pop_test_hyp <- copy(data_pays[VAGUE %in% c(1,2),]) 
+nrow(pop_test_hyp)
+SA0110_V2 <- vague_12$SA0110_V2 ## On récupère les identifiants ménages qui sont présents dans les deux vagues
+pop_test_hyp <- pop_test_hyp[SA0110 %in% SA0110_V2 & VAGUE == 2]
+nrow(pop_test_hyp)
+
 
 pop_test_hyp[, Reg_Y := 0]
 pop_test_hyp[(DA1110I == 1 & VAGUE == 2) | (DA1110I == 1 & VAGUE == 1), Reg_Y := 1] ## La population qui ont une HMR
