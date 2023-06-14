@@ -4,12 +4,14 @@
 # Ici toutes les fonctions qui permettent de sortir des résultats d'économétrie
 
 
-recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = -1, annee_max = 3, faire_tracer = TRUE){
+recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = -1, annee_max = 3, faire_tracer = TRUE, titre, titre_save, que_heritiers = TRUE){
   ## Produit la courbe de pvalue et coeff associés à G dans la régression Y sur G pour trouver la valeur du montant minimal d'héritage optimal
   ## Utilise les deux fonctions ci-dessous
-  
-  sous_data_loc <- data_loc[Annee_achat_heritage <= 98] ## Uniquement les ménages qui ONT reçu un héritage
-
+  if(que_heritiers){
+    sous_data_loc <- data_loc[Annee_achat_heritage <= 98] ## Uniquement les ménages qui ONT reçu un héritage
+  }else{
+    sous_data_loc <- copy(data_loc)
+  }
   ### On récupère les données
   dt_tot_reg <- data.table(Reg_lin_pval = numeric(),
                            Logit_pval = numeric(),
@@ -32,6 +34,11 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
                       value.name    = "value")
   melted_pval$Statistique <- "pvalue"
   
+  melted_pval_log <- copy(melted_pval)
+  melted_pval_log$value <- log10(melted_pval_log$value)
+  melted_pval_log$Statistique <- "log(pvalue)"
+  melted_pval_log$variable <- paste(melted_pval_log$variable, "_log", sep = "")
+  
   melted_coeff <- melt(dt_tot_reg,
                        id.vars = "Montant_initial",
                        measure.vars = c("Reg_lin_coeff", "Logit_coeff", "Probit_coeff"),
@@ -39,14 +46,22 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
                        value.name    = "value")
   melted_coeff$Statistique <- "Coefficiant"
   
+  melted_coeff_log <- copy(melted_coeff)
+  melted_coeff_log$value <- log10(abs(melted_coeff_log$value))
+  melted_coeff_log$Statistique <- "log(|coeff|)"
+  melted_coeff_log$variable <- paste(melted_coeff_log$variable, "_log", sep = "")
+
+  
   melted_count <- melt(dt_tot_reg,
                        id.vars = "Montant_initial",
                        measure.vars = c("Reg_lin_count", "Logit_count", "Probit_count"),
                        variable.name = "variable",
                        value.name    = "value")
   melted_count$Statistique <- "Nombre modalités significatives"
+  # melted_count$value <- as.numeric(melted_count$value)
+  # melted_count[value == 0, value := 0.1]
   
-  melted_final <- rbindlist(list(melted_pval, melted_coeff, melted_count), fill=TRUE)
+  melted_final <- rbindlist(list(melted_pval, melted_coeff, melted_count, melted_pval_log, melted_coeff_log), fill=TRUE)
   melted_final$Statistique <- as.factor(melted_final$Statistique)
   
   ### On prépare le graphique
@@ -60,7 +75,13 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
       variable == "Probit_coeff", "Probit",
       variable == "Reg_lin_count", "Linéaire",
       variable == "Logit_count", "Logit",
-      variable == "Probit_count", "Probit"
+      variable == "Probit_count", "Probit",
+      variable == "Reg_lin_pval_log", "Linéaire",
+      variable == "Logit_pval_log", "Logit",
+      variable == "Probit_pval_log", "Probit",
+      variable == "Reg_lin_coeff_log", "Linéaire",
+      variable == "Logit_coeff_log", "Logit",
+      variable == "Probit_coeff_log", "Probit"
     )
   )
   ]
@@ -68,11 +89,9 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
   if(faire_tracer){
     ### on trace
     # titre <- "Résultats des régressions de Y sur G"
-    titre <- paste("Résultats des régressions de Y sur G (", nom_pays, ")", sep = "")
     xlabel <- "Montant d'héritage minimal pour être considéré comme conséquant"
     ylabel <- ""
-    titre_save <- paste(pays,"_pval_coeff_G_reg_Y_sur_G.pdf", sep = "")
-    titre_save <- paste(repo_sorties, titre_save, sep ='/')
+
     melted_loc <- melted_final
     x <- "Montant_initial"
     y <- 'value'

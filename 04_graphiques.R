@@ -122,8 +122,12 @@ trace_distrib_variable <- function(data_loc, x, fill, xlabel, ylabel,filllabel, 
            fill = filllabel) +
       scale_x_continuous(breaks = liste_breaks_x, limits = limits_x) +
       theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) + 
-      annotate("text", x=-25, y=80, label= "Achat immobilier plus ancien", size=5) +
-      annotate("text", x=25, y=80, label= "Réception de l'héritage plus ancien", size=5)
+      annotate("text", x=-25, y = Inf, vjust = 15, label= "Achat immobilier plus ancien", size=5) +
+      annotate("text", x=25, y = Inf, vjust = 15, label= "Réception de l'héritage plus ancien", size=5)
+    
+    
+    # annotate("text", x=-25, y=80, label= "Achat immobilier plus ancien", size=5) +
+    # annotate("text", x=25, y=80, label= "Réception de l'héritage plus ancien", size=5)
   }else{
     p <- ggplot(data_loc, aes(x = data_loc[[x]])) + 
       geom_histogram(binwidth=2, color="black", alpha = 0.75) +
@@ -132,8 +136,8 @@ trace_distrib_variable <- function(data_loc, x, fill, xlabel, ylabel,filllabel, 
            y= ylabel) +
       scale_x_continuous(breaks = liste_breaks_x, limits = limits_x) +
       theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
-      annotate("text", x=-25, y=80, label= "Achat immobilier plus ancien", size=5) +
-      annotate("text", x=25, y=80, label= "Réception de l'héritage plus ancien", size=5)
+      annotate("text", x=-25, y = Inf, vjust = 15, label= "Achat immobilier plus ancien", size=5) +
+      annotate("text", x=25, y = Inf, vjust = 15, label= "Réception de l'héritage plus ancien", size=5)
   }
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
@@ -158,9 +162,9 @@ trace_courbes <- function(melted_loc, x, y, color, facet, xlabel, ylabel, colorl
       prefix = "",
       suffix = " €",
       big.mark = " ",
-      decimal.mark = ",")) + 
+      decimal.mark = ","), n.breaks = 10) + 
     scale_color_viridis(discrete = TRUE) +
-    theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=1)) +
+    theme(axis.text.x = element_text(angle = 22.5, vjust = 0.5, hjust=1)) +
     facet_wrap(~factor(melted_loc[[facet]]),  scales = "free", ncol = 2)
   
   

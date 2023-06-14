@@ -25,19 +25,18 @@ liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
-num_vague_max <- 4 ### Le nombre de vague qu'on veut concaténer ATTENTION la dernière vague a des noms de colonnes en MAJUSCULE Ca pose pbm dans la concaténation...
 pays <- "BE"
+num_vague <- 2 # Pour les graphiques
 
 montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
 
-faire_tourner_recherche_pvalue_opti <- FALSE
-
-num_vague <- 2 # Pour les graphiques
-
+faire_tourner_recherche_pvalue_opti <- TRUE
 
 ################################################################################
 # ============================ 02 IMPORTATION ==================================
 ################################################################################
+num_vague_max <- 4 ### Le nombre de vague qu'on veut concaténer ATTENTION la dernière vague a des noms de colonnes en MAJUSCULE Ca pose pbm dans la concaténation...
+
 liste_var_continues <- c("HH0401", "HH0402", "HH0403", "HH0201", "HH0202", "HH0203",
                          "HB0700","HW0010", "DA1000", "DA2100", "DA3001", "DI2000", "DI2100",
                          "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120")
@@ -161,7 +160,6 @@ vague_234 <- as.data.table(list_output[5])
 vague_1234 <- as.data.table(list_output[6])
 
 
-
 ################################################################################
 # ====================== 04 STAT DES & GRAPHIQUES ==============================
 ################################################################################
@@ -170,7 +168,7 @@ liste_chemins <- c()
 
 # Patrimoine net
 var_decile <- "DNTOP10"
-titre <- paste("Répartition du patrimoine net, normalisé par sexe (", nom_pays, "& vague",num_vague,")", sep = "")
+titre <- paste("Répartition du patrimoine net, normalisé par sexe (", nom_pays, "& vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Patrimoine_net_sexe.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <-"Quantile de patrimoine net"
@@ -244,7 +242,7 @@ graphique_variance_pat_age(data_loc, liste_type_patrimoines, titre, titre_save)
 
 
 ######################### Tracé : le date d'achat de la HMR - la date de l'héritage
-titre <- paste("Distribution de la variable :\ndate d'aquisition de la résidence principale actuelle - date du premier don ou héritage reçu\n(", nom_pays, "& vague",num_vague,")", sep = "")
+titre <- paste("Distribution de la variable :\ndate d'aquisition de la résidence principale actuelle - date du premier don ou héritage reçu\n(", nom_pays, "& vague ",num_vague,")", sep = "")
 xlabel <- "Année (coupé à 50) "
 ylabel <- "Nombre d'occurence"
 filllabel <- "Niveau d'éducation\nde la personne de\nréférence du ménage"
@@ -341,48 +339,57 @@ if(nrow(vague_123) > 0){
 ########################## G = 1   <====> Reçu un héritage à la vague 3 MAIS PAS à la vague 2  ################################
 pop_initiale_tot <- copy(data_pays[VAGUE %in% c(2,3),])
 nrow(pop_initiale_tot)
-SA0110_V3 <- vague_23$SA0110_V3 ## On récupère les identifiants ménages qui sont présents dans les deux vagues
-pop_initiale_tot <- pop_initiale_tot[SA0110 %in% SA0110_V3 & VAGUE == 3]
-nrow(pop_initiale_tot)
-
-
+SA0110_V3 <- vague_23$SA0110_V3 ## On récupère les identifiants ménages qui sont présents dans les deux vagues = ceux qui ont un identifiant sur la vague passée (la vague 2 donc)
+pop_initiale_tot <- pop_initiale_tot[(SA0110 %in% SA0110_V3 & VAGUE == 3) | (SA0010 %in% SA0110_V3 & VAGUE == 2)] # Tout ceux qui ont l'identifiant passé sur la vague 3 et l'identifiant présent sur la vague 2
+table(pop_initiale_tot$VAGUE)
 
 pop_initiale_tot[, Reg_Y := 0]
 pop_initiale_tot[(DA1110I == 1 & VAGUE == 3) | (DA1110I == 1 & VAGUE == 2), Reg_Y := 1] ## La population qui ont une HMR
 pop_initiale_tot$Reg_Y <- as.numeric(pop_initiale_tot$Reg_Y)
-count(pop_initiale_tot[ Reg_Y == 1])
-
+table(pop_initiale_tot$Reg_Y)
 
 pop_initiale_tot[, Reg_G := 0]
 SA0110_V3 <- vague_23[DOINHERIT_V3 == 1 & DOINHERIT_V2 == 0]$SA0110_V3 ## On récupère les identifiants ménages de ceux qui ont reçu un héritage entre la vague 2 et la vague 3
 pop_initiale_tot[(SA0110 %in% SA0110_V3 & VAGUE == 3) | (SA0010 %in% SA0110_V3 & VAGUE == 2), Reg_G := 1]
 pop_initiale_tot$Reg_G <- as.numeric(pop_initiale_tot$Reg_G)
-count(pop_initiale_tot[ Reg_G == 1])
+table(pop_initiale_tot$Reg_G)
 
 
 pop_initiale_tot[, Reg_T := 0]
 pop_initiale_tot[VAGUE == 3, Reg_T := 1] ## La date
 pop_initiale_tot$Reg_T <- as.numeric(pop_initiale_tot$Reg_T)
-count(pop_initiale_tot[ Reg_T == 1])
-
+table(pop_initiale_tot$Reg_T)
 
 pop_initiale_tot[, Reg_D := Reg_G * Reg_T]
 
 liste_cols_reg <- c("Reg_Y", "Reg_G", "Reg_T", "Reg_D")
 liste_cols_reg_poids <- c("Reg_Y", "Reg_G", "Reg_T", "Reg_D", "HW0010")
-pop_initiale_tot[,..liste_cols_reg]
 
-n <- count(pop_initiale_tot[Reg_G == 1])
-if(n < length(nrow(pop_initiale_tot[Reg_G == 0]))){
-  sous_pop_initiale <- pop_initiale_tot[Reg_G == 0][sample(1:nrow(pop_initiale_tot[Reg_G == 0]), n$n), ]
-}else{
-  sous_pop_initiale <- pop_initiale_tot[Reg_G == 0]
-}
-sous_pop_initiale <- rbindlist(list(sous_pop_initiale, pop_initiale_tot[Reg_G == 1]), fill=TRUE)
 
+pop_initiale_tot$Groupe <- paste("G",pop_initiale_tot$Reg_G, "_T",pop_initiale_tot$Reg_T, "_T",pop_initiale_tot$Reg_Y, sep = "")
+
+comptes <- pop_initiale_tot[, .N, by = Groupe]
+n <- min(comptes$N)
+sous_pop_initiale <- as.data.table(pop_initiale_tot %>% group_by(Groupe) %>% slice_sample(n=n))
 dw <- svydesign(ids = ~1, data = sous_pop_initiale[,..liste_cols_reg_poids], weights = ~ HW0010)
 mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw)
 summary(mysvyglm)
+
+
+# pop_initiale_tot[,..liste_cols_reg]
+# 
+# n <- count(pop_initiale_tot[Reg_G == 1])
+# if(n < length(nrow(pop_initiale_tot[Reg_G == 0]))){
+#   sous_pop_initiale <- pop_initiale_tot[Reg_G == 0][sample(1:nrow(pop_initiale_tot[Reg_G == 0]), n$n), ]
+# }else{
+#   sous_pop_initiale <- pop_initiale_tot[Reg_G == 0]
+# }
+# sous_pop_initiale <- rbindlist(list(sous_pop_initiale, pop_initiale_tot[Reg_G == 1]), fill=TRUE)
+# 
+# dw <- svydesign(ids = ~1, data = sous_pop_initiale[,..liste_cols_reg_poids], weights = ~ HW0010)
+# mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw)
+# summary(mysvyglm)
+
 
 titre <- paste(pays,"_DD_2_heritage_achat.xlsx", sep = "")
 titre <- paste(repo_sorties,titre, sep = "/")
@@ -446,10 +453,29 @@ count(data_pays[Annee_achat_heritage == 99])
 count(data_pays[Annee_achat_heritage == -99])
 
 if(faire_tourner_recherche_pvalue_opti){
-  liste_montant_initial <- lseq(100, 1000000, 250)
-  data_loc <- copy(data_pays)
-  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE)
+  liste_montant_initial <- lseq(3000, 500000, 250)
+  data_loc <- copy(data_pays)[VAGUE == num_vague]
+  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_heritier.pdf", sep = "")
+  titre_save <- paste(repo_sorties, titre_save, sep ='/')
+  titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les héritiers (", nom_pays, " & vague ",num_vague,")", sep = "")
+  liste_chemins <- append(liste_chemins, titre_save)
+  que_heritiers <- TRUE
+  
+  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers)
+  
+  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po.pdf", sep = "")
+  titre_save <- paste(repo_sorties, titre_save, sep ='/')
+  titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale toute la population (", nom_pays, " & vague ",num_vague,")", sep = "")
+  liste_chemins <- append(liste_chemins, titre_save)
+  que_heritiers <- FALSE
+  
+  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers)
 }
+
+
+
+
+
 
 
 ### Si on a le montant optimal
@@ -741,11 +767,212 @@ pdf_combine(liste_chemins, output = titre_save)
 # liste_chemins <- append(liste_chemins, titre_save)
 
 
+################################################################################
+########################### TABLEAUX DE CHIFFRES ###############################
+################################################################################
+
+"DA1110I"
+"DOINHERIT"
+"DOEINHERIT"
+
+colnames(data_pays)
+
+
+var <- "DOEINHERIT"
+
+
+loc <- copy(data_pays[VAGUE == num_vague])
+loc[[var]] <- as.numeric(loc[[var]])
+loc[is.na(get(var)),  eval(var) := 1]
+loc[ get(var) == 3, eval(var):= 1]
+loc1 <- loc[, sum(HW0010), by = var]
+loc2 <- loc[, .N, by = var]
+loc1$prop <- 100*loc1$V1/sum(data_pays[VAGUE == num_vague]$HW0010)
+merge(loc1, loc2, by = var)
+
+colSums(merge(loc1, loc2, by = var))
+
+
+table(data_pays[VAGUE == num_vague][[var]])
 
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 
+# 
+# # SA0200 = Survey vintage
+# # SA0010 = household identification number
+# # SA0210 = Vintage of last interview (household)
+# # SA0110 = Past household ID
+# 
+# data_loc <- copy(data_pays)
+# 
+# # Pour faire l'évolution il faut commencer par mettre à 0 les patrimoines NaN
+# data_loc[is.na(DA1000), DA1000 := 0]
+# data_loc[is.na(DA2100), DA2100 := 0]
+# data_loc[is.na(DL1000), DL1000 := 0]
+# 
+# vague_1 <- data_loc[VAGUE == 1,] # On récupère les vagues
+# vague_2 <- data_loc[VAGUE == 2,]
+# vague_3 <- data_loc[VAGUE == 3,]
+# vague_4 <- data_loc[VAGUE == 4,]
+# 
+# colnames(vague_1) <- paste(colnames(vague_1),"V1",sep="_") # On renome pour ne pas avoir de conflits
+# colnames(vague_2) <- paste(colnames(vague_2),"V2",sep="_")
+# colnames(vague_3) <- paste(colnames(vague_3),"V3",sep="_")
+# colnames(vague_4) <- paste(colnames(vague_4),"V4",sep="_")
+# 
+# # li <- c("VAGUE", "SA0010", "SA0200", "SA0110")
+# # data_loc[,..li]
+# # 
+# # li1 <- c("VAGUE_V1", "SA0010_V1", "SA0200_V1", "SA0110_V1")
+# # vague_1[,..li1]
+# # li2 <- c("VAGUE_V2", "SA0010_V2", "SA0200_V2", "SA0110_V2")
+# # vague_2[,..li2]
+# # 
+# # merge(x = vague_1, y = vague_2, by.x = 'SA0010_V1',by.y = 'SA0110_V2')
+# 
+# vague_12 <- merge(x = vague_2, y = vague_1, by.x = 'SA0110_V2',by.y = 'SA0010_V1')
+# vague_123 <- merge(x = vague_3, y = vague_12, by.x = 'SA0110_V3',by.y = 'SA0010_V2') ## On s'arrête là parce qu'aucun ménage n'est enquêté 4x
+# vague_1234 <- merge(x = vague_4, y = vague_123, by.x = 'SA0110_V4',by.y = 'SA0010_V3')
+# 
+# vague_23 <- merge(x = vague_3, y = vague_2, by.x = 'SA0110_V3',by.y = 'SA0010_V2')
+# vague_234 <- merge(x = vague_4, y = vague_23, by.x = 'SA0110_V4',by.y = 'SA0010_V3') ## PERSONNE N'EST EN PANEL A LA VAGUE 4 ?????
+# 
+# vague_34 <- merge(x = vague_4, y = vague_3, by.x = 'SA0110_V4',by.y = 'SA0010_V3')
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# pop_initiale_tot <- copy(data_pays[VAGUE %in% c(2,3),])
+# nrow(pop_initiale_tot)
+# SA0110_V3 <- vague_23$SA0110_V3 ## On récupère les identifiants ménages qui sont présents dans les deux vagues = ceux qui ont un identifiant sur la vague passée (la vague 2 donc)
+# pop_initiale_tot <- pop_initiale_tot[(SA0110 %in% SA0110_V3 & VAGUE == 3) | (SA0010 %in% SA0110_V3 & VAGUE == 2)] # Tout ceux qui ont l'identifiant passé sur la vague 3 et l'identifiant présent sur la vague 2
+# table(pop_initiale_tot$VAGUE)
+# 
+# pop_initiale_tot[, Reg_Y := 0]
+# pop_initiale_tot[(DA1110I == 1 & VAGUE == 3) | (DA1110I == 1 & VAGUE == 2), Reg_Y := 1] ## La population qui ont une HMR
+# pop_initiale_tot$Reg_Y <- as.numeric(pop_initiale_tot$Reg_Y)
+# table(pop_initiale_tot$Reg_Y)
+# 
+# pop_initiale_tot[, Reg_G := 0]
+# SA0110_V3 <- vague_23[DOINHERIT_V3 == 1 & DOINHERIT_V2 == 0]$SA0110_V3 ## On récupère les identifiants ménages de ceux qui ont reçu un héritage entre la vague 2 et la vague 3
+# pop_initiale_tot[(SA0110 %in% SA0110_V3 & VAGUE == 3) | (SA0010 %in% SA0110_V3 & VAGUE == 2), Reg_G := 1]
+# pop_initiale_tot$Reg_G <- as.numeric(pop_initiale_tot$Reg_G)
+# table(pop_initiale_tot$Reg_G)
+# 
+# 
+# pop_initiale_tot[, Reg_T := 0]
+# pop_initiale_tot[VAGUE == 3, Reg_T := 1] ## La date
+# pop_initiale_tot$Reg_T <- as.numeric(pop_initiale_tot$Reg_T)
+# table(pop_initiale_tot$Reg_T)
+# 
+# pop_initiale_tot[, Reg_D := Reg_G * Reg_T]
+# 
+# liste_cols_reg <- c("Reg_Y", "Reg_G", "Reg_T", "Reg_D")
+# liste_cols_reg_poids <- c("Reg_Y", "Reg_G", "Reg_T", "Reg_D", "HW0010")
+# 
+# 
+# 
+# pop_initiale_tot$Groupe <- paste("G",pop_initiale_tot$Reg_G, "_T",pop_initiale_tot$Reg_T, "_T",pop_initiale_tot$Reg_Y, sep = "")
+# 
+# comptes <- pop_initiale_tot[, .N, by = Groupe]
+# n <- min(comptes$N)
+# sous_pop_initiale <- as.data.table(pop_initiale_tot %>% group_by(Groupe) %>% slice_sample(n=n))
+# dw <- svydesign(ids = ~1, data = sous_pop_initiale[,..liste_cols_reg_poids], weights = ~ HW0010)
+# mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw)
+# summary(mysvyglm)
+# 
+# 
+# 
+# # library(splitstackshape)
+# # sous_pop_initiale <- stratified(indt=pop_initiale_tot, group=c("Reg_G", "Reg_T", "Reg_Y"),
+# #                                 size=0.5, replace=TRUE,
+# #                                 select=list(Reg_G=1, Reg_Y=0, Reg_T=1
+# #                                               ))
+# # table(sous_pop_initiale$Reg_Y)
+# # table(sous_pop_initiale$Reg_G)
+# # table(sous_pop_initiale$Reg_T)
+# 
+# comptes <- pop_initiale_tot[, .N, by = Groupe]
+# n <- min(comptes$N)
+# sous_pop_initiale <- as.data.table(pop_initiale_tot %>% group_by(Groupe) %>% slice_sample(n=n))
+# dw <- svydesign(ids = ~1, data = sous_pop_initiale[,..liste_cols_reg_poids], weights = ~ HW0010)
+# mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw)
+# summary(mysvyglm)
+# 
+# # 
+# # if(n < nrow(pop_initiale_tot[Reg_G == 0])){
+# #   # sous_pop_initiale <- pop_initiale_tot[Reg_G == 0][sample(1:nrow(pop_initiale_tot[Reg_G == 0]), n$n), ]
+# #   sous_pop_initiale <- pop_initiale_tot[,.SD[sample(1:nrow(pop_initiale_tot), n$n)],by = c("Reg_G", "Reg_T", "Reg_Y")]
+# # }else{
+# #   sous_pop_initiale <- pop_initiale_tot[Reg_G == 0]
+# # }
+# # # sous_pop_initiale <- rbindlist(list(sous_pop_initiale, pop_initiale_tot[Reg_G == 1]), fill=TRUE)
+# 
+# sous_pop_initiale[,..liste_cols_reg_poids]
+# pop_initiale_tot[,..liste_cols_reg_poids]
+# dw <- svydesign(ids = ~1, data = sous_pop_initiale[,..liste_cols_reg_poids], weights = ~ HW0010)
+# mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw)
+# summary(mysvyglm)
+# 
+# 
+# table(sous_pop_initiale$Reg_Y)
+# table(sous_pop_initiale$Reg_G)
+# table(sous_pop_initiale$Reg_T)
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# pop_initiale_tot[(SA0110 %in% SA0110_V3 & VAGUE == 3) & (SA0010 %in% SA0110_V3 & VAGUE == 2)]
+# 
+# pop_initiale_tot$SA0010
+# 
+# vague_23 <- merge(x = vague_3, y = vague_2, by.x = 'SA0110_V3',by.y = 'SA0010_V2')
+# vague_23$SA0110_V3 == vague_23$SA0010_V2
+# 
 
 
 
