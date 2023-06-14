@@ -170,7 +170,7 @@ vague_1234 <- as.data.table(list_output[6])
 # ====================== 04 STAT DES & GRAPHIQUES ==============================
 ################################################################################
 source(paste(repo_prgm , "04_graphiques.R" , sep = "/"))
-num_vague <- 3
+num_vague <- 2
 
 
 # Patrimoine net
@@ -585,16 +585,67 @@ liste_variables_loc <-c("DITOP10" = "Décile de revenu",
               "DATOP10" = "Décile de patrimoine brut",
               "DHGENDERH1" = 'Sexe')
 
+var_diff_loc = "DA1110I"
+liste_legendes_loc = c("Non_prop" = "Non propriétaires", "Prop" = "Propriétaires","Total" = "Total")
 data_loc <- data_pays
 titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui sont propriétaires de leur résidence principale, \net ceux qui ne le sont pas (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-num_vague_loc <- 2
+# num_vague_loc <- 2
+
+trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague)
 
 
-trace_distribution_prop_non_prop(data_loc, liste_variables_loc, titre, titre_save, num_vague_loc)
 
 
+
+
+
+liste_variables_loc <-c("DITOP10" = "Décile de revenu",
+                        "DLTOP10" = "Décile de dette",
+                        "DNTOP10" = "Décile de patrimoine net",
+                        "DOEINHERIT" = "S'attend à hériter",
+                        # "DOINHERIT" = "A hérité",
+                        "DHEDUH1" = "Niveau d'éducation",
+                        "DHAGEH1" = "Tranche d'âge",
+                        "DATOP10" = "Décile de patrimoine brut",
+                        "DHGENDERH1" = 'Sexe',
+                        "DA1110I" = "Est propriétaire de sa résidence principale")
+
+var_diff_loc = "DOINHERIT"
+liste_legendes_loc = c("Non_prop" = "Non héritier", "Prop" = "Héritier","Total" = "Total")
+data_loc <- data_pays
+titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui ont eu un héritage, \net ceux qui n'en ont pas eu (", nom_pays, " & vague ",num_vague,")", sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Differences_heritiers_non_heritiers.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+# num_vague_loc <- 2
+
+trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc)
+
+
+
+
+
+liste_variables_loc <-c("DITOP10" = "Décile de revenu",
+                        "DLTOP10" = "Décile de dette",
+                        "DNTOP10" = "Décile de patrimoine net",
+                        # "DOEINHERIT" = "S'attend à hériter",
+                        "DOINHERIT" = "A hérité",
+                        "DHEDUH1" = "Niveau d'éducation",
+                        "DHAGEH1" = "Tranche d'âge",
+                        "DATOP10" = "Décile de patrimoine brut",
+                        "DHGENDERH1" = 'Sexe',
+                        "DA1110I" = "Est propriétaire de sa résidence principale")
+
+var_diff_loc = "DOEINHERIT"
+liste_legendes_loc = c("Non_prop" = "Ne s'attend pas à hériter", "Prop" = "S'attend à hériter","Total" = "Total")
+data_loc <- data_pays
+titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui attendent un héritage, \net ceux qui n'en attendent pas (", nom_pays, " & vague ",num_vague,")", sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Differences_attendent_her_non_attendent_her.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+# num_vague_loc <- 2
+
+trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc)
 
 
 

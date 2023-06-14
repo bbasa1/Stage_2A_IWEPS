@@ -349,7 +349,8 @@ graphique_evolution_pat_entre_vagues <- function(data_loc, liste_type_patrimoine
 
 
 
-trace_distribution_prop_non_prop <- function(data_loc, liste_variables_loc, titre, titre_save, num_vague_loc){
+trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, titre_save, num_vague_loc, var_diff_loc = "DA1110I", liste_legendes_loc = c("Non_prop" = "Non propriétaires", "Prop" = "Propriétaires","Total" = "Total")){
+  # Pour une variable binaire (propriétaire/non propriétaire, ou héritier/non héritier par exemple) trace la distribution des populations concernées pour pouvoir les comparer
   # Nettoyage préalable pour éviter les modalités en trop
   f_dowle2 <- function(DT){
     for (i in names(DT))
@@ -382,9 +383,9 @@ trace_distribution_prop_non_prop <- function(data_loc, liste_variables_loc, titr
                            Vague = factor())
   for(i in 2:4){
     for(var in names(liste_variables_loc)){
-      txt <- paste("as.data.table(svytable(~ DA1110I +",var,", dw_V",i,"))", sep = "")
+      txt <- paste("as.data.table(svytable(~ ",var_diff_loc," +",var,", dw_V",i,"))", sep = "")
       dt_loc <- eval(parse(text = txt))
-      dt_loc <- reshape(dt_loc, idvar = var, timevar = "DA1110I", direction = "wide")
+      dt_loc <- reshape(dt_loc, idvar = var, timevar = var_diff_loc, direction = "wide")
       setnames(dt_loc, "N.0", "Non_prop")
       setnames(dt_loc, "N.1", "Prop")
       setnames(dt_loc, var, "Valeur")
@@ -436,12 +437,17 @@ trace_distribution_prop_non_prop <- function(data_loc, liste_variables_loc, titr
     melted[Variable == var, Variable := liste_variables_loc[var]]
   }
   
-  melted[, Type := factor(
-    fcase(
-      Type == "Non_prop" , "Non propriétaire",
-      Type == "Prop" , "Propriétaire",
-      Type == "Total" , "Total"
-    ))]
+  for(var in names(liste_legendes_loc)){
+    melted[Type == var, Type := liste_legendes_loc[var]]
+  }
+  
+  
+  # melted[, Type := factor(
+  #   fcase(
+  #     Type == "Non_prop" , "Non propriétaire",
+  #     Type == "Prop" , "Propriétaire",
+  #     Type == "Total" , "Total"
+  #   ))]
   
   setnames(melted, "Type", "Type de ménage")
   
