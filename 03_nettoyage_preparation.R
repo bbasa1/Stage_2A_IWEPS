@@ -367,14 +367,7 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
   f_dowle2(data_loc)
   
   try(data_loc[DOEINHERIT == "A", DOEINHERIT := "NAN"], silent = TRUE)
-  
-  # try(data_loc <- nettoyage_sexe(data_loc), silent = TRUE)
-  # try(data_loc <- nettoyage_classe_age(data_loc), silent = TRUE)
-  # try(data_loc <- nettoyage_education(data_loc), silent = TRUE)
-  # try(data_loc <- nettoyage_DOINHERIT(data_loc), silent = TRUE)
-  # try(data_loc <- nettoyage_DOEINHERIT(data_loc), silent = TRUE)
-  
-  
+
   # On prépare les tables d'effectifs de ménages
   dw_V2 <- svydesign(ids = ~1, data = data_loc[VAGUE == 2], weights = ~ HW0010)
   dw_V3 <- svydesign(ids = ~1, data = data_loc[VAGUE == 3], weights = ~ HW0010)
@@ -434,6 +427,14 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
   
   melted[Variable == "DOINHERIT" & Valeur_num == 0, Valeur := "Non"]
   melted[Variable == "DOINHERIT" & Valeur_num == 1, Valeur := "Oui"]
+
+  melted[Variable == "DHEMPH1" & Valeur_num == 1, Valeur := "Employé.e"]
+  melted[Variable == "DHEMPH1" & Valeur_num == 2, Valeur := "Indép-\nendant.e"]
+  melted[Variable == "DHEMPH1" & Valeur_num == 3, Valeur := "Inactif.ve/\nchomeur.se"]
+  melted[Variable == "DHEMPH1" & Valeur_num == 4, Valeur := "Retraité.e"]
+  melted[Variable == "DHEMPH1" & Valeur_num == 5, Valeur := "Autre"]
+  
+  
   
   
   
@@ -447,14 +448,6 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
   for(var in names(liste_legendes_loc)){
     melted[Type == var, Type := liste_legendes_loc[var]]
   }
-  
-  
-  # melted[, Type := factor(
-  #   fcase(
-  #     Type == "Non_prop" , "Non propriétaire",
-  #     Type == "Prop" , "Propriétaire",
-  #     Type == "Total" , "Total"
-  #   ))]
   
   setnames(melted, "Type", "Type de ménage")
   

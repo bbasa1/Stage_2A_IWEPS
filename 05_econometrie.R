@@ -158,7 +158,7 @@ dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, anne
   dico_sortie["Effectif_G_1"] <- table(sous_data_loc$Reg_G)[2]  
   
   # Etude préparatoire : éventuel problème de biais de sélection des traités
-  liste_cols_reg_poids <- c("HW0010", "Reg_G", "DHAGEH1B", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE")
+  liste_cols_reg_poids <- c("HW0010", "Reg_G", "DHAGEH1B", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE", "DHEMPH1")
   dw <- svydesign(ids = ~1, data = sous_data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
   mysvyglm <- svyglm(formula = Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE, design = dw)
   dt_prep_reg_lin <- as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE)  

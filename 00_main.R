@@ -39,11 +39,11 @@ num_vague_max <- 4 ### Le nombre de vague qu'on veut concaténer ATTENTION la de
 
 liste_var_continues <- c("HH0401", "HH0402", "HH0403", "HH0201", "HH0202", "HH0203",
                          "HB0700","HW0010", "DA1000", "DA2100", "DA3001", "DI2000", "DI2100",
-                         "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120")
+                         "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120", "DA1110")
 liste_var_categorielles <- c("SA0100","DHHTYPE","DOINHERIT", "DA1110I","SA0110","SA0210",
                              "SA0010" ,"DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1",
                              "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE",
-                             "SA0200", "DHAGEH1B",
+                             "SA0200", "DHAGEH1B", "DA1120I", "DHEMPH1",
                              "HH0301A", "HH0301B", "HH0301C", "HH0301D",
                              "HH0301E", "HH0301F", "HH0301H", "HH0301I", "HH0301J",
                              "HH0302A", "HH0302B", "HH0302C", "HH0302D",
@@ -81,6 +81,8 @@ source(paste(repo_prgm , "03_nettoyage_preparation.R" , sep = "/"))
 # DA1000 = Total real assets (+ ventilations plus précises)
 # DA2100 = Total financial assets (+ ventilations plus précises)
 # DA3001 = DA1000 + DA2100 = Total assets
+# DA1110 = Valeur HMR
+# DA1120I = A des autres propriétés
 # DATOP10 = Le décile de gross wealth/richesse brute au sein du pays
 # DHAGEH1 = Âge de la personne de référence
 # DHAGEH1B = Tranche d'âge de ...
@@ -435,6 +437,50 @@ table(pop_initiale_tot$Reg_D)
 
 
 
+
+
+########################## DiD ESSAI EXPLORATION D'AUTRES VARIABLES ###################
+########################## G = 1   <====> Reçu un héritage à la vague 3 MAIS PAS à la vague 2  ################################
+var_Y_discrete <- FALSE
+# DA1120
+
+pop_initiale_tot <- copy(data_pays[VAGUE %in% c(2,3) & DA1120I == 1,])
+SA0110_V3 <- vague_23$SA0110_V3 ## On récupère les identifiants ménages qui sont présents dans les deux vagues = ceux qui ont un identifiant sur la vague passée (la vague 2 donc)
+pop_initiale_tot <- pop_initiale_tot[(SA0110 %in% SA0110_V3 & VAGUE == 3) | (SA0010 %in% SA0110_V3 & VAGUE == 2)] # Tout ceux qui ont l'identifiant passé sur la vague 3 et l'identifiant présent sur la vague 2
+
+pop_initiale_tot[, Reg_Y := 0]
+pop_initiale_tot[(DA1120I == 1 & VAGUE == 3) | (DA1120I == 1 & VAGUE == 2), Reg_Y := DA1120] ## La population qui ont une RES SECONDAIRE
+pop_initiale_tot$Reg_Y <- as.numeric(pop_initiale_tot$Reg_Y)
+hist(pop_initiale_tot$Reg_Y)
+pop_initiale_tot[, Reg_G := 0]
+SA0110_V3 <- vague_23[DOINHERIT_V3 == 1 & DOINHERIT_V2 == 0]$SA0110_V3 ## On récupère les identifiants ménages de ceux qui ont reçu un héritage entre la vague 2 et la vague 3
+pop_initiale_tot[(SA0110 %in% SA0110_V3 & VAGUE == 3) | (SA0010 %in% SA0110_V3 & VAGUE == 2), Reg_G := 1]
+pop_initiale_tot$Reg_G <- as.numeric(pop_initiale_tot$Reg_G)
+pop_initiale_tot[, Reg_T := 0]
+pop_initiale_tot[VAGUE == 3, Reg_T := 1] ## La date
+pop_initiale_tot$Reg_T <- as.numeric(pop_initiale_tot$Reg_T)
+table(pop_initiale_tot$Reg_T)
+pop_initiale_tot[, Reg_D := Reg_G * Reg_T]
+liste_cols_reg <- c("Reg_Y", "Reg_G", "Reg_T", "Reg_D")
+liste_cols_reg_poids <- c("Reg_Y", "Reg_G", "Reg_T", "Reg_D", "HW0010")
+
+if(var_Y_discrete){
+  pop_initiale_tot$Groupe <- paste("G",pop_initiale_tot$Reg_G, "_T",pop_initiale_tot$Reg_T, "_T",pop_initiale_tot$Reg_Y, sep = "")
+  comptes <- pop_initiale_tot[, .N, by = Groupe]
+  n <- min(comptes$N)
+  sous_pop_initiale <- as.data.table(pop_initiale_tot %>% group_by(Groupe) %>% slice_sample(n=n))
+}else{
+  sous_pop_initiale <- copy(pop_initiale_tot)
+}
+
+dw <- svydesign(ids = ~1, data = sous_pop_initiale[,..liste_cols_reg_poids], weights = ~ HW0010)
+mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw)
+summary(mysvyglm)
+
+
+
+
+
 ############################################################################################################################### 
 ########################## AVEC LA DATE D'ACHAT - LA DATE D'HERITAGE  ######################################################### 
 ######################### On passe tout ça sous forme de fonction pour voir facilement la dépendance avec le montant minimal d'héritage ################
@@ -465,7 +511,7 @@ if(faire_tourner_recherche_pvalue_opti){
   
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
-  titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale toute la population (", nom_pays, " & vague ",num_vague,")", sep = "")
+  titre <- paste("Résultats des régressions de Y sur G\nen considérant comme population initiale toute la population (", nom_pays, " & vague ",num_vague,")", sep = "")
   liste_chemins <- append(liste_chemins, titre_save)
   que_heritiers <- FALSE
   
@@ -618,7 +664,10 @@ liste_variables_loc <-c("DITOP10" = "Décile de revenu",
               "DHEDUH1" = "Niveau d'éducation",
               "DHAGEH1" = "Tranche d'âge",
               "DATOP10" = "Décile de patrimoine brut",
-              "DHGENDERH1" = 'Sexe')
+              "DHGENDERH1" = 'Sexe',
+              "DA1120I" = "Propriétaire d'autres biens immobiliers",
+              "DHEMPH1" = "Statut professionel")
+
 
 var_diff_loc = "DA1110I"
 liste_legendes_loc = c("Non_prop" = "Non propriétaires", "Prop" = "Propriétaires","Total" = "Total")
@@ -646,7 +695,10 @@ liste_variables_loc <-c("DITOP10" = "Décile de revenu",
                         "DHAGEH1" = "Tranche d'âge",
                         "DATOP10" = "Décile de patrimoine brut",
                         "DHGENDERH1" = 'Sexe',
-                        "DA1110I" = "Est propriétaire de sa résidence principale")
+                        "DA1110I" = "Est propriétaire de sa résidence principale",
+                        "DA1120I" = "Propriétaire d'autres biens immobiliers",
+                        "DHEMPH1" = "Statut professionel")
+
 
 var_diff_loc = "DOINHERIT"
 liste_legendes_loc = c("Non_prop" = "Non héritier", "Prop" = "Héritier","Total" = "Total")
@@ -672,7 +724,11 @@ liste_variables_loc <-c("DITOP10" = "Décile de revenu",
                         "DHAGEH1" = "Tranche d'âge",
                         "DATOP10" = "Décile de patrimoine brut",
                         "DHGENDERH1" = 'Sexe',
-                        "DA1110I" = "Est propriétaire de sa résidence principale")
+                        "DA1110I" = "Est propriétaire de sa résidence principale",
+                        "DA1120I" = "Propriétaire d'autres biens immobiliers",
+                        "DHEMPH1" = "Statut professionel")
+
+
 
 var_diff_loc = "DOEINHERIT"
 liste_legendes_loc = c("Non_prop" = "Ne s'attend pas à hériter", "Prop" = "S'attend à hériter","Total" = "Total")
@@ -812,23 +868,6 @@ table(data_pays[VAGUE == num_vague][[var]])
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # 
 # 
 # # SA0200 = Survey vintage
@@ -872,15 +911,7 @@ table(data_pays[VAGUE == num_vague][[var]])
 # 
 # vague_34 <- merge(x = vague_4, y = vague_3, by.x = 'SA0110_V4',by.y = 'SA0010_V3')
 # 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
+
 # 
 # pop_initiale_tot <- copy(data_pays[VAGUE %in% c(2,3),])
 # nrow(pop_initiale_tot)
