@@ -33,11 +33,13 @@ sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
 num_vague_max <- 4 ### Le nombre de vague qu'on veut concaténer ATTENTION la dernière vague a des noms de colonnes en MAJUSCULE Ca pose pbm dans la concaténation...
-pays <- "BE"
+pays <- "DE"
 
 montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
 
 faire_tourner_recherche_pvalue_opti <- FALSE
+
+num_vague <- 3 # Pour les graphiques
 
 
 ################################################################################
@@ -170,8 +172,6 @@ vague_1234 <- as.data.table(list_output[6])
 # ====================== 04 STAT DES & GRAPHIQUES ==============================
 ################################################################################
 source(paste(repo_prgm , "04_graphiques.R" , sep = "/"))
-num_vague <- 2
-
 
 # Patrimoine net
 var_decile <- "DNTOP10"
@@ -319,7 +319,7 @@ titre_save <- paste(repo_sorties, titre_save, sep ='/')
 
 try(graphique_evolution_pat_entre_vagues(vague_123, liste_type_patrimoines,liste_quantiles, titre, titre_save))
 
-hist(vague_123$DA1000_V1)
+# hist(vague_123$DA1000_V1)
 
 
 ################################################################################
@@ -593,7 +593,7 @@ titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop.pdf", sep = 
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 # num_vague_loc <- 2
 
-trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague)
+try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc))
 
 
 
@@ -620,7 +620,7 @@ titre_save <- paste(pays,"_V",num_vague,"_Differences_heritiers_non_heritiers.pd
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 # num_vague_loc <- 2
 
-trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc)
+try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc))
 
 
 
@@ -645,7 +645,7 @@ titre_save <- paste(pays,"_V",num_vague,"_Differences_attendent_her_non_attenden
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 # num_vague_loc <- 2
 
-trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc)
+try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc))
 
 
 

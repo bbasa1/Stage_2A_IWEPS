@@ -225,6 +225,7 @@ graphique_evolution_position_vagues <- function(data_vagues, nb_quantiles, liste
   facet <- "Type_patrimoine"
   size <- "HW0010_V1"
   sizelabel <- "Poids du ménage à la vague 1"
+  colorlabel <- "Vague"
   
   # p <- ggplot(data = melted, aes(x = melted[[x]], y= melted[[y]], color = melted[[color]])) + 
   #   geom_point() +
