@@ -24,22 +24,15 @@ source(paste(repo_prgm , "01_packages.R" , sep = "/"))
 liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_UDB_3_2_ASCII", "HFCS_UDB_4_0_early_diss_ASCII")
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
-# Importation des données
-# h = core household files ==> On en a besoin pour connaître l'année
-# p = core personal files
-# hn = non-core household files
-# pn = non-core personal files
-# d = derivated variables files ==> Celui qu'on va principalement utiliser
-
 
 num_vague_max <- 4 ### Le nombre de vague qu'on veut concaténer ATTENTION la dernière vague a des noms de colonnes en MAJUSCULE Ca pose pbm dans la concaténation...
-pays <- "DE"
+pays <- "BE"
 
 montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
 
 faire_tourner_recherche_pvalue_opti <- FALSE
 
-num_vague <- 3 # Pour les graphiques
+num_vague <- 2 # Pour les graphiques
 
 
 ################################################################################
@@ -67,6 +60,7 @@ data_pays <- data_complete[SA0100 == pays]
 nom_pays <- dico_pays[pays]
 
 
+repo_sorties_initial <- copy(repo_sorties)
 repo_sorties <- paste(repo_sorties, nom_pays, sep = "/")
 if(!file.exists(repo_sorties)){
   dir.create(repo_sorties)
@@ -172,6 +166,7 @@ vague_1234 <- as.data.table(list_output[6])
 # ====================== 04 STAT DES & GRAPHIQUES ==============================
 ################################################################################
 source(paste(repo_prgm , "04_graphiques.R" , sep = "/"))
+liste_chemins <- c()
 
 # Patrimoine net
 var_decile <- "DNTOP10"
@@ -182,6 +177,7 @@ xlabel <-"Quantile de patrimoine net"
 facet <- "DHHTYPE" # On facet par type de ménage
 var_normalisation <- c("DHGENDERH1","DHHTYPE") #On va mettre fill et normalisation par sexe
 data_loc <- data_pays[!is.na(get(var_decile)) & VAGUE == num_vague]
+liste_chemins <- append(liste_chemins, titre_save)
 graphique_repartition_pat_quantile_sexe(data_loc, var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 35)
 
 # Patrimoine brut
@@ -193,6 +189,7 @@ xlabel <-"Quantile de patrimoine brut"
 facet <- "DHHTYPE"
 var_normalisation <- c("DHGENDERH1","DHHTYPE") #On va mettre fill et normalisation par sexe
 data_loc <- data_pays[!is.na(get(var_decile)) & VAGUE == num_vague]
+liste_chemins <- append(liste_chemins, titre_save)
 graphique_repartition_pat_quantile_sexe(data_loc, var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 25)
 
 # Dettes
@@ -204,6 +201,7 @@ xlabel <-"Quantile de dettes"
 facet <- "DHHTYPE"
 var_normalisation <- c("DHGENDERH1","DHHTYPE") #On va mettre fill et normalisation par sexe
 data_loc <- data_pays[!is.na(get(var_decile)) & VAGUE == num_vague]
+liste_chemins <- append(liste_chemins, titre_save)
 graphique_repartition_pat_quantile_sexe(data_loc, var_decile,var_normalisation, titre, titre_save, xlabel, facet, xlim_sup = 25)
 
 
@@ -221,6 +219,7 @@ titre_fig <- paste("Fonction de répartition de la richesse détenue par les mé
 titre_save <- paste(pays,"_V",num_vague,"_Concentration_patrimoine_par_type.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 data_loc <- data_pays[VAGUE == num_vague]
+liste_chemins <- append(liste_chemins, titre_save)
 
 graphique_contration_patrimoine(data_pays ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save)
 
@@ -236,6 +235,8 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
 data_loc <- data_pays[VAGUE == num_vague]
 titre <- paste("Variance du patrimoine détenu par les ménages\nIntervalles de confiance à 95% (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_variance_patrimoine.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+liste_chemins <- append(liste_chemins, titre_save)
 
 graphique_variance_pat_age(data_loc, liste_type_patrimoines, titre, titre_save)
 
@@ -255,6 +256,8 @@ liste_breaks_fill <- c('< Brevet', 'Brevet', 'Bac', '> Bac')
 data_loc <- data_pays[VAGUE == num_vague]
 liste_breaks_x <- seq(-50, 50, 2)
 limits_x <- c(-50,50)
+liste_chemins <- append(liste_chemins, titre_save)
+
 trace_distrib_variable(data_loc, x, fill, xlabel, ylabel,filllabel, titre, titre_save, liste_breaks_fill, liste_breaks_x, limits_x)
 
 
@@ -270,6 +273,8 @@ liste_breaks_fill <- NaN
 data_loc <- data_pays[VAGUE == num_vague]
 liste_breaks_x <- seq(-50, 50, 2)
 limits_x <- c(-50,50)
+liste_chemins <- append(liste_chemins, titre_save)
+
 trace_distrib_variable(data_loc, x, NaN, xlabel, ylabel,NaN, titre, titre_save, liste_breaks_fill, liste_breaks_x, limits_x)
 
 
@@ -292,8 +297,11 @@ titre_save <- paste(pays,"_evolution_rang_appartenance.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 data_vagues <- vague_123
 faire_rang = TRUE
-try(graphique_evolution_position_vagues(vague_123 ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save, faire_rang))
-  
+
+if(nrow(vague_123) > 0){
+  liste_chemins <- append(liste_chemins, titre_save)
+  graphique_evolution_position_vagues(vague_123 ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save, faire_rang)
+}  
 
 titre_fig <- paste("Evolution des patrimoines des ménages entre les différentes vagues (", nom_pays, ")", sep = "")
 titre_save <- paste(pays,"_evolution_pat_appartenance.pdf", sep = "")
@@ -301,9 +309,10 @@ titre_save <- paste(repo_sorties, titre_save, sep ='/')
 data_vagues <- vague_123
 faire_rang = FALSE
 
-try(graphique_evolution_position_vagues(vague_123 ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save, faire_rang))
-
-
+if(nrow(vague_123) > 0){
+  liste_chemins <- append(liste_chemins, titre_save)
+  graphique_evolution_position_vagues(vague_123 ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save, faire_rang)
+}
 
 ######### Evolution du patrimoine des ménages entre les vagues ##############
 liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
@@ -317,10 +326,10 @@ titre <- paste("Quantiles de l'évolution du patrimoine des ménages entre les v
 titre_save <- paste(pays,"_quantiles_evolution_richesse_panel.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 
-try(graphique_evolution_pat_entre_vagues(vague_123, liste_type_patrimoines,liste_quantiles, titre, titre_save))
-
-# hist(vague_123$DA1000_V1)
-
+if(nrow(vague_123) > 0){
+  liste_chemins <- append(liste_chemins, titre_save)
+  graphique_evolution_pat_entre_vagues(vague_123, liste_type_patrimoines,liste_quantiles, titre, titre_save)
+}
 
 ################################################################################
 # ========================= 05 ECONOMETRIE =====================================
@@ -571,7 +580,7 @@ exp(dt_prep_logit$Estimate[2]) # ==> exp(beta_{0,j}) = Avoir un héritage consé
 ######################### EXPLORATION : QUI POSSEDE QUOI ? QUI HERITE DE QUOI ? ############################################### 
 ############################################################################################################################### 
 
-colnames(data_pays)
+# colnames(data_pays)
 
 
 
@@ -592,6 +601,7 @@ titre <- paste("Distribution de différentes variables socio-économiques \npour
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 # num_vague_loc <- 2
+liste_chemins <- append(liste_chemins, titre_save)
 
 try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc))
 
@@ -619,6 +629,7 @@ titre <- paste("Distribution de différentes variables socio-économiques \npour
 titre_save <- paste(pays,"_V",num_vague,"_Differences_heritiers_non_heritiers.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 # num_vague_loc <- 2
+liste_chemins <- append(liste_chemins, titre_save)
 
 try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc))
 
@@ -644,6 +655,7 @@ titre <- paste("Distribution de différentes variables socio-économiques \npour
 titre_save <- paste(pays,"_V",num_vague,"_Differences_attendent_her_non_attendent_her.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 # num_vague_loc <- 2
+liste_chemins <- append(liste_chemins, titre_save)
 
 try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc))
 
@@ -715,12 +727,18 @@ try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save,
 
 
 
+################################################################################
+######################### FUSION DES PDF GENERES ###############################
+################################################################################
+
+titre_save <- paste("00_",pays,"_V",num_vague,"_cahier_graphique.pdf", sep = "")
+titre_save <- paste(repo_sorties_initial, titre_save, sep ='/')
+
+pdf_combine(liste_chemins, output = titre_save)
 
 
 
-
-
-
+# liste_chemins <- append(liste_chemins, titre_save)
 
 
 

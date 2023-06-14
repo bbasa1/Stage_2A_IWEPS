@@ -22,6 +22,14 @@
 #                                ) ### A mettre en minuscule
 
 
+# Importation des données
+# h = core household files ==> On en a besoin pour connaître l'année
+# p = core personal files
+# hn = non-core household files
+# pn = non-core personal files
+# d = derivated variables files ==> Celui qu'on va principalement utiliser
+
+
 importation_toutes_vagues <- function(num_table_loc){
   ###### On prépare la boucle avec la première importation
   num_vague <- 1

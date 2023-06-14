@@ -24,9 +24,13 @@ graphique_repartition_pat_quantile_sexe <- function(data_loc, var_decile, var_no
   data_for_plot <- data_for_plot %>% group_by(.dots = dots) %>% mutate(new = 100*V1/sum(V1)) # Pour la normalisation il faut faire attention à grouper par sexe
   data_for_plot <- as.data.table(data_for_plot)
   
+  data_loc_effectifs <- data_loc[, .N, by = liste_var_groupby]
+  
+  data_for_plot <- merge(data_for_plot, data_loc_effectifs, by = liste_var_groupby)
+  
   # Puis on nettoie
   data_for_plot <- nettoyage_sexe(data_for_plot)
-  data_for_plot <- nettoyage_type_menage(data_for_plot, "V1") # Pour faire des facets propres
+  data_for_plot <- nettoyage_type_menage(data_for_plot, "N") # Pour faire des facets propres
   
   ### La partie tracé
   x <-var_decile
@@ -146,9 +150,6 @@ graphique_variance_pat_age <- function(data_loc, liste_type_patrimoines_loc, tit
   merged_melted$ymax <- merged_melted$value + merged_melted$value_SE
   
   
-  # titre <- "Variance du patrimoine détenu par les ménages Belges\nIntervalles de confiance à 95%"
-  # titre_save <- "variance_patrimoine.pdf"
-  titre_save <- paste(repo_sorties, titre_save, sep ='/')
   x <-"classe_age"
   sortby_x <- "age_min"
   y <- "value"
@@ -219,8 +220,13 @@ graphique_evolution_position_vagues <- function(data_vagues, nb_quantiles, liste
   x <- "Rang_V1"
   y <- "Quantile_vagues_suivantes"
   color <- "Vague"
-  xlabel <- "Quantile de patrimoine à la vague 1"
-  ylabel <- "Quantile de patrimoine aux vagues 2 et 3"
+  if(faire_rang){
+    xlabel <- "Quantile de patrimoine à la vague 1"
+    ylabel <- "Quantile de patrimoine aux vagues 2 et 3"
+  }else{
+    xlabel <- "Patrimoine à la vague 1"
+    ylabel <- "Patrimoine aux vagues 2 et 3"
+  }
   scalelabel <- "Vague"
   facet <- "Type_patrimoine"
   size <- "HW0010_V1"
@@ -568,8 +574,8 @@ nettoyage_DOEINHERIT <- function(data_loc){
 }
 
 
-nettoyage_type_menage <- function(data_loc, var_sum){ # Renome proprement les modalités de DHHTYPE pour en faire une appélation compréhensible avec le nb de ménages concernés
-  data_loc[, DHHTYPE:= factor( # On renome proprement
+nettoyage_type_menage <- function(data_for_plot_loc, var_sum){ # Renome proprement les modalités de DHHTYPE pour en faire une appélation compréhensible avec le nb de ménages concernés
+  data_for_plot_loc[, DHHTYPE:= factor( # On renome proprement
     fcase(
       DHHTYPE == 51, "Adulte seul.e <= 64 ans",
       DHHTYPE == 52, "Adulte seul.e >= 65 ans",
@@ -584,10 +590,10 @@ nettoyage_type_menage <- function(data_loc, var_sum){ # Renome proprement les mo
     )
   )
   ]
-  data_loc[, Nb_personnes_conc := length(get(var_sum)), by = DHHTYPE] #On ajoute le nb de personnes concernées
-  data_loc$Nb_personnes_conc <- paste("\n(",round(data_loc$Nb_personnes_conc), " personnes concernées)", sep = "")
-  data_loc$DHHTYPE <- paste(data_loc$DHHTYPE, data_loc$Nb_personnes_conc)
-  return(data_loc)
+  data_for_plot_loc[, Nb_personnes_conc := sum(get(var_sum)), by = DHHTYPE] #On ajoute le nb de personnes concernées
+  data_for_plot_loc$Nb_personnes_conc <- paste("\n(",round(data_for_plot_loc$Nb_personnes_conc), " ménages concernés)", sep = "")
+  data_for_plot_loc$DHHTYPE <- paste(data_for_plot_loc$DHHTYPE, data_for_plot_loc$Nb_personnes_conc)
+  return(data_for_plot_loc)
 }
 
 

@@ -70,3 +70,4 @@ library(marginaleffects)
 library(mitools)
 library(srvyr)
 
+library(pdftools)
