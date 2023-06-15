@@ -71,3 +71,6 @@ library(mitools)
 library(srvyr)
 
 library(pdftools)
+
+library(ggplotify)
+library(scales)
