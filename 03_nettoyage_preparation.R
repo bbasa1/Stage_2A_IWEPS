@@ -308,7 +308,7 @@ graphique_evolution_position_vagues <- function(data_vagues, nb_quantiles, liste
       melted[Quantile_vagues_suivantes <=  0, Quantile_vagues_suivantes := 1]
       
       p <- ggplot(data = melted, aes(x = melted[[x]], y= melted[[y]], color = melted[[color]], size = melted[[size]])) +
-        geom_point() +
+        geom_point(alpha=0.6,) +
         geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
         labs(title=titre,
              x= xlabel,
@@ -333,131 +333,6 @@ graphique_evolution_position_vagues <- function(data_vagues, nb_quantiles, liste
               legend.position = "right")
       
       }
-  
-  ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
-  print(p)
-}
-
-
-
-
-
-
-
-graphique_evolution_position_vagues_23 <- function(data_vagues, nb_quantiles, liste_type_patrimoines, titre_fig, titre_save, faire_rang = TRUE){
-  #### En France la vague 1 n'est pas panelisée...
-  liste_cols <- apply(expand.grid(names(liste_type_patrimoines), c("_V2", "_V3")), 1, paste, collapse="")
-  liste_cols <- append(liste_cols, c("HW0010_V2"))
-  data_for_plot_loc <- data_vagues[,..liste_cols]
-  
-  if(faire_rang){
-    # On va tracer en fonction des rangs des ménages dans la distribution
-    for(type_pat in names(liste_type_patrimoines)){
-      # Rang de chaque ménage
-      # data_for_plot_loc[, RANG_V1 := rank(data_for_plot_loc[[paste(type_pat, "_V1", sep = "")]])]
-      data_for_plot_loc[, RANG_V2 := rank(data_for_plot_loc[[paste(type_pat, "_V2", sep = "")]])]
-      data_for_plot_loc[, RANG_V3 := rank(data_for_plot_loc[[paste(type_pat, "_V3", sep = "")]])]
-      
-      # setnames(data_for_plot_loc, "RANG_V1", paste("Rang_",type_pat,"_V1", sep = ""))
-      setnames(data_for_plot_loc, "RANG_V2", paste("Rang_",type_pat,"_V2", sep = ""))
-      setnames(data_for_plot_loc, "RANG_V3", paste("Rang_",type_pat,"_V3", sep = ""))
-    }
-  }else{
-    for(type_pat in names(liste_type_patrimoines)){
-      # setnames(data_for_plot_loc, paste(type_pat, "_V1", sep = ""), paste("Rang_",type_pat,"_V1", sep = ""))
-      setnames(data_for_plot_loc, paste(type_pat, "_V2", sep = ""), paste("Rang_",type_pat,"_V2", sep = ""))
-      setnames(data_for_plot_loc, paste(type_pat, "_V3", sep = ""), paste("Rang_",type_pat,"_V3", sep = ""))
-    }
-  }
-  
-  
-  # Mise en forme pour plot
-  melted <- data.table(Rang_V2 = integer(),
-                       Vague = factor(),
-                       Quantile_vagues_suivantes  = integer(),
-                       Type_patrimoine =  factor())
-  
-  for(type_pat in names(liste_type_patrimoines)){
-    melted_loc <- melt(data_for_plot_loc, 
-                       id.vars = c(paste("Rang_",type_pat,"_V2", sep = ""), "HW0010_V2"),
-                       measure.vars  = names(data_for_plot_loc)[names(data_for_plot_loc) %in% c(paste("Rang_",type_pat,"_V3", sep = ""))],
-                       variable.name = "Vague",
-                       value.name    = "Quantile_vagues_suivantes")
-    
-    melted_loc[, Vague := factor(
-      fcase(
-        # Vague == paste("Rang_",type_pat,"_V2", sep = ""), "Vague 2",
-        Vague == paste("Rang_",type_pat,"_V3", sep = ""), "Vague 3"
-      ))]
-    
-    melted_loc[, Type_patrimoine := liste_type_patrimoines[type_pat]]
-    setnames(melted_loc, paste("Rang_",type_pat,"_V2", sep = ""), "Rang_V2")
-    
-    melted <- rbindlist(list(melted,melted_loc), fill=TRUE)
-  }
-  
-  melted$HW0010_V1 <- as.numeric(melted$HW0010_V1)
-  
-  ### La partie graphique
-  x <- "Rang_V2"
-  y <- "Quantile_vagues_suivantes"
-  color <- "Vague"
-  if(faire_rang){
-    xlabel <- "Quantile de patrimoine à la vague 2"
-    ylabel <- "Quantile de patrimoine à la vague 3"
-  }else{
-    xlabel <- "Patrimoine à la vague 2"
-    ylabel <- "Patrimoine à la vague 3"
-  }
-  scalelabel <- "Vague"
-  facet <- "Type_patrimoine"
-  size <- "HW0010_V2"
-  sizelabel <- "Poids du ménage à la vague 2"
-  colorlabel <- "Vague"
-  
-  if(faire_rang){
-    # On peut tracer tel quel
-    p <- ggplot(data = melted, aes(x = melted[[x]], y= melted[[y]], color = melted[[color]], size = melted[[size]])) +
-      geom_point() +
-      geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
-      labs(title=titre,
-           x= xlabel,
-           y= ylabel,
-           color = colorlabel,
-           size = sizelabel) +
-      facet_wrap(~factor(.data[[facet]]), ncol = 2) +
-      scale_size(range = c(1,3))
-  }else{
-    # Il faut passer en échelle log sinon c'est illisible
-    melted[Rang_V1 <= 0, Rang_V1 := 1]
-    melted[Quantile_vagues_suivantes <=  0, Quantile_vagues_suivantes := 1]
-    
-    p <- ggplot(data = melted, aes(x = melted[[x]], y= melted[[y]], color = melted[[color]], size = melted[[size]])) +
-      geom_point() +
-      geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
-      labs(title=titre,
-           x= xlabel,
-           y= ylabel,
-           color = colorlabel,
-           size = sizelabel) +
-      facet_wrap(~factor(.data[[facet]]), ncol = 2) +
-      scale_size(range = c(1,3)) +
-      scale_x_continuous(trans='log10', labels = scales::dollar_format(
-        prefix = "",
-        suffix = " €",
-        big.mark = " ",
-        decimal.mark = ",")) +
-      scale_y_continuous(trans='log10', labels = scales::dollar_format(
-        prefix = "",
-        suffix = " €",
-        big.mark = " ",
-        decimal.mark = ",")) +
-      labs(caption = "Les ménages ayant un patrimoine négatif se sont vu assigner un patrimoine de 1€") +
-      theme(legend.text = element_text(angle = 0, vjust = 0.7, hjust = 0),
-            axis.text.x = element_text(angle = 45, vjust = 0.5),
-            legend.position = "right")
-    
-  }
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
   print(p)

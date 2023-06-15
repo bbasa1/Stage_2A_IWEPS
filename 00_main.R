@@ -26,7 +26,7 @@ sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
 pays <- "FR"
-num_vague <- 2 # Pour les graphiques
+num_vague <- 3 # Pour les graphiques
 
 montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
 
@@ -685,7 +685,6 @@ trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filll
 
 
 
-
 liste_variables_loc <-c(
                         # "DITOP10" = "Décile de revenu",
                         "DLTOP10" = "Décile de dette",
@@ -763,12 +762,10 @@ filllabel <- "Ménage qui s'attend à recevoir\nun héritage ou un don"
 titre <- paste("Distribution des revenus net annuels du ménage,\npour les ménages qui attendent un héritage, \net ceux qui n'en attendent pas (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_attendent_her_non_attendent_her_distrib_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-liste_chemins <- append(liste_chemins, titre_save)
-trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel)
-
-
-
-
+if(!all(is.na(data_loc$label_DOEINHERIT))){
+  liste_chemins <- append(liste_chemins, titre_save)
+  trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel)
+}
 
 
 # Pour les variables discrètes
