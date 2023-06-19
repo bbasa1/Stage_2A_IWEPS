@@ -152,7 +152,7 @@ trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, y
   setnames(med, "get", filllabel)
   
   # Puis il va falloir placer le tableau proprement...
-  x_table <- max(min(data_loc[[x]]), 1)*10
+  x_table <- max(min(data_loc[[x]], na.rm = TRUE), 1)*10
   nbins <- 50
   
   # Pour y on récupère le max de l'histogramme total, puis on multiplie par le coeff moyen pour avoir une idée du max, et on divise par un facteur

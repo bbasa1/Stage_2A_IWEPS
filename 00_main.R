@@ -49,7 +49,8 @@ liste_var_categorielles <- c("SA0100","DHHTYPE","DOINHERIT", "DA1110I","SA0110",
                              "HH0302A", "HH0302B", "HH0302C", "HH0302D",
                              "HH0302E", "HH0302F", "HH0302H", "HH0302I", "HH0302J",
                              "HH0303A", "HH0303B", "HH0303C", "HH0303D",
-                             "HH0303E", "HH0303F", "HH0303H", "HH0303I", "HH0303J")
+                             "HH0303E", "HH0303F", "HH0303H", "HH0303I", "HH0303J",
+                             "PE0300")
 liste_var_interet <- union(liste_var_continues, liste_var_categorielles)
 
 
@@ -128,6 +129,8 @@ source(paste(repo_prgm , "03_nettoyage_preparation.R" , sep = "/"))
 # HH030xJ = what kind of assets received ? Car / vehicle I - Other assets (specify)
 
 # DHHTYPE = Household type
+# PE0300 = Job description ==> On créé la colonne PE0300_simpl qui ne garde que le premier caractère :
+#         0=Armée | 1=Manager | 2=Cadres sups | 3=Techniciens | 4=Employée de bureau | 5=agent de service et de vente | 6=Agriculture, fôret et poissons | 7=Artisans | 8=Operateurs et assembleurs de machines | 9=ouvriers
 
 
 intersection <- intersect(liste_var_interet, colnames(data_pays))
@@ -146,10 +149,7 @@ data_pays[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage :=
 
 ## Petit histogramme pour visualiser
 data_pays <- nettoyage_education(data_pays)
-
-
-
-
+data_pays <- ISCO_simplifie(data_pays)
 
 
 ######### A-t-on bien des données de panel ?
@@ -161,10 +161,6 @@ vague_123 <- as.data.table(list_output[4])
 vague_234 <- as.data.table(list_output[5])
 vague_1234 <- as.data.table(list_output[6])
 
-
-
-
-# data_pays[VAGUE == 2, median(DI2000, na.rm = TRUE), by = DA1110I]
 
 
 
@@ -652,7 +648,7 @@ exp(dt_prep_logit$Estimate[2]) # ==> exp(beta_{0,j}) = Avoir un héritage consé
 # Pour les variables discrètes
 liste_variables_loc <-c(
               # "DITOP10" = "Décile de revenu",
-              "DLTOP10" = "Décile de dette",
+              # "DLTOP10" = "Décile de dette",
               "DNTOP10" = "Décile de patrimoine net",
               "DOEINHERIT" = "S'attend à hériter",
               "DOINHERIT" = "A hérité",
@@ -661,7 +657,8 @@ liste_variables_loc <-c(
               "DATOP10" = "Décile de patrimoine brut",
               "DHGENDERH1" = 'Sexe',
               "DA1120I" = "Propriétaire d'autres biens immobiliers",
-              "DHEMPH1" = "Statut professionel")
+              "DHEMPH1" = "Statut professionel",
+              "PE0300_simpl" = "Type de poste")
 
 
 var_diff_loc = "DA1110I"
@@ -670,8 +667,9 @@ data_loc <- data_pays
 titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui sont propriétaires de leur résidence principale, \net ceux qui ne le sont pas (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
+drop_inactifs <- TRUE
 liste_chemins <- append(liste_chemins, titre_save)
-try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc))
+try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs))
 
 # Et le revenu qui est continu
 data_loc <- data_pays[VAGUE == num_vague]
@@ -693,7 +691,7 @@ trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filll
 
 liste_variables_loc <-c(
                         # "DITOP10" = "Décile de revenu",
-                        "DLTOP10" = "Décile de dette",
+                        # "DLTOP10" = "Décile de dette",
                         "DNTOP10" = "Décile de patrimoine net",
                         "DOEINHERIT" = "S'attend à hériter",
                         # "DOINHERIT" = "A hérité",
@@ -703,7 +701,8 @@ liste_variables_loc <-c(
                         "DHGENDERH1" = 'Sexe',
                         "DA1110I" = "Est propriétaire de sa résidence principale",
                         "DA1120I" = "Propriétaire d'autres biens immobiliers",
-                        "DHEMPH1" = "Statut professionel")
+                        "DHEMPH1" = "Statut professionel",
+                        "PE0300_simpl" = "Type de poste")
 
 
 var_diff_loc = "DOINHERIT"
@@ -712,8 +711,9 @@ data_loc <- data_pays
 titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui ont eu un héritage, \net ceux qui n'en ont pas eu (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_heritiers_non_heritiers.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
+drop_inactifs <- TRUE
 liste_chemins <- append(liste_chemins, titre_save)
-try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc))
+try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs))
 
 data_loc <- data_pays[VAGUE == num_vague]
 data_loc <- nettoyage_DOINHERIT(data_loc)
@@ -734,7 +734,7 @@ trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filll
 
 liste_variables_loc <-c(
                         # "DITOP10" = "Décile de revenu",
-                        "DLTOP10" = "Décile de dette",
+                        # "DLTOP10" = "Décile de dette",
                         "DNTOP10" = "Décile de patrimoine net",
                         # "DOEINHERIT" = "S'attend à hériter",
                         "DOINHERIT" = "A hérité",
@@ -744,9 +744,8 @@ liste_variables_loc <-c(
                         "DHGENDERH1" = 'Sexe',
                         "DA1110I" = "Est propriétaire de sa résidence principale",
                         "DA1120I" = "Propriétaire d'autres biens immobiliers",
-                        "DHEMPH1" = "Statut professionel")
-
-
+                        "DHEMPH1" = "Statut professionel",
+                        "PE0300_simpl" = "Type de poste")
 
 var_diff_loc = "DOEINHERIT"
 liste_legendes_loc = c("Non_prop" = "Ne s'attend pas à hériter", "Prop" = "S'attend à hériter","Total" = "Total")
@@ -754,8 +753,9 @@ data_loc <- data_pays
 titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui attendent un héritage, \net ceux qui n'en attendent pas (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_attendent_her_non_attendent_her.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
+drop_inactifs <- TRUE
 liste_chemins <- append(liste_chemins, titre_save)
-try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc))
+try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs))
 
 # Pour les variables continues
 data_loc <- data_pays[VAGUE == num_vague]
@@ -777,7 +777,7 @@ if(!all(is.na(data_loc$label_DOEINHERIT))){
 # Pour les variables discrètes
 liste_variables_loc <-c(
                         # "DITOP10" = "Décile de revenu",
-                        "DLTOP10" = "Décile de dette",
+                        # "DLTOP10" = "Décile de dette",
                         "DNTOP10" = "Décile de patrimoine net",
                         "DOEINHERIT" = "S'attend à hériter",
                         "DOINHERIT" = "A hérité",
@@ -786,8 +786,8 @@ liste_variables_loc <-c(
                         "DATOP10" = "Décile de patrimoine brut",
                         "DHGENDERH1" = 'Sexe',
                         "DA1110I" = "Est propriétaire de sa résidence principale",
-                        "DHEMPH1" = "Statut professionel")
-
+                        "DHEMPH1" = "Statut professionel"
+                        "PE0300_simpl" = "Type de poste")
 
 var_diff_loc = "DA1120I"
 liste_legendes_loc = c("Non_prop" = "Non possédants", "Prop" = "Possédants","Total" = "Total")
@@ -795,8 +795,9 @@ data_loc <- data_pays
 titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui possèdent d'autres biens immobiliers que leur HMR,\net les ménages qui n'en possèdent pas (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_res_sec_non_prop.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
+drop_inactifs <- TRUE
 liste_chemins <- append(liste_chemins, titre_save)
-try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc))
+try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs))
 
 # Pour les variables continues
 data_loc <- data_pays[VAGUE == num_vague]
@@ -920,6 +921,29 @@ var <- "DOEINHERIT"
 
 locvar <- tableau_binaire("DOEINHERIT", data_pays[VAGUE == num_vague])
 locvar
+
+
+# "HH0301A", "HH0301B", "HH0301C", "HH0301D",
+# "HH0301E", "HH0301F", "HH0301H", "HH0301I", "HH0301J",
+# "HH0302A", "HH0302B", "HH0302C", "HH0302D",
+# "HH0302E", "HH0302F", "HH0302H", "HH0302I", "HH0302J",
+# "HH0303A", "HH0303B", "HH0303C", "HH0303D",
+# "HH0303E", "HH0303F", "HH0303H", "HH0303I", "HH0303J"
+
+HH030",lettre,"_cons
+
+# 1 = Oui, 2 = Non
+
+
+"HH030A_cons", "HH030B_cons", "HH030C_cons", "HH030D_cons",
+"HH030E_cons", "HH030F_cons", "HH030G_cons", "HH030H_cons", "HH030I_cons", "HH030J_cons"
+
+sous_dt <- data_pays[VAGUE == num_vague , .N, by = c("HH030A_cons", "HH030B_cons", "HH030C_cons", "HH030D_cons",
+                                         "HH030E_cons", "HH030F_cons", "HH030G_cons", "HH030H_cons", "HH030I_cons", "HH030J_cons")]
+
+setorder(sous_dt, -"N")
+
+sous_dt[N >= 10]
 
 # 
 # 

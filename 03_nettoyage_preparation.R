@@ -289,7 +289,7 @@ graphique_evolution_position_vagues <- function(data_vagues, nb_quantiles, liste
   if(faire_rang){
     # On peut tracer tel quel
     p <- ggplot(data = melted, aes(x = melted[[x]], y= melted[[y]], color = melted[[color]], size = melted[[size]])) +
-      geom_point() +
+      geom_point(alpha=0.6,) +
       geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
       labs(title=titre,
            x= xlabel,
@@ -405,17 +405,35 @@ graphique_evolution_pat_entre_vagues <- function(data_loc, liste_type_patrimoine
 
 
 
-trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, titre_save, num_vague_loc, var_diff_loc = "DA1110I", liste_legendes_loc = c("Non_prop" = "Non propriétaires", "Prop" = "Propriétaires","Total" = "Total")){
+trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, titre_save, num_vague_loc, var_diff_loc = "DA1110I", liste_legendes_loc = c("Non_prop" = "Non propriétaires", "Prop" = "Propriétaires","Total" = "Total"), drop_inactifs=FALSE){
   # Pour une variable binaire (propriétaire/non propriétaire, ou héritier/non héritier par exemple) trace la distribution des populations concernées pour pouvoir les comparer
   # Nettoyage préalable pour éviter les modalités en trop
+  try(data_loc[DOEINHERIT == "A", DOEINHERIT := "NAN"], silent = TRUE)
+  
   f_dowle2 <- function(DT){
     for (i in names(DT))
       DT[is.na(get(i)), (i):= "NAN"]
   }
-  
   f_dowle2(data_loc)
+  # data_loc[DA1120I == "NAN", DA1120I := 0]
+  # data_loc[DOEINHERIT == "NAN", DOEINHERIT := 0]
+  # data_loc[DA1110I == "NAN", DA1110I := 0]
+  # data_loc[DHEMPH1 == "NAN", DHEMPH1 := 0]
   
-  try(data_loc[DOEINHERIT == "A", DOEINHERIT := "NAN"], silent = TRUE)
+  # table(data_loc$DA1120I)
+  
+  data_loc$DOEINHERIT <- droplevels(data_loc$DOEINHERIT) #Il met parfois "A" dans cette variable pour dire NAN
+  data_loc$DA1120I <- droplevels(data_loc$DA1120I) 
+  data_loc$DHEMPH1 <- droplevels(data_loc$DHEMPH1) 
+  data_loc$PE0300_simpl <- droplevels(data_loc$PE0300_simpl) #On vire les gens qui ne sont pas en emploi
+  
+  data_loc$DHEDUH1 <- as.numeric(data_loc$DHEDUH1)
+  data_loc[DHEDUH1 <= 1, DHEDUH1 := 1] #Idem pour l'éducation parfois des modalités sont rajoutées
+  data_loc[DHEDUH1 == 4, DHEDUH1 := 2]
+  data_loc[DHEDUH1 >= 5, DHEDUH1 := 5]
+  data_loc$DHEDUH1 <- as.factor(data_loc$DHEDUH1)
+  
+  # table(data_loc$DHEDUH1)
 
   # On prépare les tables d'effectifs de ménages
   dw_V2 <- svydesign(ids = ~1, data = data_loc[VAGUE == 2], weights = ~ HW0010)
@@ -476,19 +494,33 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
   
   melted[Variable == "DOINHERIT" & Valeur_num == 0, Valeur := "Non"]
   melted[Variable == "DOINHERIT" & Valeur_num == 1, Valeur := "Oui"]
-
+  
+  melted[Variable == "DA1120I" & Valeur_num == 0, Valeur := "Non"]
+  melted[Variable == "DA1120I" & Valeur_num == 1, Valeur := "Oui"]
+  
   melted[Variable == "DHEMPH1" & Valeur_num == 1, Valeur := "Employé.e"]
   melted[Variable == "DHEMPH1" & Valeur_num == 2, Valeur := "Indép-\nendant.e"]
   melted[Variable == "DHEMPH1" & Valeur_num == 3, Valeur := "Inactif.ve/\nchomeur.se"]
   melted[Variable == "DHEMPH1" & Valeur_num == 4, Valeur := "Retraité.e"]
   melted[Variable == "DHEMPH1" & Valeur_num == 5, Valeur := "Autre"]
   
+  melted[Variable == "PE0300_simpl" & Valeur_num == 0, Valeur := "Militaire"]
+  melted[Variable == "PE0300_simpl" & Valeur_num == 1, Valeur := "Manager"]
+  melted[Variable == "PE0300_simpl" & Valeur_num == 2, Valeur := "Cadre sup"]
+  melted[Variable == "PE0300_simpl" & Valeur_num == 3, Valeur := "Technicien"]
+  melted[Variable == "PE0300_simpl" & Valeur_num == 4, Valeur := "Employé.e\nde bureau"]
+  melted[Variable == "PE0300_simpl" & Valeur_num == 5, Valeur := "Service\n/vente"]
+  melted[Variable == "PE0300_simpl" & Valeur_num == 6, Valeur := "Cadre agricole"]
+  melted[Variable == "PE0300_simpl" & Valeur_num == 7, Valeur := "Artisan"]
+  melted[Variable == "PE0300_simpl" & Valeur_num == 8, Valeur := "Machiniste"]
+  melted[Variable == "PE0300_simpl" & Valeur_num == 9, Valeur := "Ouvrier"]
+  melted[Variable == "PE0300_simpl" & !Valeur_num%in% 0:9, Valeur := "Chomage\n/inactif.ve"]
   
-  
-  
-  
-  # melted[is.na(Valeur_num)]
-  
+  if(drop_inactifs){
+    # Problème : En général les inactifs et les chomeurs écrasent le graphique ==> On supprime cette barre
+    melted <- melted[!(Variable == "PE0300_simpl" & Valeur == "Chomage\n/inactif.ve")]
+  }
+
   # On renome pour le facet
   for(var in names(liste_variables_loc)){
     melted[Variable == var, Variable := liste_variables_loc[var]]
@@ -508,8 +540,8 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
   y <- "Effectifs"
   fill <- "Type de ménage"
   facet <- "Variable"
-  xlabel <- "Valeur"
-  ylabel <- "Effectifs"
+  xlabel <- ""
+  ylabel <- "Nombre de ménages"
   
   
   p <- ggplot(data = data_pour_plot, aes(x = reorder(.data[[x]], .data[[sortby_x]]), y = .data[[y]], fill = .data[[fill]])) +
@@ -523,7 +555,7 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
       big.mark = " ",
       decimal.mark = ",")) + 
     scale_fill_viridis(discrete = TRUE) +
-    # theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
     facet_wrap(~factor(.data[[facet]]), ncol = 2, scales="free") +
     labs(caption = "")
   
@@ -826,4 +858,15 @@ Creation_donnees_panel <- function(data_loc){
   vague_34 <- merge(x = vague_4, y = vague_3, by.x = 'SA0110_V4',by.y = 'SA0010_V3')
   
   return(list(vague_12, vague_23, vague_34, vague_123, vague_234, vague_1234))
+}
+
+
+
+ISCO_simplifie <- function(data_loc){
+  # Ne garde que le premier caractère du code ISO
+  data_loc$PE0300 <- as.character(data_loc$PE0300)
+  data_loc$PE0300_simpl <- substr(data_loc$PE0300, 1, 1)  
+  data_loc$PE0300_simpl <- as.factor(data_loc$PE0300_simpl)
+  data_loc$PE0300 <- as.factor(data_loc$PE0300)
+  return(data_loc)
 }
