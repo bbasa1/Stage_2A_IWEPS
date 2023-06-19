@@ -490,6 +490,7 @@ count(data_pays[Annee_achat_heritage == 99])
 count(data_pays[Annee_achat_heritage == -99])
 
 if(faire_tourner_recherche_pvalue_opti){
+  # D'abord avec les 3 régressions
   liste_montant_initial <- lseq(3000, 500000, 250)
   data_loc <- copy(data_pays)[VAGUE == num_vague]
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_heritier.pdf", sep = "")
@@ -497,18 +498,39 @@ if(faire_tourner_recherche_pvalue_opti){
   titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les héritiers (", nom_pays, " & vague ",num_vague,")", sep = "")
   liste_chemins <- append(liste_chemins, titre_save)
   que_heritiers <- TRUE
-  
-  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers)
+  que_logit <- FALSE
+  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers, que_logit)
   
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
   titre <- paste("Résultats des régressions de Y sur G\nen considérant comme population initiale toute la population (", nom_pays, " & vague ",num_vague,")", sep = "")
   liste_chemins <- append(liste_chemins, titre_save)
   que_heritiers <- FALSE
-  
-  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers)
+  que_logit <- FALSE
+  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers, que_logit)
 }
 
+
+if(faire_tourner_recherche_pvalue_opti){
+  # Puis avec seulement le logit
+  liste_montant_initial <- lseq(3000, 500000, 250)
+  data_loc <- copy(data_pays)[VAGUE == num_vague]
+  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_heritier_logit.pdf", sep = "")
+  titre_save <- paste(repo_sorties, titre_save, sep ='/')
+  titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les héritiers (", nom_pays, " & vague ",num_vague,")", sep = "")
+  liste_chemins <- append(liste_chemins, titre_save)
+  que_heritiers <- TRUE
+  que_logit <- TRUE
+  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers, que_logit)
+  
+  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po_logit.pdf", sep = "")
+  titre_save <- paste(repo_sorties, titre_save, sep ='/')
+  titre <- paste("Résultats des régressions de Y sur G\nen considérant comme population initiale toute la population (", nom_pays, " & vague ",num_vague,")", sep = "")
+  liste_chemins <- append(liste_chemins, titre_save)
+  que_heritiers <- FALSE
+  que_logit <- TRUE
+  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers, que_logit)
+}
 
 
 
@@ -786,7 +808,7 @@ liste_variables_loc <-c(
                         "DATOP10" = "Décile de patrimoine brut",
                         "DHGENDERH1" = 'Sexe',
                         "DA1110I" = "Est propriétaire de sa résidence principale",
-                        "DHEMPH1" = "Statut professionel"
+                        "DHEMPH1" = "Statut professionel",
                         "PE0300_simpl" = "Type de poste")
 
 var_diff_loc = "DA1120I"
