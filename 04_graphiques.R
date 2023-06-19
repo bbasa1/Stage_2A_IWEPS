@@ -189,7 +189,7 @@ trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, y
 }
 
 
-trace_courbes <- function(melted_loc, x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save){
+trace_courbes <- function(melted_loc, x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text = ""){
   ### Trace les points contenus dans melted_loc
   
   p <- ggplot(data = melted_loc, aes(x=melted_loc[[x]], y = melted_loc[[y]], color = melted_loc[[color]])) +
@@ -208,7 +208,9 @@ trace_courbes <- function(melted_loc, x, y, color, facet, xlabel, ylabel, colorl
       decimal.mark = ","), n.breaks = 10) + 
     scale_color_viridis(discrete = TRUE) +
     theme(axis.text.x = element_text(angle = 22.5, vjust = 0.5, hjust=1)) +
-    facet_wrap(~factor(melted_loc[[facet]]),  scales = "free", ncol = 2)
+    facet_wrap(~factor(melted_loc[[facet]]),  scales = "free", ncol = 2) +
+    labs(caption = caption_text)
+
   
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")

@@ -4,14 +4,20 @@
 # Ici toutes les fonctions qui permettent de sortir des résultats d'économétrie
 
 
-recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = -1, annee_max = 3, faire_tracer = TRUE, titre, titre_save, que_heritiers = TRUE, que_logit = FALSE){
+recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = -1, annee_max = 3, faire_tracer = TRUE, titre, titre_save, que_heritiers = TRUE, que_proprio = TRUE, que_logit = FALSE){
   ## Produit la courbe de pvalue et coeff associés à G dans la régression Y sur G pour trouver la valeur du montant minimal d'héritage optimal
   ## Utilise les deux fonctions ci-dessous
+  sous_data_loc <- copy(data_loc)
+  
+  
   if(que_heritiers){
     sous_data_loc <- data_loc[Annee_achat_heritage <= 98] ## Uniquement les ménages qui ONT reçu un héritage
-  }else{
-    sous_data_loc <- copy(data_loc)
   }
+  
+  if(que_proprio){
+    sous_data_loc <- sous_data_loc[Annee_achat_heritage >= -98] ## Uniquement les ménages qui SONT proprios
+  }
+  
   ### On récupère les données
   dt_tot_reg <- data.table(Reg_lin_pval = numeric(),
                            Logit_pval = numeric(),
@@ -22,7 +28,7 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
                            Probit_coeff = numeric())
   for(montant_ini_loc in liste_montant_initial){
     # print(montant_ini_loc)
-    dt_loc <- recuperation_pval(sous_data_loc, montant_ini_loc, annee_min = annee_min, annee_max = annee_max)
+    dt_loc <- recuperation_pval(sous_data_loc, montant_ini_loc, annee_min = annee_min, annee_max = annee_max, que_logit=que_logit)
     dt_tot_reg <- rbindlist(list(dt_tot_reg, dt_loc), fill=TRUE)
   }
   
@@ -32,11 +38,11 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
                       measure.vars = c("Reg_lin_pval", "Logit_pval", "Probit_pval"),
                       variable.name = "variable",
                       value.name    = "value")
-  melted_pval$Statistique <- "pvalue"
+  melted_pval$Statistique <- "Y sur G : pvalue"
   
   melted_pval_log <- copy(melted_pval)
   melted_pval_log$value <- log10(melted_pval_log$value)
-  melted_pval_log$Statistique <- "log(pvalue)"
+  melted_pval_log$Statistique <- "Y sur G : log(pvalue)"
   melted_pval_log$variable <- paste(melted_pval_log$variable, "_log", sep = "")
   
   melted_coeff <- melt(dt_tot_reg,
@@ -44,11 +50,11 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
                        measure.vars = c("Reg_lin_coeff", "Logit_coeff", "Probit_coeff"),
                        variable.name = "variable",
                        value.name    = "value")
-  melted_coeff$Statistique <- "Coefficiant"
+  melted_coeff$Statistique <- "Y sur G : Coefficiant"
   
   melted_coeff_log <- copy(melted_coeff)
   melted_coeff_log$value <- log10(abs(melted_coeff_log$value))
-  melted_coeff_log$Statistique <- "log(|coeff|)"
+  melted_coeff_log$Statistique <- "Y sur G : log(|coeff|)"
   melted_coeff_log$variable <- paste(melted_coeff_log$variable, "_log", sep = "")
 
   
@@ -57,7 +63,7 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
                        measure.vars = c("Reg_lin_count", "Logit_count", "Probit_count"),
                        variable.name = "variable",
                        value.name    = "value")
-  melted_count$Statistique <- "Nombre modalités significatives"
+  melted_count$Statistique <- "G sur X : Nombre de modalités significatives à 1%"
   # melted_count$value <- as.numeric(melted_count$value)
   # melted_count[value == 0, value := 0.1]
   
@@ -99,10 +105,14 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
     colorlabel <- "Régression"
     facet <- "Statistique"
     
+    caption_text <- "Y = Fait d'être propriétaire au moment de réception d'un héritage ou d'un don\n
+                      G = Fait de recevoir un héritage ou un don supérieur au montant minimal\n
+                      X = Ensemble de variables socio-économiques du ménage"
+    
     if(que_logit){
-      trace_courbes(melted_loc[label_variable == "Logit"], x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save)
+      trace_courbes(melted_loc[label_variable == "Logit"], x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text)
     }else{
-      trace_courbes(melted_loc, x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save)
+      trace_courbes(melted_loc, x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text)
       
     }
     
@@ -113,9 +123,9 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
 
 
 
-recuperation_pval <- function(sous_data_loc, montant_ini_loc, annee_min, annee_max){
+recuperation_pval <- function(sous_data_loc, montant_ini_loc, annee_min, annee_max, que_logit){
   # Utilise la fonction ci-dessous, permet de sortir sous une forme propre la pvalue et la valeur du coefficiant associés G dans la régression de Y sur G
-  output <- dependance_montant_heritage_min(sous_data_loc, montant_ini_loc, annee_min = annee_min, annee_max = annee_max)
+  output <- dependance_montant_heritage_min(sous_data_loc, montant_ini_loc, annee_min = annee_min, annee_max = annee_max, que_logit=que_logit)
   dico_sortie <- output[1]
   dt_reg_lin <- as.data.table(output[2])
   dt_probit <- as.data.table(output[3])
@@ -137,7 +147,7 @@ recuperation_pval <- function(sous_data_loc, montant_ini_loc, annee_min, annee_m
   setnames(dt_loc_coeff, "V2", "Logit_coeff")
   setnames(dt_loc_coeff, "V3", "Probit_coeff")
   
-  dt_loc_count <- as.data.table(list(count(dt_prep_reg_lin[pvalue < 0.01 & abs(Estimate) > 0.1]), count(dt_prep_logit[pvalue < 0.01 & abs(Estimate) > 0.01]), count(dt_prep_probit[pvalue < 0.01 & abs(Estimate) > 0.01])))
+  dt_loc_count <- as.data.table(list(count(dt_prep_reg_lin[pvalue < 0.01]), count(dt_prep_logit[pvalue < 0.01]), count(dt_prep_probit[pvalue < 0.01])))
   dt_loc_count$Montant_initial <- montant_ini_loc
   setnames(dt_loc_count, "n", "Reg_lin_count")
   setnames(dt_loc_count, "n.1", "Logit_count")
@@ -147,7 +157,7 @@ recuperation_pval <- function(sous_data_loc, montant_ini_loc, annee_min, annee_m
   return(merge(merge_1, dt_loc_count, by = "Montant_initial"))
 }
 
-dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, annee_min, annee_max){
+dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, annee_min, annee_max, que_logit){
   # Effectue la régression de Y sur G. C'est la plus profonde des sous-fonctions
   
   dico_sortie <- c()
@@ -168,11 +178,36 @@ dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, anne
   }
   
   # Etude préparatoire : éventuel problème de biais de sélection des traités
-  liste_cols_reg_poids <- c("HW0010", "Reg_G", "DHAGEH1B", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE", "DHEMPH1", "PE0300_simpl")
-  dw <- svydesign(ids = ~1, data = sous_data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
-  mysvyglm <- svyglm(formula = Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, design = dw)
-  dt_prep_reg_lin <- as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE)  
-  setnames(dt_prep_reg_lin, "Pr(>|t|)", "pvalue")
+  if(!que_logit){
+    liste_cols_reg_poids <- c("HW0010", "Reg_G", "DHAGEH1B", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE", "DHEMPH1", "PE0300_simpl")
+    dw <- svydesign(ids = ~1, data = sous_data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
+    mysvyglm <- svyglm(formula = Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, design = dw)
+    dt_prep_reg_lin <- as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE)  
+    setnames(dt_prep_reg_lin, "Pr(>|t|)", "pvalue")
+    
+    denyprobit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
+                    family = binomial(link = "probit"), 
+                    data = sous_data_loc)
+    dt_prep_probit <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)
+    setnames(dt_prep_probit, "Pr(>|z|)", "pvalue")
+  }else{
+    dt_prep_reg_lin <- data.table(rn = numeric(),
+                                  Estimate = numeric(),
+                                  std_err = numeric(),
+                                  tval =  numeric(),
+                                  pvalue = numeric())
+    setnames(dt_prep_reg_lin, 'std_err', "Std. Error")
+    setnames(dt_prep_reg_lin, 'tval', "t value")
+    
+    dt_prep_probit <- data.table(rn = numeric(),
+                                  Estimate = numeric(),
+                                  std_err = numeric(),
+                                  tval =  numeric(),
+                                  pvalue = numeric())
+    setnames(dt_prep_probit, 'std_err', "Std. Error")
+    setnames(dt_prep_probit, 'tval', "t value")
+  }
+  
   
   denylogit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
                    family = binomial(link = "logit"), 
@@ -180,27 +215,41 @@ dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, anne
   dt_prep_logit <- as.data.table(summary(denylogit)$coefficients, keep.rownames = TRUE)
   setnames(dt_prep_logit, "Pr(>|z|)", "pvalue")
 
-  denyprobit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
-                    family = binomial(link = "probit"), 
-                    data = sous_data_loc)
-  dt_prep_probit <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)
-  setnames(dt_prep_probit, "Pr(>|z|)", "pvalue")
-  
+
   
   # Est-ce que G est significatif pour prévoir Y ?
-  liste_cols_reg_poids <- c("HW0010", "Reg_Y", "Reg_G")
-  dw <- svydesign(ids = ~1, data = sous_data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
-  mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G, design = dw)
-  dt_reg_lin <- as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE)  
-  setnames(dt_reg_lin, "Pr(>|t|)", "pvalue")
-  
-  
-  denyprobit <- glm(Reg_Y ~ Reg_G, 
+  if(!que_logit){
+    liste_cols_reg_poids <- c("HW0010", "Reg_Y", "Reg_G")
+    dw <- svydesign(ids = ~1, data = sous_data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
+    mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G, design = dw)
+    dt_reg_lin <- as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE)  
+    setnames(dt_reg_lin, "Pr(>|t|)", "pvalue")
+      
+    denyprobit <- glm(Reg_Y ~ Reg_G, 
                     family = binomial(link = "probit"), 
                     data = sous_data_loc)
-  dt_probit <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)  
-  setnames(dt_probit, "Pr(>|z|)", "pvalue")
+    dt_probit <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)  
+    setnames(dt_probit, "Pr(>|z|)", "pvalue")
+  }else{
+    dt_reg_lin <- data.table(rn = numeric(),
+                               Estimate = numeric(),
+                               std_err = numeric(),
+                               tval =  numeric(),
+                               pvalue = numeric())
+    setnames(dt_reg_lin, 'std_err', "Std. Error")
+    setnames(dt_reg_lin, 'tval', "t value")
+    
+    dt_probit <- data.table(rn = numeric(),
+                             Estimate = numeric(),
+                             std_err = numeric(),
+                             tval =  numeric(),
+                             pvalue = numeric())
+    setnames(dt_probit, 'std_err', "Std. Error")
+    setnames(dt_probit, 'tval', "t value")
+      
+  }
   
+
   
   denyprobit <- glm(Reg_Y ~ Reg_G, 
                     family = binomial(link = "logit"), 

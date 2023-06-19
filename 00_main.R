@@ -25,12 +25,13 @@ liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
-pays <- "BE"
+pays <- "DE"
 num_vague <- 2 # Pour les graphiques
 
 montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
 
 faire_tourner_recherche_pvalue_opti <- TRUE
+nb_points_recherche <- 100
 
 ################################################################################
 # ============================ 02 IMPORTATION ==================================
@@ -345,6 +346,8 @@ if(nrow(vague_123) > 0){
 ############################################################################################################################### 
 ########################## DiD ESSAI = EFFET DU FAIT D'AVOIR RECU UN HERITAGE SUR LE FAIT D'ACHETER UNE HMR ###################
 ########################## G = 1   <====> Reçu un héritage à la vague 3 MAIS PAS à la vague 2  ################################
+if(nrow(vague_23) > 0){
+
 pop_initiale_tot <- copy(data_pays[VAGUE %in% c(2,3),])
 nrow(pop_initiale_tot)
 SA0110_V3 <- vague_23$SA0110_V3 ## On récupère les identifiants ménages qui sont présents dans les deux vagues = ceux qui ont un identifiant sur la vague passée (la vague 2 donc)
@@ -426,7 +429,7 @@ svymean(~Reg_Y, subset(dw, Reg_G == 0 & Reg_T == 0))[1] - svymean(~Reg_Y, subset
 
 table(pop_initiale_tot$Reg_D)
 
-
+}
 
 
 
@@ -442,7 +445,7 @@ pop_initiale_tot <- pop_initiale_tot[(SA0110 %in% SA0110_V3 & VAGUE == 3) | (SA0
 pop_initiale_tot[, Reg_Y := 0]
 pop_initiale_tot[(DA1120I == 1 & VAGUE == 3) | (DA1120I == 1 & VAGUE == 2), Reg_Y := DA1120] ## La population qui ont une RES SECONDAIRE
 pop_initiale_tot$Reg_Y <- as.numeric(pop_initiale_tot$Reg_Y)
-hist(pop_initiale_tot$Reg_Y)
+# hist(pop_initiale_tot$Reg_Y)
 pop_initiale_tot[, Reg_G := 0]
 SA0110_V3 <- vague_23[DOINHERIT_V3 == 1 & DOINHERIT_V2 == 0]$SA0110_V3 ## On récupère les identifiants ménages de ceux qui ont reçu un héritage entre la vague 2 et la vague 3
 pop_initiale_tot[(SA0110 %in% SA0110_V3 & VAGUE == 3) | (SA0010 %in% SA0110_V3 & VAGUE == 2), Reg_G := 1]
@@ -464,10 +467,9 @@ if(var_Y_discrete){
   sous_pop_initiale <- copy(pop_initiale_tot)
 }
 
-dw <- svydesign(ids = ~1, data = sous_pop_initiale[,..liste_cols_reg_poids], weights = ~ HW0010)
-mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw)
-summary(mysvyglm)
-
+try(dw <- svydesign(ids = ~1, data = sous_pop_initiale[,..liste_cols_reg_poids], weights = ~ HW0010), silent = TRUE)
+try(mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw), silent = TRUE)
+try(summary(mysvyglm), silent = TRUE)
 
 
 
@@ -478,7 +480,6 @@ summary(mysvyglm)
 source(paste(repo_prgm , "05_econometrie.R" , sep = "/"))
 annee_min = -1
 annee_max = 3
-
 
 data_pays[(is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := - 99] # Pas d'achat mais un héritage
 data_pays[(!is.na(HB0700) & is.na(Montant_heritage_1)), Annee_achat_heritage :=  99] # Achat mais pas d'héritage
@@ -491,48 +492,78 @@ count(data_pays[Annee_achat_heritage == -99])
 
 if(faire_tourner_recherche_pvalue_opti){
   # D'abord avec les 3 régressions
-  liste_montant_initial <- lseq(3000, 500000, 250)
+  liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
   data_loc <- copy(data_pays)[VAGUE == num_vague]
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_heritier.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
   titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les héritiers (", nom_pays, " & vague ",num_vague,")", sep = "")
   liste_chemins <- append(liste_chemins, titre_save)
   que_heritiers <- TRUE
+  que_proprio <- FALSE
   que_logit <- FALSE
-  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers, que_logit)
+  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
   
+  liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+  data_loc <- copy(data_pays)[VAGUE == num_vague]
+  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_proprios.pdf", sep = "")
+  titre_save <- paste(repo_sorties, titre_save, sep ='/')
+  titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les proprios (", nom_pays, " & vague ",num_vague,")", sep = "")
+  liste_chemins <- append(liste_chemins, titre_save)
+  que_heritiers <- FALSE
+  que_proprio <- TRUE
+  que_logit <- FALSE
+  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+  
+  liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+  data_loc <- copy(data_pays)[VAGUE == num_vague]
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
   titre <- paste("Résultats des régressions de Y sur G\nen considérant comme population initiale toute la population (", nom_pays, " & vague ",num_vague,")", sep = "")
   liste_chemins <- append(liste_chemins, titre_save)
   que_heritiers <- FALSE
+  que_proprio <- FALSE
   que_logit <- FALSE
-  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers, que_logit)
+  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
 }
 
 
+
+
 if(faire_tourner_recherche_pvalue_opti){
-  # Puis avec seulement le logit
-  liste_montant_initial <- lseq(3000, 500000, 250)
+  # D'abord avec les 3 régressions
+  liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
   data_loc <- copy(data_pays)[VAGUE == num_vague]
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_heritier_logit.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
   titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les héritiers (", nom_pays, " & vague ",num_vague,")", sep = "")
   liste_chemins <- append(liste_chemins, titre_save)
   que_heritiers <- TRUE
+  que_proprio <- FALSE
   que_logit <- TRUE
-  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers, que_logit)
+  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
   
+  liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+  data_loc <- copy(data_pays)[VAGUE == num_vague]
+  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_proprios_logit.pdf", sep = "")
+  titre_save <- paste(repo_sorties, titre_save, sep ='/')
+  titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les proprios (", nom_pays, " & vague ",num_vague,")", sep = "")
+  liste_chemins <- append(liste_chemins, titre_save)
+  que_heritiers <- FALSE
+  que_proprio <- TRUE
+  que_logit <- TRUE
+  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+  
+  liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+  data_loc <- copy(data_pays)[VAGUE == num_vague]
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po_logit.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
   titre <- paste("Résultats des régressions de Y sur G\nen considérant comme population initiale toute la population (", nom_pays, " & vague ",num_vague,")", sep = "")
   liste_chemins <- append(liste_chemins, titre_save)
   que_heritiers <- FALSE
+  que_proprio <- FALSE
   que_logit <- TRUE
-  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers, que_logit)
+  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
 }
-
-
 
 
 
@@ -952,20 +983,20 @@ locvar
 # "HH0303A", "HH0303B", "HH0303C", "HH0303D",
 # "HH0303E", "HH0303F", "HH0303H", "HH0303I", "HH0303J"
 
-HH030",lettre,"_cons
-
-# 1 = Oui, 2 = Non
-
-
-"HH030A_cons", "HH030B_cons", "HH030C_cons", "HH030D_cons",
-"HH030E_cons", "HH030F_cons", "HH030G_cons", "HH030H_cons", "HH030I_cons", "HH030J_cons"
-
-sous_dt <- data_pays[VAGUE == num_vague , .N, by = c("HH030A_cons", "HH030B_cons", "HH030C_cons", "HH030D_cons",
-                                         "HH030E_cons", "HH030F_cons", "HH030G_cons", "HH030H_cons", "HH030I_cons", "HH030J_cons")]
-
-setorder(sous_dt, -"N")
-
-sous_dt[N >= 10]
+# HH030",lettre,"_cons
+# 
+# # 1 = Oui, 2 = Non
+# 
+# 
+# "HH030A_cons", "HH030B_cons", "HH030C_cons", "HH030D_cons",
+# "HH030E_cons", "HH030F_cons", "HH030G_cons", "HH030H_cons", "HH030I_cons", "HH030J_cons"
+# 
+# sous_dt <- data_pays[VAGUE == num_vague , .N, by = c("HH030A_cons", "HH030B_cons", "HH030C_cons", "HH030D_cons",
+#                                          "HH030E_cons", "HH030F_cons", "HH030G_cons", "HH030H_cons", "HH030I_cons", "HH030J_cons")]
+# 
+# setorder(sous_dt, -"N")
+# 
+# sous_dt[N >= 10]
 
 # 
 # 
