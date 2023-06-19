@@ -146,9 +146,23 @@ trace_distrib_variable <- function(data_loc, x, fill, xlabel, ylabel,filllabel, 
 
 
 trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel){
+  # On commence par récupérer la médiane pour pouvoir plot
+  med <- data_loc[, median(get(x), na.rm = TRUE), by = get(fill)]
+  setnames(med, "V1", paste(xlabel, "\n(Médiane)", sep =))
+  setnames(med, "get", filllabel)
+  
+  # Puis il va falloir placer le tableau proprement...
+  x_table <- max(min(data_loc[[x]]), 1)*10
+  nbins <- 50
+  
+  # Pour y on récupère le max de l'histogramme total, puis on multiplie par le coeff moyen pour avoir une idée du max, et on divise par un facteur
+  h <- hist(data_loc[[x]], breaks  = nbins)
+  coeffs <- data_loc$HW0010
+  y_max <- max(h$counts)*max(coeffs)/100
+  
   p <- ggplot(data = data_loc,
            mapping = aes(data_loc[[x]], weight = HW0010, fill = data_loc[[fill]])) +
-      geom_histogram(color="black", alpha=0.6, position="identity", bins=50) +
+      geom_histogram(color="black", alpha=0.6, position="identity", bins=nbins) +
       scale_x_continuous(trans='log10', labels = scales::dollar_format(
         prefix = "",
         suffix = " €",
@@ -164,8 +178,11 @@ trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, y
         suffix = "",
         big.mark = " ",
         decimal.mark = ",")) +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
-    
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+    annotate(geom = "table", x = x_table, y = y_max, label = list(med), 
+             vjust = 1, hjust = 0)
+  
+    p
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
   print(p) 

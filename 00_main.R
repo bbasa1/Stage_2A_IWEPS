@@ -25,12 +25,12 @@ liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
-pays <- "FR"
-num_vague <- 3 # Pour les graphiques
+pays <- "BE"
+num_vague <- 2 # Pour les graphiques
 
 montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
 
-faire_tourner_recherche_pvalue_opti <- FALSE
+faire_tourner_recherche_pvalue_opti <- TRUE
 
 ################################################################################
 # ============================ 02 IMPORTATION ==================================
@@ -160,6 +160,12 @@ vague_34 <- as.data.table(list_output[3])
 vague_123 <- as.data.table(list_output[4])
 vague_234 <- as.data.table(list_output[5])
 vague_1234 <- as.data.table(list_output[6])
+
+
+
+
+# data_pays[VAGUE == 2, median(DI2000, na.rm = TRUE), by = DA1110I]
+
 
 
 ################################################################################
@@ -674,7 +680,7 @@ x <- "DI2000"
 fill <- "label_DA1110I"
 xlabel <- "Revenu net annuel du ménage"
 ylabel <- "Nombre de ménages"
-filllabel <- "Ménage propriétaire de\nsa résidence principale"
+filllabel <- "Ménage propriétaire\nde sa résidence\nprincipale"
 titre <- paste("Distribution des revenus net annuels du ménage,\npour les ménages propriétaires de leur résidence principale et pour les non propriétaires (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop_distrib_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
@@ -758,7 +764,7 @@ x <- "DI2000"
 fill <- "label_DOEINHERIT"
 xlabel <- "Revenu net annuel du ménage"
 ylabel <- "Nombre de ménages"
-filllabel <- "Ménage qui s'attend à recevoir\nun héritage ou un don"
+filllabel <- "Ménage qui s'attend\nà recevoir\nhéritage ou don"
 titre <- paste("Distribution des revenus net annuels du ménage,\npour les ménages qui attendent un héritage, \net ceux qui n'en attendent pas (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_attendent_her_non_attendent_her_distrib_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
@@ -799,7 +805,7 @@ x <- "DI2000"
 fill <- "label_DA1120I"
 xlabel <- "Revenu net annuel du ménage"
 ylabel <- "Nombre de ménages"
-filllabel <- "Ménage propriétaire d'autres biens\nimmobiliers que leur résidence principale"
+filllabel <- "Ménage propriétaire\nd'autres biens\nimmobiliers que leur\nrésidence principale"
 titre <- paste("Distribution des revenus net annuels du ménage,\npour les ménages qui possèdent d'autres biens immobiliers que leur HMR,\net les ménages qui n'en possèdent pas (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_res_sec_non_prop_distrib_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
