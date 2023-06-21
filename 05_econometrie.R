@@ -342,3 +342,107 @@ dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, anne
   return(list(dico_sortie, dt_reg_lin, dt_probit, dt_logit, dt_prep_reg_lin, dt_prep_probit, dt_prep_logit, dt_reg_lin_X_Y, dt_probit_X_Y, dt_logit_X_Y))
 }
 
+
+##################################### Quid de la valeur du bien immobilier ? ######################
+
+
+effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial, titre, titre_save, caption_text){
+  # Après la régression sur le fait d'être propriétaire, on fait une régression sur la valeur de la propriété principale
+  # Avoir reçu un héritage augmente-t-il la valeur de la résidence principale ?
+  
+  liste_pval <- c()
+  liste_coeff <- c()
+  liste_count <- c()
+  for(montant_ini_loc in liste_montant_initial){
+    sortie <- regression_heritage_valeur_hmr(data_loc, montant_ini_loc)
+    liste_pval <- append(sortie$pvalue, liste_pval)
+    liste_coeff <- append(sortie$Estimate , liste_coeff)
+    n <- count(regression_G_heritage(data_loc, montant_ini_loc)[pvalue < 0.01])$n
+    liste_count <- append(n, liste_count)
+  }
+  
+  dt_for_plot <- as.data.table(list(liste_montant_initial, liste_pval, liste_coeff, liste_count))
+  dt_for_plot
+  
+  dt_for_plot[V2 <= 0.01, snignif := "1%"]
+  dt_for_plot[V2 <= 0.02 & V2 > 0.01, snignif := "2%"]
+  dt_for_plot[V2 <= 0.05 & V2 > 0.02, snignif := "5%"]
+  # dt_for_plot[V2 <= 0.10 & V2 > 0.05, snignif := "10%"]
+  dt_for_plot[V2 > 0.10, snignif := "Non significatif"]
+  
+  setnames(dt_for_plot, c("V1", "V2", "V3", "V4"), c("Montant_initial", "Y sur G : pvalue", "Y sur G : coefficiant", "G sur X : Nombre de variables dignificatives à 1%"))
+  
+  
+  melted_loc <- melt(dt_for_plot,
+                     id.vars = c("Montant_initial", "snignif"),
+                     measure.vars = c("Y sur G : pvalue", "Y sur G : coefficiant", "G sur X : Nombre de variables dignificatives à 1%"),
+                     variable.name = "variable",
+                     value.name    = "value")
+  
+  
+  x <- "Montant_initial"
+  y <- 'value'
+  color <- "snignif"
+  colorlabel <- "Significativité du coefficiant"
+  facet <- "variable"
+  xlabel <- "Montant d'héritage minimal pouvant être considéré comme conséquant"
+  ylabel <- ""
+  caption_text <- "Y = Valeur en euro de la résidence principale\n
+                      G = Fait de recevoir un héritage ou un don supérieur au montant minimal\n
+                      X = Ensemble de variables socio-économiques du ménage"
+  
+  
+  
+  
+  p <- ggplot(data = melted_loc, aes(x=melted_loc[[x]], y = melted_loc[[y]], color = melted_loc[[color]])) +
+    geom_point() +
+    # geom_line() +
+    # geom_smooth( method = 'gam', se = FALSE, span = 0.3) +
+    labs(title=titre,
+         x= xlabel,
+         y= ylabel,
+         color = colorlabel) + 
+    scale_y_continuous(labels = function(y) format(y, scientific = FALSE)) + 
+    scale_x_continuous(trans='log10', labels = scales::dollar_format(
+      prefix = "",
+      suffix = " €",
+      big.mark = " ",
+      decimal.mark = ","), n.breaks = 10) + 
+    scale_color_viridis(discrete = TRUE) +
+    theme(axis.text.x = element_text(angle = 22.5, vjust = 0.5, hjust=1)) +
+    facet_wrap(~factor(melted_loc[[facet]]),  scales = "free", ncol = 2) +
+    labs(caption = caption_text)
+  
+  
+  ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
+  print(p)  
+}
+
+## Deux sous-fonctions qui font les régressions :
+regression_heritage_valeur_hmr <- function(data_loc, montant_ini_loc){
+  data_loc[, Reg_Y := DA1110]
+  data_loc[, Reg_G := 0]
+  data_loc[Annee_achat_heritage >= 0 & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
+  
+  
+  liste_cols_reg_poids <- c("HW0010", "Reg_G", "Reg_Y")
+  dw <- svydesign(ids = ~1, data = data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
+  mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G, design = dw)
+  dt_prep_reg_lin <- as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE)  
+  setnames(dt_prep_reg_lin, "Pr(>|t|)", "pvalue")
+  return(dt_prep_reg_lin[rn == "Reg_G"])
+}
+
+regression_G_heritage <- function(data_loc, montant_ini_loc){
+  data_loc[, Reg_G := 0]
+  data_loc[Annee_achat_heritage >= 0 & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
+  
+  denylogit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
+                   family = binomial(link = "logit"), 
+                   data = data_loc)
+  dt_prep_logit <- as.data.table(summary(denylogit)$coefficients, keep.rownames = TRUE)
+  setnames(dt_prep_logit, "Pr(>|z|)", "pvalue")
+  return(dt_prep_logit)
+}
+
+

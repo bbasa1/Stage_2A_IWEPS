@@ -25,13 +25,13 @@ liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
-pays <- "BE"
-num_vague <- 1 # Pour les graphiques
+pays <- "IT"
+num_vague <- 2 # Pour les graphiques
 
-montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
+# montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
 faire_tourner_recherche_pvalue_opti <- TRUE
-nb_points_recherche <- 150
-liste_montant_initial <- lseq(500, 500000, nb_points_recherche)
+nb_points_recherche <- 200
+liste_montant_initial <- lseq(100, 500000, nb_points_recherche)
 
 ################################################################################
 # ============================ 02 IMPORTATION ==================================
@@ -105,7 +105,7 @@ source(paste(repo_prgm , "03_nettoyage_preparation.R" , sep = "/"))
 # DOGIFTINHER = Montant des cadeaux et héritages reçus ==> ATTENTION : La résidence principale peut être exclue du montant, car elle est comptée dans la question sur le mode d'aquisition de celle-ci
 # DOINHERIT = Substantial inheritance/gift received 
 # VAGUE = La vague
-# DA1120 = La valeur de la résidence principale
+# DA1120 = La valeur de la résidence principale 
 # SA0200 = Survey vintage
 # SA0010 = Identifiant du ménage
 # SA0210 = Vintage of last interview (household)
@@ -580,96 +580,73 @@ if(faire_tourner_recherche_pvalue_opti){
 
 
 ############ Recherche + précise du montant optimal
-# data_loc <- copy(data_pays)[VAGUE == 1]
-# # titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_proprios_her_logit.pdf", sep = "")
-# # titre_save <- paste(repo_sorties, titre_save, sep ='/')
-# # titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les proprios et les héritiers (", nom_pays, " & vague ",num_vague,")", sep = "")
-# # liste_chemins <- append(liste_chemins, titre_save)
-# que_heritiers <- FALSE
-# que_proprio <- FALSE
-# que_logit <- TRUE
-# dt_precis <- recherche_p_value_otpi(lseq(500, 500000, 150), data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = FALSE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
-# # table(dt_precis$Statistique)
-# # view(dt_precis[label_variable == "Logit" & Statistique %in% c("Y sur G : pvalue", "Y sur G : Coefficiant", "G sur X : Nombre de modalités significatives à 1%")])
+# 
+# recherche_sous_df_opti(que_heritiers = FALSE,
+#                        que_proprio = FALSE,
+#                        data_loc = copy(data_pays)[VAGUE == 4],
+#                        nb_var_expl_max = 0)
 # 
 # 
-# casted <- dcast(dt_precis[label_variable == "Logit"], Montant_initial ~ Statistique)
-# setnames(casted, "G sur X : Nombre de modalités significatives à 1%", "Nb_mod_sign_G_X")
-# setnames(casted, "Y sur (X,G) : Coefficiant associé à G", "Coeff_Y_X")
-# setnames(casted, "Y sur G : Coefficiant", "Coeff_Y_G")
-# setnames(casted, "Y sur G : log(|coeff|)", "log_coeff_Y_G")
-# setnames(casted, "Y sur G : log(pvalue)", "log_pval")
-# setnames(casted, "Y sur G : pvalue", "pval")
-# coeff_max <- max(casted[Nb_mod_sign_G_X == 0 & pval <= max(0.015, min(casted$pval))]$Coeff_Y_G)
+# recherche_sous_df_opti <- function(que_heritiers, que_proprio, data_loc, nb_var_expl_max=0){
+#   dt_precis <- recherche_p_value_otpi(lseq(500, 500000, 150), data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = FALSE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+#   casted <- dcast(dt_precis[label_variable == "Logit"], Montant_initial ~ Statistique)
+#   setnames(casted, "G sur X : Nombre de modalités significatives à 1%", "Nb_mod_sign_G_X")
+#   setnames(casted, "Y sur (X,G) : Coefficiant associé à G", "Coeff_Y_X")
+#   setnames(casted, "Y sur G : Coefficiant", "Coeff_Y_G")
+#   setnames(casted, "Y sur G : log(|coeff|)", "log_coeff_Y_G")
+#   setnames(casted, "Y sur G : log(pvalue)", "log_pval")
+#   setnames(casted, "Y sur G : pvalue", "pval")
+#   coeff_max <- max(casted[Nb_mod_sign_G_X <= nb_var_expl_max & pval <= max(0.015, min(casted$pval))]$Coeff_Y_G)
+#   
+#   casted_opti <- casted[Nb_mod_sign_G_X <= nb_var_expl_max & pval <= max(0.015, min(casted$pval)) & Coeff_Y_G == coeff_max]
+#   
+#   casted_opti$Odd_ratio <- exp(casted_opti$Coeff_Y_G)
+#   
+#   liste_cols <- c("Montant_initial", "Coeff_Y_G", "pval", "Odd_ratio", "Nb_mod_sign_G_X")
+#   
+#   return(casted_opti[,..liste_cols])
+# }
+
+
+######## Pour compter le nb de ménages dans chaque catégorie
+data_loc <- data_pays[VAGUE == 3 & Annee_achat_heritage %in% -98:98]
+# data_loc <- data_pays[VAGUE == num_vague & Annee_achat_heritage < 98] # Que les héritiers
+# data_loc <- data_pays[VAGUE == num_vague & Annee_achat_heritage > -98] # Que les proprio
+montant_ini_loc <- 155000
+
+# On créé les groupes
+sous_data_proprio[, Reg_Y := 0]
+sous_data_proprio[Annee_achat_heritage %in% annee_min:annee_max, Reg_Y := 1] # Ont acheté qq années après
+table(sous_data_proprio$Reg_Y)
+
+sous_data_proprio[, Reg_G := 0]
+sous_data_proprio[Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage conséquant
+table(sous_data_proprio$Reg_G)
+
+
+
+########## On a trouvé une variable G qui n'est pas trop corrélée aux variables socio-éco : On régresse G sur la valeur de la HMR
+
+
+
+# data_loc <- copy(data_pays[VAGUE == num_vague & Annee_achat_heritage > - 98]) # Que les proprio
+# montant_ini_loc <- 12000
+# regression_heritage_valeur_hmr(data_loc, montant_ini_loc)$pvalue
 # 
-# casted[Nb_mod_sign_G_X == 0 & pval <= max(0.015, min(casted$pval)) & Coeff_Y_G == coeff_max]
 
 
 
 
-recherche_sous_df_opti(que_heritiers = FALSE,
-                       que_proprio = FALSE,
-                       data_loc = copy(data_pays)[VAGUE == 3])
-
-
-recherche_sous_df_opti <- function(que_heritiers, que_proprio, data_loc){
-  dt_precis <- recherche_p_value_otpi(lseq(500, 500000, 150), data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = FALSE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
-  casted <- dcast(dt_precis[label_variable == "Logit"], Montant_initial ~ Statistique)
-  setnames(casted, "G sur X : Nombre de modalités significatives à 1%", "Nb_mod_sign_G_X")
-  setnames(casted, "Y sur (X,G) : Coefficiant associé à G", "Coeff_Y_X")
-  setnames(casted, "Y sur G : Coefficiant", "Coeff_Y_G")
-  setnames(casted, "Y sur G : log(|coeff|)", "log_coeff_Y_G")
-  setnames(casted, "Y sur G : log(pvalue)", "log_pval")
-  setnames(casted, "Y sur G : pvalue", "pval")
-  coeff_max <- max(casted[Nb_mod_sign_G_X <= 1 & pval <= max(0.015, min(casted$pval))]$Coeff_Y_G)
-  
-  casted_opti <- casted[Nb_mod_sign_G_X <= 1 & pval <= max(0.015, min(casted$pval)) & Coeff_Y_G == coeff_max]
-  
-  casted_opti$Odd_ratio <- exp(casted_opti$Coeff_Y_G)
-  
-  liste_cols <- c("Montant_initial", "Coeff_Y_G", "pval", "Odd_ratio")
-  
-  return(casted_opti[,..liste_cols])
-}
+data_loc <- copy(data_pays[VAGUE == num_vague & Annee_achat_heritage > - 98]) # Que les proprio
+# liste_montant_initial <- lseq(10, 500000, 250)
+titre_save <- paste(pays,"_V",num_vague,"_effet_heritage_val_HMR.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+titre <- paste("Effet du fait de recevoir un don ou \nun héritage sur la valeur de la résidence principale (", nom_pays, " & vague ",num_vague,")", sep = "")
+liste_chemins <- append(liste_chemins, titre_save)
+effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial, titre, titre_save, caption_text)
 
 
 
-
-# ### Si on a le montant optimal
-# 
-# # Là où ça marche le mieux c'est sur les proprios
-# sous_data_proprio <- data_pays[Annee_achat_heritage %in% -98:98 & VAGUE == num_vague]
-# 
-# # Le coefficiant a l'air de décroitre avec le montant initial
-# montant_ini_loc <- 8000
-# 
-# # On créé les groupes
-# sous_data_proprio[, Reg_Y := 0]
-# sous_data_proprio[Annee_achat_heritage %in% annee_min:annee_max, Reg_Y := 1] # Ont acheté qq années après
-# table(sous_data_proprio$Reg_Y)
-# 
-# sous_data_proprio[, Reg_G := 0]
-# sous_data_proprio[Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage conséquant
-# table(sous_data_proprio$Reg_G)
-# 
-# 
-# denylogit <- glm(Reg_Y ~ Reg_G, 
-#                  family = binomial(link = "logit"), 
-#                  data = sous_data_proprio)
-# 
-# summary(denylogit)
-# 
-# dt_prep_logit <- as.data.table(summary(denylogit)$coefficients, keep.rownames = TRUE)
-# setnames(dt_prep_logit, "Pr(>|z|)", "pvalue")
-# 
-# G = 1
-# exp(dt_prep_logit$Estimate[1]*1 + G*dt_prep_logit$Estimate[2])
-# 
-# G=0
-# exp(dt_prep_logit$Estimate[1]*1 + G*dt_prep_logit$Estimate[2])
-# 
-# 
-# exp(dt_prep_logit$Estimate[2]) # ==> exp(beta_{0,j}) = Avoir un héritage conséquant multiplie par exp(beta_{0,j}) la chance d'acheter une HMR dans les trois ans par rapport à recevoir un héritage faible
 
 
 
@@ -942,7 +919,6 @@ filllabel <- "Ménage propriétaire\nd'autres biens\nimmobiliers que leur\nrési
 titre <- paste("Distribution des revenus net annuels du ménage,\npour les ménages qui possèdent d'autres biens immobiliers que leur HMR,\net les ménages qui n'en possèdent pas (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_res_sec_non_prop_distrib_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-liste_chemins <- append(liste_chemins, titre_save)
 if(!all(is.na(data_loc[[fill]]))){
   liste_chemins <- append(liste_chemins, titre_save)
   trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel)
