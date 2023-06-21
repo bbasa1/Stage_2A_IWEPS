@@ -25,7 +25,11 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
                            Montant_initial =  numeric(),
                            Reg_lin_coeff = numeric(),
                            Logit_coeff = numeric(),
-                           Probit_coeff = numeric())
+                           Probit_coeff = numeric(),
+                           Reg_lin_coeff_X_Y = numeric(),
+                           Logit_coeff_X_Y = numeric(),
+                           Probit_coeff_X_Y = numeric()
+                           )
   for(montant_ini_loc in liste_montant_initial){
     # print(montant_ini_loc)
     dt_loc <- recuperation_pval(sous_data_loc, montant_ini_loc, annee_min = annee_min, annee_max = annee_max, que_logit=que_logit)
@@ -64,11 +68,22 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
                        variable.name = "variable",
                        value.name    = "value")
   melted_count$Statistique <- "G sur X : Nombre de modalités significatives à 1%"
-  # melted_count$value <- as.numeric(melted_count$value)
-  # melted_count[value == 0, value := 0.1]
+
   
-  melted_final <- rbindlist(list(melted_pval, melted_coeff, melted_count, melted_pval_log, melted_coeff_log), fill=TRUE)
+  melted_coeff_X_Y <- melt(dt_tot_reg,
+                       id.vars = "Montant_initial",
+                       measure.vars = c("Reg_lin_coeff_X_Y", "Logit_coeff_X_Y", "Probit_coeff_X_Y"),
+                       variable.name = "variable",
+                       value.name    = "value")
+  melted_coeff_X_Y$Statistique <- "Y sur (X,G) : Coefficiant associé à G"
+  
+  
+  
+  melted_final <- rbindlist(list(melted_pval, melted_coeff, melted_count, melted_pval_log, melted_coeff_log, melted_coeff_X_Y), fill=TRUE)
   melted_final$Statistique <- as.factor(melted_final$Statistique)
+  
+  table(melted_final$variable)
+  table(melted_final$label_variable)
   
   ### On prépare le graphique
   melted_final[, label_variable := factor(
@@ -87,11 +102,20 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
       variable == "Probit_pval_log", "Probit",
       variable == "Reg_lin_coeff_log", "Linéaire",
       variable == "Logit_coeff_log", "Logit",
-      variable == "Probit_coeff_log", "Probit"
+      variable == "Probit_coeff_log", "Probit",
+      variable == "Logit_coeff_X_Y ", "Logit",
+      variable == "Reg_lin_coeff_X_Y", "Linéaire",
+      variable == "Probit_coeff_X_Y ", "Probit"
     )
   )
   ]
   
+  #### A corriger : Pour une raison que je ne m'explique pas il ne veut pas changer le label pour ces dernières lignes il faut le faire à la main...
+  melted_final[variable == "Reg_lin_coeff_X_Y", label_variable := "Linéaire"]
+  melted_final[variable == "Logit_coeff_X_Y", label_variable := "Logit"]
+  melted_final[variable == "Probit_coeff_X_Y", label_variable := "Probit"]
+  
+
   if(faire_tracer){
     ### on trace
     # titre <- "Résultats des régressions de Y sur G"
@@ -104,6 +128,7 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
     color <- "label_variable"
     colorlabel <- "Régression"
     facet <- "Statistique"
+    ordre_facet <- "ordre_facet"
     
     caption_text <- "Y = Fait d'être propriétaire au moment de réception d'un héritage ou d'un don\n
                       G = Fait de recevoir un héritage ou un don supérieur au montant minimal\n
@@ -133,7 +158,10 @@ recuperation_pval <- function(sous_data_loc, montant_ini_loc, annee_min, annee_m
   dt_prep_reg_lin <- as.data.table(output[5])
   dt_prep_probit <- as.data.table(output[6])
   dt_prep_logit <- as.data.table(output[7])
-
+  dt_reg_lin_X_Y <- as.data.table(output[8])
+  dt_probit_X_Y <- as.data.table(output[9])
+  dt_logit_X_Y <- as.data.table(output[10])
+  
   
   dt_loc_pval <- as.data.table(list(dt_reg_lin[rn == "Reg_G" ]$pvalue,dt_logit[rn == "Reg_G" ]$pvalue, dt_probit[rn == "Reg_G" ]$pvalue))
   dt_loc_pval$Montant_initial <- montant_ini_loc
@@ -153,12 +181,21 @@ recuperation_pval <- function(sous_data_loc, montant_ini_loc, annee_min, annee_m
   setnames(dt_loc_count, "n.1", "Logit_count")
   setnames(dt_loc_count, "n.2", "Probit_count")
   
+  
+  dt_loc_coeff_Y_X <- as.data.table(list(dt_reg_lin_X_Y[rn == "Reg_G" ]$Estimate ,dt_logit_X_Y[rn == "Reg_G" ]$Estimate , dt_probit_X_Y[rn == "Reg_G" ]$Estimate ))
+  dt_loc_coeff_Y_X$Montant_initial <- montant_ini_loc
+  setnames(dt_loc_coeff_Y_X, "V1", "Reg_lin_coeff_X_Y")
+  setnames(dt_loc_coeff_Y_X, "V2", "Logit_coeff_X_Y")
+  setnames(dt_loc_coeff_Y_X, "V3", "Probit_coeff_X_Y")
+  
   merge_1 <- merge(dt_loc_pval, dt_loc_coeff, by = "Montant_initial")
-  return(merge(merge_1, dt_loc_count, by = "Montant_initial"))
+  merge_2 <- merge(merge_1, dt_loc_count, by = "Montant_initial")
+  merge_3 <- merge(merge_2, dt_loc_coeff_Y_X, by = "Montant_initial")
+  return(merge_3)
 }
 
 dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, annee_min, annee_max, que_logit){
-  # Effectue la régression de Y sur G. C'est la plus profonde des sous-fonctions
+  # Effectue toutes les régressions : Y/G, G/X et Y/(G,X). C'est la plus profonde des sous-fonctions
   
   dico_sortie <- c()
   
@@ -248,15 +285,60 @@ dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, anne
     setnames(dt_probit, 'tval', "t value")
       
   }
-  
-
-  
   denyprobit <- glm(Reg_Y ~ Reg_G, 
                     family = binomial(link = "logit"), 
                     data = sous_data_loc)
   dt_logit <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE) 
   setnames(dt_logit, "Pr(>|z|)", "pvalue")
   
-  return(list(dico_sortie, dt_reg_lin, dt_probit, dt_logit, dt_prep_reg_lin, dt_prep_probit, dt_prep_logit))
+  
+  
+  
+  # Est-ce que (X,G) est significatif pour prévoir Y ?
+  if(!que_logit){
+    liste_cols_reg_poids <- c("Reg_Y", "HW0010", "Reg_G", "DHAGEH1B", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE", "DHEMPH1", "PE0300_simpl")
+    dw <- svydesign(ids = ~1, data = sous_data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
+    mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, design = dw)
+    dt_reg_lin_X_Y <- as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE)  
+    setnames(dt_reg_lin_X_Y, "Pr(>|t|)", "pvalue")
+    
+    denyprobit <- glm(Reg_Y ~ Reg_G + DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
+                      family = binomial(link = "probit"), 
+                      data = sous_data_loc)
+    dt_probit_X_Y <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)  
+    setnames(dt_probit_X_Y, "Pr(>|z|)", "pvalue")
+  }else{
+    dt_reg_lin_X_Y <- data.table(rn = numeric(),
+                             Estimate = numeric(),
+                             std_err = numeric(),
+                             tval =  numeric(),
+                             pvalue = numeric())
+    setnames(dt_reg_lin_X_Y, 'std_err', "Std. Error")
+    setnames(dt_reg_lin_X_Y, 'tval', "t value")
+    
+    dt_probit_X_Y <- data.table(rn = numeric(),
+                            Estimate = numeric(),
+                            std_err = numeric(),
+                            tval =  numeric(),
+                            pvalue = numeric())
+    setnames(dt_probit_X_Y, 'std_err', "Std. Error")
+    setnames(dt_probit_X_Y, 'tval', "t value")
+    
+  }
+  
+  
+  
+  denyprobit <- glm(Reg_Y ~ Reg_G + DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
+                    family = binomial(link = "logit"), 
+                    data = sous_data_loc)
+  dt_logit_X_Y <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE) 
+  setnames(dt_logit_X_Y, "Pr(>|z|)", "pvalue")
+  
+  
+  
+  
+  
+  
+  return(list(dico_sortie, dt_reg_lin, dt_probit, dt_logit, dt_prep_reg_lin, dt_prep_probit, dt_prep_logit, dt_reg_lin_X_Y, dt_probit_X_Y, dt_logit_X_Y))
 }
 

@@ -33,6 +33,40 @@ dico_pays <- c(
   "UK" ="Royaume-Unis"
 )
 
+dico_pays_anglais <- c(
+  "FR" ="France",
+  "AT" ="Austria",
+  "BE" ="Belgium",
+  "BG" ="Bulgaria",
+  # "CH" ="Suisse",
+  "CY" ="Cyprus",
+  "CZ" = "Czech Republic",
+  "DE" ="Germany",
+  "DK" ="Denmark",
+  "EE" ="Estonia",
+  "ES" ="Spain",
+  "FI" ="Finland",
+  "GR" ="Greece",
+  "HR" ="Croatia",
+  "HU" ="Hungary",
+  "IE" ="Ireland",
+  # "IS" ="Islande",
+  "IT" ="Italy",
+  "LT" ="Lithuania",
+  "LU" ="Luxembourg",
+  # "LV" ="Lettonie",
+  "MT" ="Malta",
+  "NL" ="Netherlands",
+  "NO" ="Norway",
+  "PL" ="Poland",
+  "PT" ="Portugal",
+  "RO" ="Romania",
+  "SE" ="Switzerland",
+  "SI" ="Slovenia",
+  "SK" ="Slovak Republi",
+  "UK" ="United Kingdom"
+)
+
 
 
 library(readr)

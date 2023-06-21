@@ -69,7 +69,7 @@ trace_barplot_log <- function(data_loc, x,sortby_x, y, fill, xlabel, ylabel,fill
 
 
 
-trace_concentration <- function(data_melted_loc, x, y, color, xlabel, ylabel,colorlabel, titre_fig, titre_save){
+trace_concentration <- function(data_melted_loc, x, y, color, xlabel, ylabel,colorlabel, titre_fig, titre_save, x_table){
   p <- ggplot(data_melted_loc) +
     geom_line(aes(x = data_melted_loc[[x]], y= data_melted_loc[[y]], color = data_melted_loc[[color]])) +
     labs(
@@ -98,7 +98,9 @@ trace_concentration <- function(data_melted_loc, x, y, color, xlabel, ylabel,col
     theme(legend.text = element_text(angle = 0, vjust = 0.7, hjust = 0),
           axis.text.x = element_text(angle = 45, vjust = 0.5),
           legend.position = "right") +
-    geom_abline(intercept = 0, slope = 1, linetype = "dashed")
+    geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+    annotate(geom = "table", x = 12.5, y = 100, label = list(x_table), 
+             vjust = 1, hjust = 0)
   
   print(p)
   
@@ -210,7 +212,6 @@ trace_courbes <- function(melted_loc, x, y, color, facet, xlabel, ylabel, colorl
     theme(axis.text.x = element_text(angle = 22.5, vjust = 0.5, hjust=1)) +
     facet_wrap(~factor(melted_loc[[facet]]),  scales = "free", ncol = 2) +
     labs(caption = caption_text)
-
   
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")

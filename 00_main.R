@@ -25,13 +25,13 @@ liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
-pays <- "DE"
-num_vague <- 2 # Pour les graphiques
+pays <- "BE"
+num_vague <- 1 # Pour les graphiques
 
 montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
-
 faire_tourner_recherche_pvalue_opti <- TRUE
-nb_points_recherche <- 100
+nb_points_recherche <- 150
+liste_montant_initial <- lseq(500, 500000, nb_points_recherche)
 
 ################################################################################
 # ============================ 02 IMPORTATION ==================================
@@ -146,6 +146,7 @@ data_pays <- Ajout_premier_heritage(data_pays)
 # En fait on ne veut pas le premier héritage obtenu mais le premier héritage CONSEQUANT obtenu
 data_pays <- Ajout_premier_heritage_cons(data_pays, montant_heritage_min)
 data_pays[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
+data_pays[, achat_apres_heritage := HB0700 >= Annee_heritage_1]
 
 
 ## Petit histogramme pour visualiser
@@ -492,7 +493,7 @@ count(data_pays[Annee_achat_heritage == -99])
 
 if(faire_tourner_recherche_pvalue_opti){
   # D'abord avec les 3 régressions
-  liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+  # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
   data_loc <- copy(data_pays)[VAGUE == num_vague]
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_heritier.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
@@ -503,7 +504,7 @@ if(faire_tourner_recherche_pvalue_opti){
   que_logit <- FALSE
   recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
   
-  liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+  # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
   data_loc <- copy(data_pays)[VAGUE == num_vague]
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_proprios.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
@@ -514,7 +515,7 @@ if(faire_tourner_recherche_pvalue_opti){
   que_logit <- FALSE
   recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
   
-  liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+  # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
   data_loc <- copy(data_pays)[VAGUE == num_vague]
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
@@ -531,7 +532,7 @@ if(faire_tourner_recherche_pvalue_opti){
 
 if(faire_tourner_recherche_pvalue_opti){
   # D'abord avec les 3 régressions
-  liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+  # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
   data_loc <- copy(data_pays)[VAGUE == num_vague]
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_heritier_logit.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
@@ -542,7 +543,7 @@ if(faire_tourner_recherche_pvalue_opti){
   que_logit <- TRUE
   recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
   
-  liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+  # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
   data_loc <- copy(data_pays)[VAGUE == num_vague]
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_proprios_logit.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
@@ -553,7 +554,19 @@ if(faire_tourner_recherche_pvalue_opti){
   que_logit <- TRUE
   recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
   
-  liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+  # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+  data_loc <- copy(data_pays)[VAGUE == num_vague]
+  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_proprios_her_logit.pdf", sep = "")
+  titre_save <- paste(repo_sorties, titre_save, sep ='/')
+  titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les proprios et les héritiers (", nom_pays, " & vague ",num_vague,")", sep = "")
+  liste_chemins <- append(liste_chemins, titre_save)
+  que_heritiers <- TRUE
+  que_proprio <- TRUE
+  que_logit <- TRUE
+  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+  
+  
+  # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
   data_loc <- copy(data_pays)[VAGUE == num_vague]
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po_logit.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
@@ -566,49 +579,100 @@ if(faire_tourner_recherche_pvalue_opti){
 }
 
 
+############ Recherche + précise du montant optimal
+# data_loc <- copy(data_pays)[VAGUE == 1]
+# # titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_proprios_her_logit.pdf", sep = "")
+# # titre_save <- paste(repo_sorties, titre_save, sep ='/')
+# # titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les proprios et les héritiers (", nom_pays, " & vague ",num_vague,")", sep = "")
+# # liste_chemins <- append(liste_chemins, titre_save)
+# que_heritiers <- FALSE
+# que_proprio <- FALSE
+# que_logit <- TRUE
+# dt_precis <- recherche_p_value_otpi(lseq(500, 500000, 150), data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = FALSE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+# # table(dt_precis$Statistique)
+# # view(dt_precis[label_variable == "Logit" & Statistique %in% c("Y sur G : pvalue", "Y sur G : Coefficiant", "G sur X : Nombre de modalités significatives à 1%")])
+# 
+# 
+# casted <- dcast(dt_precis[label_variable == "Logit"], Montant_initial ~ Statistique)
+# setnames(casted, "G sur X : Nombre de modalités significatives à 1%", "Nb_mod_sign_G_X")
+# setnames(casted, "Y sur (X,G) : Coefficiant associé à G", "Coeff_Y_X")
+# setnames(casted, "Y sur G : Coefficiant", "Coeff_Y_G")
+# setnames(casted, "Y sur G : log(|coeff|)", "log_coeff_Y_G")
+# setnames(casted, "Y sur G : log(pvalue)", "log_pval")
+# setnames(casted, "Y sur G : pvalue", "pval")
+# coeff_max <- max(casted[Nb_mod_sign_G_X == 0 & pval <= max(0.015, min(casted$pval))]$Coeff_Y_G)
+# 
+# casted[Nb_mod_sign_G_X == 0 & pval <= max(0.015, min(casted$pval)) & Coeff_Y_G == coeff_max]
 
 
-### Si on a le montant optimal
-
-melted <- recherche_p_value_otpi(c(8000,9000,10000), copy(data_pays), annee_min = annee_min, annee_max = annee_max, faire_tracer = FALSE)
-# melted
 
 
+recherche_sous_df_opti(que_heritiers = FALSE,
+                       que_proprio = FALSE,
+                       data_loc = copy(data_pays)[VAGUE == 3])
+
+
+recherche_sous_df_opti <- function(que_heritiers, que_proprio, data_loc){
+  dt_precis <- recherche_p_value_otpi(lseq(500, 500000, 150), data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = FALSE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+  casted <- dcast(dt_precis[label_variable == "Logit"], Montant_initial ~ Statistique)
+  setnames(casted, "G sur X : Nombre de modalités significatives à 1%", "Nb_mod_sign_G_X")
+  setnames(casted, "Y sur (X,G) : Coefficiant associé à G", "Coeff_Y_X")
+  setnames(casted, "Y sur G : Coefficiant", "Coeff_Y_G")
+  setnames(casted, "Y sur G : log(|coeff|)", "log_coeff_Y_G")
+  setnames(casted, "Y sur G : log(pvalue)", "log_pval")
+  setnames(casted, "Y sur G : pvalue", "pval")
+  coeff_max <- max(casted[Nb_mod_sign_G_X <= 1 & pval <= max(0.015, min(casted$pval))]$Coeff_Y_G)
+  
+  casted_opti <- casted[Nb_mod_sign_G_X <= 1 & pval <= max(0.015, min(casted$pval)) & Coeff_Y_G == coeff_max]
+  
+  casted_opti$Odd_ratio <- exp(casted_opti$Coeff_Y_G)
+  
+  liste_cols <- c("Montant_initial", "Coeff_Y_G", "pval", "Odd_ratio")
+  
+  return(casted_opti[,..liste_cols])
+}
 
 
 
 
-#### Les odds ratios
+# ### Si on a le montant optimal
+# 
+# # Là où ça marche le mieux c'est sur les proprios
+# sous_data_proprio <- data_pays[Annee_achat_heritage %in% -98:98 & VAGUE == num_vague]
+# 
+# # Le coefficiant a l'air de décroitre avec le montant initial
+# montant_ini_loc <- 8000
+# 
+# # On créé les groupes
+# sous_data_proprio[, Reg_Y := 0]
+# sous_data_proprio[Annee_achat_heritage %in% annee_min:annee_max, Reg_Y := 1] # Ont acheté qq années après
+# table(sous_data_proprio$Reg_Y)
+# 
+# sous_data_proprio[, Reg_G := 0]
+# sous_data_proprio[Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage conséquant
+# table(sous_data_proprio$Reg_G)
+# 
+# 
+# denylogit <- glm(Reg_Y ~ Reg_G, 
+#                  family = binomial(link = "logit"), 
+#                  data = sous_data_proprio)
+# 
+# summary(denylogit)
+# 
+# dt_prep_logit <- as.data.table(summary(denylogit)$coefficients, keep.rownames = TRUE)
+# setnames(dt_prep_logit, "Pr(>|z|)", "pvalue")
+# 
+# G = 1
+# exp(dt_prep_logit$Estimate[1]*1 + G*dt_prep_logit$Estimate[2])
+# 
+# G=0
+# exp(dt_prep_logit$Estimate[1]*1 + G*dt_prep_logit$Estimate[2])
+# 
+# 
+# exp(dt_prep_logit$Estimate[2]) # ==> exp(beta_{0,j}) = Avoir un héritage conséquant multiplie par exp(beta_{0,j}) la chance d'acheter une HMR dans les trois ans par rapport à recevoir un héritage faible
 
-sous_data_loc <- data_pays[Annee_achat_heritage <= 98]
-montant_ini_loc <- 9000
 
 
-# On créé les groupes
-sous_data_loc[, Reg_Y := 0]
-sous_data_loc[Annee_achat_heritage %in% annee_min:annee_max, Reg_Y := 1] # Ont acheté qq années après
-
-sous_data_loc[, Reg_G := 0]
-sous_data_loc[Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage conséquant
-
-
-denylogit <- glm(Reg_Y ~ Reg_G, 
-                  family = binomial(link = "logit"), 
-                  data = sous_data_loc)
-
-summary(denylogit)
-
-dt_prep_logit <- as.data.table(summary(denylogit)$coefficients, keep.rownames = TRUE)
-setnames(dt_prep_logit, "Pr(>|z|)", "pvalue")
-
-G = 1
-exp(dt_prep_logit$Estimate[1]*1 + G*dt_prep_logit$Estimate[2])
-
-G=0
-exp(dt_prep_logit$Estimate[1]*1 + G*dt_prep_logit$Estimate[2])
-
-
-exp(dt_prep_logit$Estimate[2]) # ==> exp(beta_{0,j}) = Avoir un héritage conséquant multiplie par exp(beta_{0,j}) la chance d'acheter une HMR dans les trois ans par rapport à recevoir un héritage faible
 
 
 
@@ -716,13 +780,16 @@ liste_variables_loc <-c(
 
 var_diff_loc = "DA1110I"
 liste_legendes_loc = c("Non_prop" = "Non propriétaires", "Prop" = "Propriétaires","Total" = "Total")
-data_loc <- data_pays
+data_loc <- data_pays[VAGUE == num_vague]
 titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui sont propriétaires de leur résidence principale, \net ceux qui ne le sont pas (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
-liste_chemins <- append(liste_chemins, titre_save)
-try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs))
+if(!all(is.na(data_loc[[var_diff_loc]])) & !all(data_loc[[var_diff_loc]] == "NAN")){
+  liste_chemins <- append(liste_chemins, titre_save)
+  trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs)
+}
+
 
 # Et le revenu qui est continu
 data_loc <- data_pays[VAGUE == num_vague]
@@ -735,11 +802,13 @@ filllabel <- "Ménage propriétaire\nde sa résidence\nprincipale"
 titre <- paste("Distribution des revenus net annuels du ménage,\npour les ménages propriétaires de leur résidence principale et pour les non propriétaires (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop_distrib_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-liste_chemins <- append(liste_chemins, titre_save)
-trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel)
+if(!all(is.na(data_loc[[fill]]))){
+  liste_chemins <- append(liste_chemins, titre_save)
+  trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel)
+}
 
-
-
+# table(data_loc$DA1110I)
+# all(is.na(data_loc$DA1110I))
 
 
 liste_variables_loc <-c(
@@ -760,13 +829,15 @@ liste_variables_loc <-c(
 
 var_diff_loc = "DOINHERIT"
 liste_legendes_loc = c("Non_prop" = "Non héritier", "Prop" = "Héritier","Total" = "Total")
-data_loc <- data_pays
+data_loc <- data_pays[VAGUE == num_vague]
 titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui ont eu un héritage, \net ceux qui n'en ont pas eu (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_heritiers_non_heritiers.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
-liste_chemins <- append(liste_chemins, titre_save)
-try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs))
+if(!all(is.na(data_loc[[fill]]))){
+  liste_chemins <- append(liste_chemins, titre_save)
+  trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs)
+}
 
 data_loc <- data_pays[VAGUE == num_vague]
 data_loc <- nettoyage_DOINHERIT(data_loc)
@@ -779,8 +850,10 @@ titre <- paste("Distribution des revenus net annuels du ménage,\npour les ména
 titre_save <- paste(pays,"_V",num_vague,"_Differences_heritiers_non_heritiers_distrib_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 liste_chemins <- append(liste_chemins, titre_save)
-trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel)
-
+if(!all(is.na(data_loc[[fill]]))){
+  liste_chemins <- append(liste_chemins, titre_save)
+  trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel)
+}
 
 
 
@@ -802,13 +875,17 @@ liste_variables_loc <-c(
 
 var_diff_loc = "DOEINHERIT"
 liste_legendes_loc = c("Non_prop" = "Ne s'attend pas à hériter", "Prop" = "S'attend à hériter","Total" = "Total")
-data_loc <- data_pays
+data_loc <- data_pays[VAGUE == num_vague]
 titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui attendent un héritage, \net ceux qui n'en attendent pas (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_attendent_her_non_attendent_her.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
-liste_chemins <- append(liste_chemins, titre_save)
-try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs))
+if(!all(is.na(data_loc[[fill]]))){
+  liste_chemins <- append(liste_chemins, titre_save)
+  trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs)
+}
+
+
 
 # Pour les variables continues
 data_loc <- data_pays[VAGUE == num_vague]
@@ -821,7 +898,7 @@ filllabel <- "Ménage qui s'attend\nà recevoir\nhéritage ou don"
 titre <- paste("Distribution des revenus net annuels du ménage,\npour les ménages qui attendent un héritage, \net ceux qui n'en attendent pas (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_attendent_her_non_attendent_her_distrib_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-if(!all(is.na(data_loc$label_DOEINHERIT))){
+if(!all(is.na(data_loc[[fill]]))){
   liste_chemins <- append(liste_chemins, titre_save)
   trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel)
 }
@@ -844,13 +921,15 @@ liste_variables_loc <-c(
 
 var_diff_loc = "DA1120I"
 liste_legendes_loc = c("Non_prop" = "Non possédants", "Prop" = "Possédants","Total" = "Total")
-data_loc <- data_pays
+data_loc <- data_pays[VAGUE == num_vague]
 titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui possèdent d'autres biens immobiliers que leur HMR,\net les ménages qui n'en possèdent pas (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_res_sec_non_prop.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
-liste_chemins <- append(liste_chemins, titre_save)
-try(trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs))
+if(!all(is.na(data_loc[[fill]]))){
+  liste_chemins <- append(liste_chemins, titre_save)
+  trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs)
+}
 
 # Pour les variables continues
 data_loc <- data_pays[VAGUE == num_vague]
@@ -864,8 +943,10 @@ titre <- paste("Distribution des revenus net annuels du ménage,\npour les ména
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_res_sec_non_prop_distrib_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 liste_chemins <- append(liste_chemins, titre_save)
-trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel)
-
+if(!all(is.na(data_loc[[fill]]))){
+  liste_chemins <- append(liste_chemins, titre_save)
+  trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel)
+}
 
 
 
@@ -966,204 +1047,16 @@ pdf_combine(liste_chemins, output = titre_save)
 "DA1110I"
 "DOINHERIT"
 "DOEINHERIT"
+"achat_apres_heritage"
 
-colnames(data_pays)
+# data_pays$achat_apres_heritage
+table(data_pays[VAGUE == num_vague]$DA1110I)
+# colnames(data_pays)
 
 
-var <- "DOEINHERIT"
-
-locvar <- tableau_binaire("DOEINHERIT", data_pays[VAGUE == num_vague])
+var <- "DOINHERIT"
+locvar <- tableau_binaire(var, data_pays[VAGUE == num_vague], count_na = TRUE) # TOUJOURS 1 = Non, 2 = Oui
 locvar
-
-
-# "HH0301A", "HH0301B", "HH0301C", "HH0301D",
-# "HH0301E", "HH0301F", "HH0301H", "HH0301I", "HH0301J",
-# "HH0302A", "HH0302B", "HH0302C", "HH0302D",
-# "HH0302E", "HH0302F", "HH0302H", "HH0302I", "HH0302J",
-# "HH0303A", "HH0303B", "HH0303C", "HH0303D",
-# "HH0303E", "HH0303F", "HH0303H", "HH0303I", "HH0303J"
-
-# HH030",lettre,"_cons
-# 
-# # 1 = Oui, 2 = Non
-# 
-# 
-# "HH030A_cons", "HH030B_cons", "HH030C_cons", "HH030D_cons",
-# "HH030E_cons", "HH030F_cons", "HH030G_cons", "HH030H_cons", "HH030I_cons", "HH030J_cons"
-# 
-# sous_dt <- data_pays[VAGUE == num_vague , .N, by = c("HH030A_cons", "HH030B_cons", "HH030C_cons", "HH030D_cons",
-#                                          "HH030E_cons", "HH030F_cons", "HH030G_cons", "HH030H_cons", "HH030I_cons", "HH030J_cons")]
-# 
-# setorder(sous_dt, -"N")
-# 
-# sous_dt[N >= 10]
-
-# 
-# 
-# dw <- svydesign(ids = ~1, data = data_pays[VAGUE == num_vague], weights = ~ HW0010)
-# 
-# svytable(~ Annee_enquete + Sexe_1H_2F, dw)
-# 
-# 
-# 
-# 
-# 
-# p <- as.ggplot(~ svyhist(~ DI2000, design = dw, breaks = "Sturges"))
-# 
-# p
-# 
-# svyboxplot(formula, design, all.outliers=FALSE,...)
-# 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# 
-# 
-# # SA0200 = Survey vintage
-# # SA0010 = household identification number
-# # SA0210 = Vintage of last interview (household)
-# # SA0110 = Past household ID
-# 
-# data_loc <- copy(data_pays)
-# 
-# # Pour faire l'évolution il faut commencer par mettre à 0 les patrimoines NaN
-# data_loc[is.na(DA1000), DA1000 := 0]
-# data_loc[is.na(DA2100), DA2100 := 0]
-# data_loc[is.na(DL1000), DL1000 := 0]
-# 
-# vague_1 <- data_loc[VAGUE == 1,] # On récupère les vagues
-# vague_2 <- data_loc[VAGUE == 2,]
-# vague_3 <- data_loc[VAGUE == 3,]
-# vague_4 <- data_loc[VAGUE == 4,]
-# 
-# colnames(vague_1) <- paste(colnames(vague_1),"V1",sep="_") # On renome pour ne pas avoir de conflits
-# colnames(vague_2) <- paste(colnames(vague_2),"V2",sep="_")
-# colnames(vague_3) <- paste(colnames(vague_3),"V3",sep="_")
-# colnames(vague_4) <- paste(colnames(vague_4),"V4",sep="_")
-# 
-# # li <- c("VAGUE", "SA0010", "SA0200", "SA0110")
-# # data_loc[,..li]
-# # 
-# # li1 <- c("VAGUE_V1", "SA0010_V1", "SA0200_V1", "SA0110_V1")
-# # vague_1[,..li1]
-# # li2 <- c("VAGUE_V2", "SA0010_V2", "SA0200_V2", "SA0110_V2")
-# # vague_2[,..li2]
-# # 
-# # merge(x = vague_1, y = vague_2, by.x = 'SA0010_V1',by.y = 'SA0110_V2')
-# 
-# vague_12 <- merge(x = vague_2, y = vague_1, by.x = 'SA0110_V2',by.y = 'SA0010_V1')
-# vague_123 <- merge(x = vague_3, y = vague_12, by.x = 'SA0110_V3',by.y = 'SA0010_V2') ## On s'arrête là parce qu'aucun ménage n'est enquêté 4x
-# vague_1234 <- merge(x = vague_4, y = vague_123, by.x = 'SA0110_V4',by.y = 'SA0010_V3')
-# 
-# vague_23 <- merge(x = vague_3, y = vague_2, by.x = 'SA0110_V3',by.y = 'SA0010_V2')
-# vague_234 <- merge(x = vague_4, y = vague_23, by.x = 'SA0110_V4',by.y = 'SA0010_V3') ## PERSONNE N'EST EN PANEL A LA VAGUE 4 ?????
-# 
-# vague_34 <- merge(x = vague_4, y = vague_3, by.x = 'SA0110_V4',by.y = 'SA0010_V3')
-# 
-
-# 
-# pop_initiale_tot <- copy(data_pays[VAGUE %in% c(2,3),])
-# nrow(pop_initiale_tot)
-# SA0110_V3 <- vague_23$SA0110_V3 ## On récupère les identifiants ménages qui sont présents dans les deux vagues = ceux qui ont un identifiant sur la vague passée (la vague 2 donc)
-# pop_initiale_tot <- pop_initiale_tot[(SA0110 %in% SA0110_V3 & VAGUE == 3) | (SA0010 %in% SA0110_V3 & VAGUE == 2)] # Tout ceux qui ont l'identifiant passé sur la vague 3 et l'identifiant présent sur la vague 2
-# table(pop_initiale_tot$VAGUE)
-# 
-# pop_initiale_tot[, Reg_Y := 0]
-# pop_initiale_tot[(DA1110I == 1 & VAGUE == 3) | (DA1110I == 1 & VAGUE == 2), Reg_Y := 1] ## La population qui ont une HMR
-# pop_initiale_tot$Reg_Y <- as.numeric(pop_initiale_tot$Reg_Y)
-# table(pop_initiale_tot$Reg_Y)
-# 
-# pop_initiale_tot[, Reg_G := 0]
-# SA0110_V3 <- vague_23[DOINHERIT_V3 == 1 & DOINHERIT_V2 == 0]$SA0110_V3 ## On récupère les identifiants ménages de ceux qui ont reçu un héritage entre la vague 2 et la vague 3
-# pop_initiale_tot[(SA0110 %in% SA0110_V3 & VAGUE == 3) | (SA0010 %in% SA0110_V3 & VAGUE == 2), Reg_G := 1]
-# pop_initiale_tot$Reg_G <- as.numeric(pop_initiale_tot$Reg_G)
-# table(pop_initiale_tot$Reg_G)
-# 
-# 
-# pop_initiale_tot[, Reg_T := 0]
-# pop_initiale_tot[VAGUE == 3, Reg_T := 1] ## La date
-# pop_initiale_tot$Reg_T <- as.numeric(pop_initiale_tot$Reg_T)
-# table(pop_initiale_tot$Reg_T)
-# 
-# pop_initiale_tot[, Reg_D := Reg_G * Reg_T]
-# 
-# liste_cols_reg <- c("Reg_Y", "Reg_G", "Reg_T", "Reg_D")
-# liste_cols_reg_poids <- c("Reg_Y", "Reg_G", "Reg_T", "Reg_D", "HW0010")
-# 
-# 
-# 
-# pop_initiale_tot$Groupe <- paste("G",pop_initiale_tot$Reg_G, "_T",pop_initiale_tot$Reg_T, "_T",pop_initiale_tot$Reg_Y, sep = "")
-# 
-# comptes <- pop_initiale_tot[, .N, by = Groupe]
-# n <- min(comptes$N)
-# sous_pop_initiale <- as.data.table(pop_initiale_tot %>% group_by(Groupe) %>% slice_sample(n=n))
-# dw <- svydesign(ids = ~1, data = sous_pop_initiale[,..liste_cols_reg_poids], weights = ~ HW0010)
-# mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw)
-# summary(mysvyglm)
-# 
-# 
-# 
-# # library(splitstackshape)
-# # sous_pop_initiale <- stratified(indt=pop_initiale_tot, group=c("Reg_G", "Reg_T", "Reg_Y"),
-# #                                 size=0.5, replace=TRUE,
-# #                                 select=list(Reg_G=1, Reg_Y=0, Reg_T=1
-# #                                               ))
-# # table(sous_pop_initiale$Reg_Y)
-# # table(sous_pop_initiale$Reg_G)
-# # table(sous_pop_initiale$Reg_T)
-# 
-# comptes <- pop_initiale_tot[, .N, by = Groupe]
-# n <- min(comptes$N)
-# sous_pop_initiale <- as.data.table(pop_initiale_tot %>% group_by(Groupe) %>% slice_sample(n=n))
-# dw <- svydesign(ids = ~1, data = sous_pop_initiale[,..liste_cols_reg_poids], weights = ~ HW0010)
-# mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw)
-# summary(mysvyglm)
-# 
-# # 
-# # if(n < nrow(pop_initiale_tot[Reg_G == 0])){
-# #   # sous_pop_initiale <- pop_initiale_tot[Reg_G == 0][sample(1:nrow(pop_initiale_tot[Reg_G == 0]), n$n), ]
-# #   sous_pop_initiale <- pop_initiale_tot[,.SD[sample(1:nrow(pop_initiale_tot), n$n)],by = c("Reg_G", "Reg_T", "Reg_Y")]
-# # }else{
-# #   sous_pop_initiale <- pop_initiale_tot[Reg_G == 0]
-# # }
-# # # sous_pop_initiale <- rbindlist(list(sous_pop_initiale, pop_initiale_tot[Reg_G == 1]), fill=TRUE)
-# 
-# sous_pop_initiale[,..liste_cols_reg_poids]
-# pop_initiale_tot[,..liste_cols_reg_poids]
-# dw <- svydesign(ids = ~1, data = sous_pop_initiale[,..liste_cols_reg_poids], weights = ~ HW0010)
-# mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + Reg_D + Reg_T, design = dw)
-# summary(mysvyglm)
-# 
-# 
-# table(sous_pop_initiale$Reg_Y)
-# table(sous_pop_initiale$Reg_G)
-# table(sous_pop_initiale$Reg_T)
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# pop_initiale_tot[(SA0110 %in% SA0110_V3 & VAGUE == 3) & (SA0010 %in% SA0110_V3 & VAGUE == 2)]
-# 
-# pop_initiale_tot$SA0010
-# 
-# vague_23 <- merge(x = vague_3, y = vague_2, by.x = 'SA0110_V3',by.y = 'SA0010_V2')
-# vague_23$SA0110_V3 == vague_23$SA0010_V2
-# 
 
 
 

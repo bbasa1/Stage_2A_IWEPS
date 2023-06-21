@@ -80,6 +80,12 @@ graphique_contration_patrimoine <- function(data_loc, nb_quantiles, liste_type_p
                  variable.name = "variable",
                  value.name    = "value")
   
+  liste_y <- melted[variable == "Patrimoine brut",]$value
+  calcul_gini(liste_y)
+  
+  indices_gini <- melted[,calcul_gini(value), by= variable]
+  setnames(indices_gini, "V1", "Gini")
+  indices_gini$Gini <- round(indices_gini$Gini, 3)
   
   x <- "Quantiles"
   y <- "value"
@@ -88,8 +94,9 @@ graphique_contration_patrimoine <- function(data_loc, nb_quantiles, liste_type_p
   ylabel <- "Richesse détenue (cumulatif)"
   colorlabel <- "Type de richesse"
   data_melted_loc <- melted
+  x_table <- indices_gini
   
-  trace_concentration(data_melted_loc, x, y, color, xlabel, ylabel,colorlabel, titre_fig, titre_save)
+  trace_concentration(data_melted_loc, x, y, color, xlabel, ylabel,colorlabel, titre_fig, titre_save, x_table)
 }
 
 
@@ -415,12 +422,7 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
       DT[is.na(get(i)), (i):= "NAN"]
   }
   f_dowle2(data_loc)
-  # data_loc[DA1120I == "NAN", DA1120I := 0]
-  # data_loc[DOEINHERIT == "NAN", DOEINHERIT := 0]
-  # data_loc[DA1110I == "NAN", DA1110I := 0]
-  # data_loc[DHEMPH1 == "NAN", DHEMPH1 := 0]
-  
-  # table(data_loc$DA1120I)
+
   
   data_loc$DOEINHERIT <- droplevels(data_loc$DOEINHERIT) #Il met parfois "A" dans cette variable pour dire NAN
   data_loc$DA1120I <- droplevels(data_loc$DA1120I) 
@@ -691,14 +693,17 @@ nettoyage_type_menage <- function(data_for_plot_loc, var_sum){ # Renome propreme
 
 
 
-tableau_binaire <- function(var, data_loc){
+tableau_binaire <- function(var, data_loc, count_na = FALSE){
   ## Renvoie un tableau avec les effectifs par variables
+  # count_na = TRUE si on veut une modalité spécifique pour les NAN
   
   loc <- copy(data_loc)
   loc[[var]] <- as.numeric(loc[[var]])
-  loc[is.na(get(var)),  eval(var) := 1]
-  loc[ get(var) == 3, eval(var):= 1]
-  loc[ get(var) == 4, eval(var):= 1]
+  if(!count_na){
+      loc[is.na(get(var)),  eval(var) := 1]
+    loc[ get(var) == 3, eval(var):= 1]
+    loc[ get(var) == 4, eval(var):= 1]
+  }
   
   loc1 <- loc[, sum(HW0010), by = var]
   loc2 <- loc[, .N, by = var]
@@ -869,4 +874,14 @@ ISCO_simplifie <- function(data_loc){
   data_loc$PE0300_simpl <- as.factor(data_loc$PE0300_simpl)
   data_loc$PE0300 <- as.factor(data_loc$PE0300)
   return(data_loc)
+}
+
+
+
+calcul_gini <- function(liste_y){
+  # Retourne l'indice Gini associé à la fonction de répartition liste_y
+  n <- length(liste_y)
+  liste_iy <- 1:n * liste_y
+  
+  return(2*sum(liste_iy)/(n*sum(liste_y)) - (n+1)/n)
 }
