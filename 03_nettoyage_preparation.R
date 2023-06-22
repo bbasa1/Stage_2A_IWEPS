@@ -412,7 +412,7 @@ graphique_evolution_pat_entre_vagues <- function(data_loc, liste_type_patrimoine
 
 
 
-trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, titre_save, num_vague_loc, var_diff_loc = "DA1110I", liste_legendes_loc = c("Non_prop" = "Non propriétaires", "Prop" = "Propriétaires","Total" = "Total"), drop_inactifs=FALSE){
+trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, titre_save, num_vague_loc, var_diff_loc = "DA1110I", liste_legendes_loc = c("Non_prop" = "Non propriétaires", "Prop" = "Propriétaires","Total" = "Total"), drop_inactifs=FALSE, retourner_base = FALSE){
   # Pour une variable binaire (propriétaire/non propriétaire, ou héritier/non héritier par exemple) trace la distribution des populations concernées pour pouvoir les comparer
   # Nettoyage préalable pour éviter les modalités en trop
   try(data_loc[DOEINHERIT == "A", DOEINHERIT := "NAN"], silent = TRUE)
@@ -565,6 +565,9 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
   
+  if(retourner_base){
+    return(data_pour_plot)
+  }
 }
 
 
@@ -678,7 +681,7 @@ nettoyage_type_menage <- function(data_for_plot_loc, var_sum){ # Renome propreme
       DHHTYPE == 7, "Couple au moins un.e >= 65 ans",
       DHHTYPE == 8, ">= 3 adultes",
       DHHTYPE == 9, "Adulte seul.e avec enfant(s)",
-      DHHTYPE == 10, "Couple avec 2 enfants",
+      DHHTYPE == 10, "Couple avec 1 enfant",
       DHHTYPE == 11, "Couple avec 2 enfants",
       DHHTYPE == 12, "Couple avec >= 3 enfants",
       DHHTYPE == 13, ">= 3 adultes avec enfant(s)"

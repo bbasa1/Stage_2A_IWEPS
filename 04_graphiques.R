@@ -147,7 +147,7 @@ trace_distrib_variable <- function(data_loc, x, fill, xlabel, ylabel,filllabel, 
 }
 
 
-trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel){
+trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel, trans="log10"){
   # On commence par récupérer la médiane pour pouvoir plot
   med <- data_loc[, median(get(x), na.rm = TRUE), by = get(fill)]
   setnames(med, "V1", paste(xlabel, "\n(Médiane)", sep =))
@@ -165,7 +165,7 @@ trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, y
   p <- ggplot(data = data_loc,
            mapping = aes(data_loc[[x]], weight = HW0010, fill = data_loc[[fill]])) +
       geom_histogram(color="black", alpha=0.6, position="identity", bins=nbins) +
-      scale_x_continuous(trans='log10', labels = scales::dollar_format(
+      scale_x_continuous(trans=trans, labels = scales::dollar_format(
         prefix = "",
         suffix = " €",
         big.mark = " ",

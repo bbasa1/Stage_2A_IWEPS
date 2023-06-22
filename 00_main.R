@@ -25,12 +25,12 @@ liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
-pays <- "IT"
+pays <- "DE"
 num_vague <- 2 # Pour les graphiques
 
-# montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
+montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
 faire_tourner_recherche_pvalue_opti <- TRUE
-nb_points_recherche <- 200
+nb_points_recherche <- 100
 liste_montant_initial <- lseq(100, 500000, nb_points_recherche)
 
 ################################################################################
@@ -40,7 +40,7 @@ num_vague_max <- 4 ### Le nombre de vague qu'on veut concaténer ATTENTION la de
 
 liste_var_continues <- c("HH0401", "HH0402", "HH0403", "HH0201", "HH0202", "HH0203",
                          "HB0700","HW0010", "DA1000", "DA2100", "DA3001", "DI2000", "DI2100",
-                         "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120", "DA1110")
+                         "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120", "DA1110", "DL2110", "HB2300", "HB0500", "HB0900")
 liste_var_categorielles <- c("SA0100","DHHTYPE","DOINHERIT", "DA1110I","SA0110","SA0210",
                              "SA0010" ,"DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1",
                              "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE",
@@ -51,7 +51,7 @@ liste_var_categorielles <- c("SA0100","DHHTYPE","DOINHERIT", "DA1110I","SA0110",
                              "HH0302E", "HH0302F", "HH0302H", "HH0302I", "HH0302J",
                              "HH0303A", "HH0303B", "HH0303C", "HH0303D",
                              "HH0303E", "HH0303F", "HH0303H", "HH0303I", "HH0303J",
-                             "PE0300")
+                             "PE0300", "HB0300")
 liste_var_interet <- union(liste_var_continues, liste_var_categorielles)
 
 
@@ -83,7 +83,7 @@ source(paste(repo_prgm , "03_nettoyage_preparation.R" , sep = "/"))
 # DA1000 = Total real assets (+ ventilations plus précises)
 # DA2100 = Total financial assets (+ ventilations plus précises)
 # DA3001 = DA1000 + DA2100 = Total assets
-# DA1110 = Valeur HMR
+# DA1110 = Valeur HMR ATTENTION ==> VALEUR DETENUE DE LA PROPRIETE !!!!!
 # DA1120I = A des autres propriétés
 # DATOP10 = Le décile de gross wealth/richesse brute au sein du pays
 # DHAGEH1 = Âge de la personne de référence
@@ -132,6 +132,13 @@ source(paste(repo_prgm , "03_nettoyage_preparation.R" , sep = "/"))
 # DHHTYPE = Household type
 # PE0300 = Job description ==> On créé la colonne PE0300_simpl qui ne garde que le premier caractère :
 #         0=Armée | 1=Manager | 2=Cadres sups | 3=Techniciens | 4=Employée de bureau | 5=agent de service et de vente | 6=Agriculture, fôret et poissons | 7=Artisans | 8=Operateurs et assembleurs de machines | 9=ouvriers
+# HB0300 = Statut de la résidence principale : 1=Proprio entier | 2=Proprio partiel | 3=Locataire | 4=Usage gratuit (inclu usufruit)
+# DODSTOTAL = Ratio paiement des dettes total du ménage/salaire mensuel net ==> Inclu TOUS les prêts (maison, voiture, intérêts, ...)
+# DL2110 = Remboursement mensuel pour le prêt HMR
+# HB2300 = Loyer mensuel (hors électricité, internet...) SI LOCATAIRE == SI HB0300 = 3
+# HB0500 = % of ownership of household main residence
+# HB0900 = Valeur TOTALE du logement ==> Même si détenud qu'à 50/50 avec le conjoint par ex 
+
 
 
 intersection <- intersect(liste_var_interet, colnames(data_pays))
@@ -141,6 +148,7 @@ if(length(setdiff(liste_var_interet, intersection)) > 0){
 data_pays <- data_pays %>% mutate_at(liste_var_continues, as.numeric)
 data_pays <- data_pays %>% mutate_at(liste_var_categorielles, as.factor)
 
+
 ##### On ajoute la variable année d'achat - année d'héritage reçu
 data_pays <- Ajout_premier_heritage(data_pays)
 # En fait on ne veut pas le premier héritage obtenu mais le premier héritage CONSEQUANT obtenu
@@ -149,7 +157,35 @@ data_pays[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage :=
 data_pays[, achat_apres_heritage := HB0700 >= Annee_heritage_1]
 
 
-## Petit histogramme pour visualiser
+
+## Pour certaines vagues la variable DA1110I n'est pas renseignée ==> On peut la créer
+data_pays[is.na(DA1110I) & DA1110 == 0, DA1110I := "0"]
+data_pays[is.na(DA1110I) & DA1110 > 0, DA1110I := "1"] # Honnêtement ça marche pas super, il reste encore bc de NAN parmi les variables sur le % de prop du logement, son prix,...
+
+
+# data_pays$DA1110I <- as.numeric(data_pays$DA1110I)
+# table(data_pays$DA1110I, useNA = "ifany")
+# liste_cols <- c("DA1110I", "VAGUE", "DA1110", "HB0500")
+# data_pays[is.na(DA1110I)][,..liste_cols]
+# table(data_pays[is.na(DA1110I)]$VAGUE, useNA = "ifany")
+# data_pays$DA1110I <- as.factor(data_pays$DA1110I)
+
+
+
+# Puis la charge mensuelle du logement (remboursement de prêt ou loyer)
+data_pays[, Charge_logement := HB2300]
+data_pays[DA1110I == 1, Charge_logement := DL2110]
+data_pays[is.na(Charge_logement) & HB0300 != 3, Charge_logement := 0] #Pour ceux qui restent je pense qu'ils n'ont plus de charge car complètement propriétaires (ce sont surtout des vieux)
+### Normalement il ne reste que les locataires qui n'ont pas renseignés leur loyer... ça fait qu'une ou deux lignes par vague ce n'est sans doute pas très grave
+
+
+# data_pays$Charge_logement
+# liste_cols <- c("DA1110I", "DA1110", "HB2300", "DL2110", "DHAGEH1", "Charge_logement", "HB0500", "HB0300")
+# head(data_pays[VAGUE == 2 & is.na(Charge_logement),..liste_cols], 30)
+# table(data_pays[VAGUE == 2 & is.na(Charge_logement)]$HB0300, useNA = "ifany")
+
+
+## Petit nettoyage préalable
 data_pays <- nettoyage_education(data_pays)
 data_pays <- ISCO_simplifie(data_pays)
 
@@ -609,44 +645,38 @@ if(faire_tourner_recherche_pvalue_opti){
 
 
 ######## Pour compter le nb de ménages dans chaque catégorie
-data_loc <- data_pays[VAGUE == 3 & Annee_achat_heritage %in% -98:98]
-# data_loc <- data_pays[VAGUE == num_vague & Annee_achat_heritage < 98] # Que les héritiers
-# data_loc <- data_pays[VAGUE == num_vague & Annee_achat_heritage > -98] # Que les proprio
-montant_ini_loc <- 155000
-
-# On créé les groupes
-sous_data_proprio[, Reg_Y := 0]
-sous_data_proprio[Annee_achat_heritage %in% annee_min:annee_max, Reg_Y := 1] # Ont acheté qq années après
-table(sous_data_proprio$Reg_Y)
-
-sous_data_proprio[, Reg_G := 0]
-sous_data_proprio[Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage conséquant
-table(sous_data_proprio$Reg_G)
+# # data_loc <- data_pays[VAGUE == 3 & Annee_achat_heritage %in% -98:98]
+# # data_loc <- data_pays[VAGUE == num_vague & Annee_achat_heritage < 98] # Que les héritiers
+# sous_data_proprio <- data_pays[VAGUE == num_vague & Annee_achat_heritage > -98] # Que les proprio
+# montant_ini_loc <- 155000
+# 
+# # On créé les groupes
+# sous_data_proprio[, Reg_Y := 0]
+# sous_data_proprio[Annee_achat_heritage %in% annee_min:annee_max, Reg_Y := 1] # Ont acheté qq années après
+# table(sous_data_proprio$Reg_Y)
+# 
+# sous_data_proprio[, Reg_G := 0]
+# sous_data_proprio[Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage conséquant
+# table(sous_data_proprio$Reg_G)
 
 
 
 ########## On a trouvé une variable G qui n'est pas trop corrélée aux variables socio-éco : On régresse G sur la valeur de la HMR
-
-
-
-# data_loc <- copy(data_pays[VAGUE == num_vague & Annee_achat_heritage > - 98]) # Que les proprio
-# montant_ini_loc <- 12000
-# regression_heritage_valeur_hmr(data_loc, montant_ini_loc)$pvalue
-# 
-
-
-
+## Ca chance pas grand chose qu'on passe par l'un ou par l'autre en vrai... (DA1110 & HB0900)
 
 data_loc <- copy(data_pays[VAGUE == num_vague & Annee_achat_heritage > - 98]) # Que les proprio
 # liste_montant_initial <- lseq(10, 500000, 250)
-titre_save <- paste(pays,"_V",num_vague,"_effet_heritage_val_HMR.pdf", sep = "")
+# titre_save <- paste(pays,"_V",num_vague,"_effet_heritage_val_HMR_DA1110.pdf", sep = "")
+# titre_save <- paste(repo_sorties, titre_save, sep ='/')
+# titre <- paste("Effet du fait de recevoir un don ou \nun héritage sur la valeur de la résidence principale (", nom_pays, " & vague ",num_vague,")", sep = "")
+# liste_chemins <- append(liste_chemins, titre_save)
+# effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial, titre, titre_save, caption_text, "DA1110")
+
+titre_save <- paste(pays,"_V",num_vague,"_effet_heritage_val_HMR_HB0900.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 titre <- paste("Effet du fait de recevoir un don ou \nun héritage sur la valeur de la résidence principale (", nom_pays, " & vague ",num_vague,")", sep = "")
 liste_chemins <- append(liste_chemins, titre_save)
-effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial, titre, titre_save, caption_text)
-
-
-
+effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial, titre, titre_save, caption_text, "HB0900")
 
 
 
@@ -764,7 +794,7 @@ titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
 if(!all(is.na(data_loc[[var_diff_loc]])) & !all(data_loc[[var_diff_loc]] == "NAN")){
   liste_chemins <- append(liste_chemins, titre_save)
-  trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs)
+  prop_non_prop <- trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs, retourner_base=TRUE)
 }
 
 
@@ -813,7 +843,7 @@ titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
 if(!all(is.na(data_loc[[fill]]))){
   liste_chemins <- append(liste_chemins, titre_save)
-  trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs)
+  heritier_non_heritier <- trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs, retourner_base=TRUE)
 }
 
 data_loc <- data_pays[VAGUE == num_vague]
@@ -926,8 +956,21 @@ if(!all(is.na(data_loc[[fill]]))){
 
 
 
-
-
+data_loc <- data_pays[VAGUE == num_vague]
+data_loc[Charge_logement == 0, Charge_logement:= 1]
+data_loc <- nettoyage_DA1110I(data_loc)
+x <- "Charge_logement"
+fill <- "label_DA1110I"
+xlabel <- "Charge du logement "
+ylabel <- "Nombre de ménages"
+filllabel <- "Ménage propriétaire\nde sa résidence\nprincipale"
+titre <- paste("Distribution des dépenses de logement mensuels du ménage,\npour les ménages propriétaires de leur résidence principale et pour les non propriétaires\n(remboursement du prêt, ou loyer, les ménages dépensant 0 sont mis à 1 euros de dépense/mois)\n(", nom_pays, " & vague ",num_vague,")", sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop_distrib_depense_log.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+if(!all(is.na(data_loc[[fill]]))){
+  liste_chemins <- append(liste_chemins, titre_save)
+  trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel, trans="log10")
+}
 
 
 
@@ -1035,6 +1078,68 @@ locvar <- tableau_binaire(var, data_pays[VAGUE == num_vague], count_na = TRUE) #
 locvar
 
 
+
+
+sous_data <- data_complete[SA0100 == "IT" & VAGUE == num_vague,]
+dw <- svydesign(ids = ~1, data = sous_data, weights = ~ sous_data$HW0010)
+dt <- as.data.table(100*svytable(~ DHHTYPE + DA1110I, dw)/sum(sous_data$HW0010))
+dt_casted <- dcast(dt, DHHTYPE ~ DA1110I,)
+setnames(dt_casted, "0", "Non")
+setnames(dt_casted, "1", "Oui")
+
+dt_casted$somme <- dt_casted$Non + dt_casted$Oui
+
+dt_casted$DHHTYPE <- as.numeric(dt_casted$DHHTYPE)
+summed <- as.data.frame(t(colSums(dt_casted)))
+dt_casted <- rbindlist(list(dt_casted,summed))
+
+dt_casted
+
+# DHHTYPE == 51, "Adulte seul.e <= 64 ans",
+# DHHTYPE == 52, "Adulte seul.e >= 65 ans",
+# DHHTYPE == 6, "Couple <= 64 ans",
+# DHHTYPE == 7, "Couple au moins un.e >= 65 ans",
+# DHHTYPE == 8, ">= 3 adultes",
+# DHHTYPE == 9, "Adulte seul.e avec enfant(s)",
+# DHHTYPE == 10, "Couple avec 1 enfant",
+# DHHTYPE == 11, "Couple avec 2 enfants",
+# DHHTYPE == 12, "Couple avec >= 3 enfants",
+# DHHTYPE == 13, ">= 3 adultes avec enfant(s)"
+
+
+#   casted <- dcast(dt_precis[label_variable == "Logit"], Montant_initial ~ Statistique)
+
+
+# summary(svytable(~ DHHTYPE + DA1110I, dw))
+
+
+# HB0300
+# SA0100
+
+sous_data <- data_complete[VAGUE == num_vague,]
+dw <- svydesign(ids = ~1, data = sous_data, weights = ~ sous_data$HW0010)
+dt <- as.data.table(100*svytable(~ HB0300 + SA0100, dw)/sum(sous_data$HW0010))
+dt_casted <- dcast(dt, SA0100 ~ HB0300,)
+setnames(dt_casted, "1", "Proprio_complet")
+setnames(dt_casted, "2", "Proprio_partiel")
+setnames(dt_casted, "3", "Loue")
+setnames(dt_casted, "4", "Usage_gratuit")
+
+dt_casted$somme <- dt_casted$Proprio_complet +
+  dt_casted$Proprio_partiel +
+  dt_casted$Loue +
+  dt_casted$Usage_gratuit
+
+dt_casted$SA0100 <- as.character(dt_casted$SA0100)
+liste_cols <- c("Proprio_complet", "Proprio_partiel", "Loue", "Usage_gratuit", "somme")
+summed <- as.data.frame(t(colSums(dt_casted[,..liste_cols])))
+dt_casted <- rbindlist(list(dt_casted,summed), fill = TRUE)
+
+dt_casted
+  
+
+
+# DA1110I
 
 
 

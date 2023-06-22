@@ -57,9 +57,10 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
   melted_coeff$Statistique <- "Y sur G : Coefficiant"
   
   melted_coeff_log <- copy(melted_coeff)
-  melted_coeff_log$value <- log10(abs(melted_coeff_log$value))
-  melted_coeff_log$Statistique <- "Y sur G : log(|coeff|)"
-  melted_coeff_log$variable <- paste(melted_coeff_log$variable, "_log", sep = "")
+  melted_coeff_log$value <- exp(melted_coeff_log$value)
+    # log10(abs(melted_coeff_log$value))
+  melted_coeff_log$Statistique <- "Y sur G : Odd ratio"
+  melted_coeff_log$variable <- paste(melted_coeff_log$variable, "_exp", sep = "")
 
   
   melted_count <- melt(dt_tot_reg,
@@ -100,9 +101,9 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
       variable == "Reg_lin_pval_log", "Linéaire",
       variable == "Logit_pval_log", "Logit",
       variable == "Probit_pval_log", "Probit",
-      variable == "Reg_lin_coeff_log", "Linéaire",
-      variable == "Logit_coeff_log", "Logit",
-      variable == "Probit_coeff_log", "Probit",
+      variable == "Reg_lin_coeff_exp", "Linéaire",
+      variable == "Logit_coeff_exp", "Logit",
+      variable == "Probit_coeff_exp", "Probit",
       variable == "Logit_coeff_X_Y ", "Logit",
       variable == "Reg_lin_coeff_X_Y", "Linéaire",
       variable == "Probit_coeff_X_Y ", "Probit"
@@ -346,84 +347,140 @@ dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, anne
 ##################################### Quid de la valeur du bien immobilier ? ######################
 
 
-effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial, titre, titre_save, caption_text){
+effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial, titre, titre_save, caption_text, col_montant_bien = "HB0900"){
   # Après la régression sur le fait d'être propriétaire, on fait une régression sur la valeur de la propriété principale
   # Avoir reçu un héritage augmente-t-il la valeur de la résidence principale ?
   
-  liste_pval <- c()
-  liste_coeff <- c()
-  liste_count <- c()
+  liste_pval <- c() #pvalue régression Y/G
+  liste_coeff <- c() #coeff régression Y/G
+  liste_count <- c() #Nb de modalités de variables socio-éco explicatives de G à plus de 1%
+  liste_effectifs_1 <- c() #La fraction de ménages étant dans le groupe G=1
+  ntot <- nrow(data_loc)
   for(montant_ini_loc in liste_montant_initial){
-    sortie <- regression_heritage_valeur_hmr(data_loc, montant_ini_loc)
-    liste_pval <- append(sortie$pvalue, liste_pval)
-    liste_coeff <- append(sortie$Estimate , liste_coeff)
+    sortie <- regression_heritage_valeur_hmr(data_loc, montant_ini_loc, col_montant_bien)
+    liste_pval <- append(liste_pval, sortie$pvalue)
+    liste_coeff <- append(liste_coeff, sortie$Estimate)
     n <- count(regression_G_heritage(data_loc, montant_ini_loc)[pvalue < 0.01])$n
-    liste_count <- append(n, liste_count)
+    liste_count <- append(liste_count, n)
+    
+    data_loc[, Reg_G := 0]
+    data_loc[Annee_achat_heritage >= 0 & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
+    liste_effectifs_1 <- append(liste_effectifs_1, 100 * sum(data_loc$Reg_G)/ntot)
+    
   }
   
-  dt_for_plot <- as.data.table(list(liste_montant_initial, liste_pval, liste_coeff, liste_count))
-  dt_for_plot
+  dt_for_plot <- as.data.table(list(liste_montant_initial, liste_pval, liste_coeff, liste_count, liste_effectifs_1))
+  # dt_for_plot
   
   dt_for_plot[V2 <= 0.01, snignif := "1%"]
   dt_for_plot[V2 <= 0.02 & V2 > 0.01, snignif := "2%"]
   dt_for_plot[V2 <= 0.05 & V2 > 0.02, snignif := "5%"]
-  # dt_for_plot[V2 <= 0.10 & V2 > 0.05, snignif := "10%"]
+  dt_for_plot[V2 <= 0.10 & V2 > 0.05, snignif := "10%"]
   dt_for_plot[V2 > 0.10, snignif := "Non significatif"]
   
-  setnames(dt_for_plot, c("V1", "V2", "V3", "V4"), c("Montant_initial", "Y sur G : pvalue", "Y sur G : coefficiant", "G sur X : Nombre de variables dignificatives à 1%"))
+  # dt_for_plot$Nb_modalite <- as.factor(dt_for_plot$V4)
+  # [, Nb_modalite := V4]
+  # dt_for_plot[V2 <= 0.02 & V2 > 0.01, snignif := "2%"]
+  # dt_for_plot[V2 <= 0.05 & V2 > 0.02, snignif := "5%"]
+  # dt_for_plot[V2 <= 0.10 & V2 > 0.05, snignif := "10%"]
+  # dt_for_plot[V2 > 0.10, snignif := "Non significatif"]
   
+  # setnames(dt_for_plot, c("V1", "V2", "V3", "V4"), c("Montant_initial", "Y sur G : pvalue", "Y sur G : coefficiant", "G sur X : Nombre de variables dignificatives à 1%"))
+  setnames(dt_for_plot, c("V1", "V2", "V3", "V4", "V5"), c("Montant_initial", "pvalue", "coefficiant", "Nb_modalite", "Effectifs"))
   
-  melted_loc <- melt(dt_for_plot,
-                     id.vars = c("Montant_initial", "snignif"),
-                     measure.vars = c("Y sur G : pvalue", "Y sur G : coefficiant", "G sur X : Nombre de variables dignificatives à 1%"),
-                     variable.name = "variable",
-                     value.name    = "value")
+  dt_for_plot$Nb_modalite <- as.factor(dt_for_plot$Nb_modalite)
   
-  
+    
   x <- "Montant_initial"
-  y <- 'value'
-  color <- "snignif"
-  colorlabel <- "Significativité du coefficiant"
-  facet <- "variable"
+  y <- "coefficiant"
+  color <- "Nb_modalite"
+  shape <- "snignif"
+  shapelabel <- "Significativité du coefficiant"
   xlabel <- "Montant d'héritage minimal pouvant être considéré comme conséquant"
   ylabel <- ""
+  colorlabel <- "Nombre de modalités de X\nexplicatives de G à 1%"
   caption_text <- "Y = Valeur en euro de la résidence principale\n
                       G = Fait de recevoir un héritage ou un don supérieur au montant minimal\n
                       X = Ensemble de variables socio-économiques du ménage"
+  size <- "Effectifs"
+  sizelabel <- "% de ménages\nayant reçu un héritage ou un don\nsignificatif"
   
-  
-  
-  
-  p <- ggplot(data = melted_loc, aes(x=melted_loc[[x]], y = melted_loc[[y]], color = melted_loc[[color]])) +
+  p <- ggplot(data = dt_for_plot, aes(x=dt_for_plot[[x]], y = dt_for_plot[[y]], color = dt_for_plot[[color]], shape = dt_for_plot[[shape]], size = dt_for_plot[[size]])) +
     geom_point() +
-    # geom_line() +
-    # geom_smooth( method = 'gam', se = FALSE, span = 0.3) +
     labs(title=titre,
          x= xlabel,
          y= ylabel,
-         color = colorlabel) + 
-    scale_y_continuous(labels = function(y) format(y, scientific = FALSE)) + 
+         color = colorlabel,
+         shape=shapelabel,
+         size=sizelabel) +
+    scale_y_continuous(labels = function(y) format(y, scientific = FALSE)) +
     scale_x_continuous(trans='log10', labels = scales::dollar_format(
       prefix = "",
       suffix = " €",
       big.mark = " ",
-      decimal.mark = ","), n.breaks = 10) + 
+      decimal.mark = ","), n.breaks = 10) +
     scale_color_viridis(discrete = TRUE) +
     theme(axis.text.x = element_text(angle = 22.5, vjust = 0.5, hjust=1)) +
-    facet_wrap(~factor(melted_loc[[facet]]),  scales = "free", ncol = 2) +
     labs(caption = caption_text)
   
+
+
+  # melted_loc <- melt(dt_for_plot,
+  #                    id.vars = c("Montant_initial", "snignif", "Nb_modalite"),
+  #                    measure.vars = c("Y sur G : pvalue", "Y sur G : coefficiant", "G sur X : Nombre de variables dignificatives à 1%"),
+  #                    variable.name = "variable",
+  #                    value.name    = "value")
+  # 
+  # 
+  # x <- "Montant_initial"
+  # y <- 'value'
+  # shape <- "snignif"
+  # shapelabel <- "Significativité du coefficiant"
+  # color <- "Nb_modalite"
+  # colorlabel <- "Nombre de modalités de X\nexplicatives de G à 1%"
+  # facet <- "variable"
+  # xlabel <- "Montant d'héritage minimal pouvant être considéré comme conséquant"
+  # ylabel <- ""
+  # caption_text <- "Y = Valeur en euro de la résidence principale\n
+  #                     G = Fait de recevoir un héritage ou un don supérieur au montant minimal\n
+  #                     X = Ensemble de variables socio-économiques du ménage"
+  # 
+  # 
+  # 
+  # 
+  # p <- ggplot(data = melted_loc, aes(x=melted_loc[[x]], y = melted_loc[[y]], color = melted_loc[[color]], shape = melted_loc[[shape]])) +
+  #   geom_point() +
+  #   # geom_line() +
+  #   # geom_smooth( method = 'gam', se = FALSE, span = 0.3) +
+  #   labs(title=titre,
+  #        x= xlabel,
+  #        y= ylabel,
+  #        color = colorlabel,
+  #        shape=shapelabel) + 
+  #   scale_y_continuous(labels = function(y) format(y, scientific = FALSE)) + 
+  #   scale_x_continuous(trans='log10', labels = scales::dollar_format(
+  #     prefix = "",
+  #     suffix = " €",
+  #     big.mark = " ",
+  #     decimal.mark = ","), n.breaks = 10) + 
+  #   scale_color_viridis(discrete = TRUE) +
+  #   theme(axis.text.x = element_text(angle = 22.5, vjust = 0.5, hjust=1)) +
+  #   facet_wrap(~factor(melted_loc[[facet]]),  scales = "free", ncol = 2) +
+  #   labs(caption = caption_text)
+  # 
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
   print(p)  
 }
 
 ## Deux sous-fonctions qui font les régressions :
-regression_heritage_valeur_hmr <- function(data_loc, montant_ini_loc){
-  data_loc[, Reg_Y := DA1110]
+regression_heritage_valeur_hmr <- function(data_loc, montant_ini_loc, col_montant_bien){
+  data_loc$Reg_Y <- data_loc[[col_montant_bien]]
+  # data_loc[, Reg_Y := DA1110]
   data_loc[, Reg_G := 0]
   data_loc[Annee_achat_heritage >= 0 & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
   
+  # data_loc$Reg_y
   
   liste_cols_reg_poids <- c("HW0010", "Reg_G", "Reg_Y")
   dw <- svydesign(ids = ~1, data = data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
