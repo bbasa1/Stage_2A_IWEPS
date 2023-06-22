@@ -18,6 +18,11 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
     sous_data_loc <- sous_data_loc[Annee_achat_heritage >= -98] ## Uniquement les ménages qui SONT proprios
   }
   
+  if(nrow(sous_data_loc) == 0){
+    print("Table avec 0 lignes : on passe")
+    return()
+  }
+  
   ### On récupère les données
   dt_tot_reg <- data.table(Reg_lin_pval = numeric(),
                            Logit_pval = numeric(),

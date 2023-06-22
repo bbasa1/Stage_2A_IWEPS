@@ -422,7 +422,6 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
       DT[is.na(get(i)), (i):= "NAN"]
   }
   f_dowle2(data_loc)
-
   
   data_loc$DOEINHERIT <- droplevels(data_loc$DOEINHERIT) #Il met parfois "A" dans cette variable pour dire NAN
   data_loc$DA1120I <- droplevels(data_loc$DA1120I) 
@@ -662,6 +661,16 @@ nettoyage_DA1110I <- function(data_loc){
   return(data_loc)
 }
 
+nettoyage_Surcharge <- function(data_loc){
+  data_loc[, label_Surcharge_logement := factor(
+    fcase(
+      Surcharge_logement == 0, "Non",
+      Surcharge_logement == 1, "Oui"
+    )
+  )]
+  return(data_loc)
+}
+
 nettoyage_DA1120I <- function(data_loc){
   data_loc[, label_DA1120I := factor(
     fcase(
@@ -671,6 +680,7 @@ nettoyage_DA1120I <- function(data_loc){
   )]
   return(data_loc)
 }
+
 
 nettoyage_type_menage <- function(data_for_plot_loc, var_sum){ # Renome proprement les modalités de DHHTYPE pour en faire une appélation compréhensible avec le nb de ménages concernés
   data_for_plot_loc[, DHHTYPE:= factor( # On renome proprement
@@ -704,13 +714,13 @@ tableau_binaire <- function(var, data_loc, count_na = FALSE){
   loc[[var]] <- as.numeric(loc[[var]])
   if(!count_na){
       loc[is.na(get(var)),  eval(var) := 1]
-    loc[ get(var) == 3, eval(var):= 1]
-    loc[ get(var) == 4, eval(var):= 1]
+      loc[ get(var) == 3, eval(var):= 1]
+      loc[ get(var) == 4, eval(var):= 1]
   }
   
   loc1 <- loc[, sum(HW0010), by = var]
   loc2 <- loc[, .N, by = var]
-  loc1$prop <- 100*loc1$V1/sum(data_pays[VAGUE == num_vague]$HW0010)
+  loc1$prop <- 100*loc1$V1/sum(data_loc$HW0010)
   merged <- merge(loc1, loc2, by = var)
   summed <- as.data.frame(t(colSums(merge(loc1, loc2, by = var))))
   

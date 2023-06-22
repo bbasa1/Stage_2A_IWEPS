@@ -25,8 +25,8 @@ liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
-pays <- "DE"
-num_vague <- 2 # Pour les graphiques
+pays <- "BE"
+num_vague <- 3 # Pour les graphiques
 
 montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
 faire_tourner_recherche_pvalue_opti <- TRUE
@@ -57,7 +57,6 @@ liste_var_interet <- union(liste_var_continues, liste_var_categorielles)
 
 source(paste(repo_prgm , "02_importation_data.R" , sep = "/"))
 data_complete <- importation_toutes_vagues(num_table_loc = 1)
-data_pays <- data_complete[SA0100 == pays]
 nom_pays <- dico_pays[pays]
 
 
@@ -141,49 +140,44 @@ source(paste(repo_prgm , "03_nettoyage_preparation.R" , sep = "/"))
 
 
 
-intersection <- intersect(liste_var_interet, colnames(data_pays))
+intersection <- intersect(liste_var_interet, colnames(data_complete))
 if(length(setdiff(liste_var_interet, intersection)) > 0){
   print(paste("Attention les variables : ", setdiff(liste_var_interet, intersection), "ont été sélectionnées mais ne sont pas présentent dans la table initiale", sep = " "))
 }
-data_pays <- data_pays %>% mutate_at(liste_var_continues, as.numeric)
-data_pays <- data_pays %>% mutate_at(liste_var_categorielles, as.factor)
+data_complete <- data_complete %>% mutate_at(liste_var_continues, as.numeric)
+data_complete <- data_complete %>% mutate_at(liste_var_categorielles, as.factor)
 
 
 ##### On ajoute la variable année d'achat - année d'héritage reçu
-data_pays <- Ajout_premier_heritage(data_pays)
+data_complete <- Ajout_premier_heritage(data_complete)
 # En fait on ne veut pas le premier héritage obtenu mais le premier héritage CONSEQUANT obtenu
-data_pays <- Ajout_premier_heritage_cons(data_pays, montant_heritage_min)
-data_pays[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
-data_pays[, achat_apres_heritage := HB0700 >= Annee_heritage_1]
+data_complete <- Ajout_premier_heritage_cons(data_complete, montant_heritage_min)
+data_complete[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
+data_complete[, achat_apres_heritage := HB0700 >= Annee_heritage_1]
 
 
 
 ## Pour certaines vagues la variable DA1110I n'est pas renseignée ==> On peut la créer
-data_pays[is.na(DA1110I) & DA1110 == 0, DA1110I := "0"]
-data_pays[is.na(DA1110I) & DA1110 > 0, DA1110I := "1"] # Honnêtement ça marche pas super, il reste encore bc de NAN parmi les variables sur le % de prop du logement, son prix,...
-
-
-# data_pays$DA1110I <- as.numeric(data_pays$DA1110I)
-# table(data_pays$DA1110I, useNA = "ifany")
-# liste_cols <- c("DA1110I", "VAGUE", "DA1110", "HB0500")
-# data_pays[is.na(DA1110I)][,..liste_cols]
-# table(data_pays[is.na(DA1110I)]$VAGUE, useNA = "ifany")
-# data_pays$DA1110I <- as.factor(data_pays$DA1110I)
-
+data_complete[is.na(DA1110I) & DA1110 == 0, DA1110I := "0"]
+data_complete[is.na(DA1110I) & DA1110 > 0, DA1110I := "1"] # Honnêtement ça marche pas super, il reste encore bc de NAN parmi les variables sur le % de prop du logement, son prix,...
 
 
 # Puis la charge mensuelle du logement (remboursement de prêt ou loyer)
-data_pays[, Charge_logement := HB2300]
-data_pays[DA1110I == 1, Charge_logement := DL2110]
-data_pays[is.na(Charge_logement) & HB0300 != 3, Charge_logement := 0] #Pour ceux qui restent je pense qu'ils n'ont plus de charge car complètement propriétaires (ce sont surtout des vieux)
+data_complete[, Charge_logement := HB2300]
+data_complete[DA1110I == 1, Charge_logement := DL2110]
+data_complete[is.na(Charge_logement) & HB0300 != 3, Charge_logement := 0] #Pour ceux qui restent je pense qu'ils n'ont plus de charge car complètement propriétaires (ce sont surtout des vieux)
 ### Normalement il ne reste que les locataires qui n'ont pas renseignés leur loyer... ça fait qu'une ou deux lignes par vague ce n'est sans doute pas très grave
+data_complete[, salaire_net_mensuel := DI2000/12]
+data_complete[, salaire_net_mensuel_corr := DI2000/12]
+data_complete[salaire_net_mensuel_corr == 0 , salaire_net_mensuel_corr := 1]
+data_complete[, Charge_logement_salaire := 100 * Charge_logement/salaire_net_mensuel_corr]
+data_complete[, Surcharge_logement := 0] ### Eurostat : On considère qu'un ménage est en surcharge des coûts de logement si le coût TOTAL du logement représente plus de 40% du revenu disponible
+data_complete[Charge_logement_salaire >= 40, Surcharge_logement := 1]
+data_complete$Surcharge_logement <- as.factor(data_complete$Surcharge_logement)
 
 
-# data_pays$Charge_logement
-# liste_cols <- c("DA1110I", "DA1110", "HB2300", "DL2110", "DHAGEH1", "Charge_logement", "HB0500", "HB0300")
-# head(data_pays[VAGUE == 2 & is.na(Charge_logement),..liste_cols], 30)
-# table(data_pays[VAGUE == 2 & is.na(Charge_logement)]$HB0300, useNA = "ifany")
 
+data_pays <- data_complete[SA0100 == pays]
 
 ## Petit nettoyage préalable
 data_pays <- nettoyage_education(data_pays)
@@ -956,6 +950,40 @@ if(!all(is.na(data_loc[[fill]]))){
 
 
 
+########## Surcharge de logement ou non
+data_loc <- data_pays[VAGUE == num_vague]
+data_loc <- nettoyage_Surcharge(data_loc)
+liste_variables_loc <-c(
+  # "DITOP10" = "Décile de revenu",
+  # "DLTOP10" = "Décile de dette",
+  "DNTOP10" = "Décile de patrimoine net",
+  "DOEINHERIT" = "S'attend à hériter",
+  "DOINHERIT" = "A hérité",
+  "DHEDUH1" = "Niveau d'éducation",
+  "DHAGEH1" = "Tranche d'âge",
+  "DATOP10" = "Décile de patrimoine brut",
+  "DHGENDERH1" = 'Sexe',
+  "DA1110I" = "Est propriétaire de sa résidence principale",
+  "DHEMPH1" = "Statut professionel",
+  "PE0300_simpl" = "Type de poste")
+
+var_diff_loc = "Surcharge_logement"
+liste_legendes_loc = c("Non_prop" = "Pas de surcharge", "Prop" = "Surcharge","Total" = "Total")
+titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui sont en surcharge de logement,\net les ménages qui ne sont pas en surcharge\nUn ménage est en surcharge si le coût final de son logement représente plus de 40% de ses revenus (Eurostat)\n(", nom_pays, " & vague ",num_vague,")", sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Differences_surcharge_non_surcharge.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+drop_inactifs <- TRUE
+if(!all(is.na(data_loc[[fill]]))){
+  liste_chemins <- append(liste_chemins, titre_save)
+  trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs)
+}
+
+
+
+
+
+
+######## Coût du logement entre les propriétaires et les non propriétaires
 data_loc <- data_pays[VAGUE == num_vague]
 data_loc[Charge_logement == 0, Charge_logement:= 1]
 data_loc <- nettoyage_DA1110I(data_loc)
@@ -967,9 +995,10 @@ filllabel <- "Ménage propriétaire\nde sa résidence\nprincipale"
 titre <- paste("Distribution des dépenses de logement mensuels du ménage,\npour les ménages propriétaires de leur résidence principale et pour les non propriétaires\n(remboursement du prêt, ou loyer, les ménages dépensant 0 sont mis à 1 euros de dépense/mois)\n(", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop_distrib_depense_log.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
+faire_tableau <- FALSE
 if(!all(is.na(data_loc[[fill]]))){
   liste_chemins <- append(liste_chemins, titre_save)
-  trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel, trans="log10")
+  trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel, trans="log10", faire_tableau)
 }
 
 
@@ -1073,8 +1102,9 @@ table(data_pays[VAGUE == num_vague]$DA1110I)
 # colnames(data_pays)
 
 
-var <- "DOINHERIT"
-locvar <- tableau_binaire(var, data_pays[VAGUE == num_vague], count_na = TRUE) # TOUJOURS 1 = Non, 2 = Oui
+var <- "Surcharge_logement"
+data_loc <- data_complete[VAGUE == 2 & SA0100 == "BE"]
+locvar <- tableau_binaire(var, data_loc, count_na = TRUE) # TOUJOURS 1 = Non, 2 = Oui
 locvar
 
 
@@ -1140,6 +1170,44 @@ dt_casted
 
 
 # DA1110I
+
+# data_pays[]
+
+
+# data_pays$DI2000
+
+
+
+
+# liste_cols <- c("DI2000", "Charge_logement", "Charge_logement_salaire", "salaire_net_mensuel", "salaire_net_mensuel_corr") ## Tout est calculé à l'échelle du MENAGE
+# data_pays[,..liste_cols]
+# 
+# 
+# data_complete[ SA0100 == 'FR' & VAGUE == 2]
+# 
+# 
+# data_complete[VAGUE == 2, 100*cor(Charge_logement_salaire, salaire_net_mensuel_corr, use="complete.obs"), by = SA0100]
+
+
+# data_complete[VAGUE == 2, table(Surcharge_logement), by = SA0100]
+
+table(data_complete[VAGUE == 2 & SA0100 == "DE"]$Surcharge_logement, useNA ="ifany")
+
+
+
+data_complete[VAGUE == 2 & SA0100 == "DE", sum(HW0010), by = Surcharge_logement]
+
+data_complete$HW0010
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -147,7 +147,7 @@ trace_distrib_variable <- function(data_loc, x, fill, xlabel, ylabel,filllabel, 
 }
 
 
-trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel, trans="log10"){
+trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel, trans="log10", faire_tableau = TRUE){
   # On commence par récupérer la médiane pour pouvoir plot
   med <- data_loc[, median(get(x), na.rm = TRUE), by = get(fill)]
   setnames(med, "V1", paste(xlabel, "\n(Médiane)", sep =))
@@ -160,7 +160,11 @@ trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, y
   # Pour y on récupère le max de l'histogramme total, puis on multiplie par le coeff moyen pour avoir une idée du max, et on divise par un facteur
   h <- hist(data_loc[[x]], breaks  = nbins)
   coeffs <- data_loc$HW0010
-  y_max <- max(h$counts)*max(coeffs)/100
+  y_max <- max(h$counts)*max(coeffs)/50
+  
+  if(!faire_tableau){
+    med <- NaN
+  }
   
   p <- ggplot(data = data_loc,
            mapping = aes(data_loc[[x]], weight = HW0010, fill = data_loc[[fill]])) +

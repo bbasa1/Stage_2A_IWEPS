@@ -50,19 +50,11 @@ plotData <- left_join(myDF, dt_gini)
 as.data.table(myFile)
 
 
+
+
+
 data_complete <- data_complete %>% mutate_at(liste_var_continues, as.numeric)
 data_complete <- data_complete %>% mutate_at(liste_var_categorielles, as.factor)
-
-
-nb_quantiles <- 100
-type_pat <- "DN3001"
-
-liste_pays <- levels(data_complete[VAGUE == num_vague]$SA0100)
-liste_gini <- c()
-for(pays in liste_pays){
-  gini <- calcul_gini_pays(data_complete[VAGUE == num_vague & SA0100 == pays])
-  liste_gini <- append(liste_gini, gini)
-}
 
 
 
@@ -83,9 +75,24 @@ calcul_gini_pays <- function(data_loc){
 }
 
 
+nb_quantiles <- 100
+type_pat <- "DN3001"
+
+liste_pays <- levels(data_complete[VAGUE == num_vague]$SA0100)
+liste_gini <- c()
+for(pays in liste_pays){
+  gini <- calcul_gini_pays(data_complete[VAGUE == num_vague & SA0100 == pays])
+  liste_gini <- append(liste_gini, gini)
+}
 
 
 
+df <- as.data.frame(do.call(cbind, list(liste_pays, liste_gini)))
+setnames(df, c("V1", "V2"), c("Pays", "Gini"))
+df
+
+paste(repo_data, "/Data_intermediaire/Gini_carte.csv", sep = "")
+write.csv(df, paste(repo_data, "/Data_intermediaire/Gini_carte.csv", sep = ""), row.names=FALSE)
 
 
 
