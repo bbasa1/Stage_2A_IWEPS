@@ -814,7 +814,7 @@ Ajout_premier_heritage_cons <- function(data_loc, montant_heritage_min){
     # Pour se protéger des modalités manquantes
     for(chiffre in 1:3){
       if(is.null(data_loc[[paste("HH030",chiffre, lettre, sep = "")]])){
-        data_loc[[paste("HH030",chiffre, lettre, sep = "")]] <- as.factor(2)
+        data_loc[[paste("HH030",chiffre, lettre, sep = "")]] <- as.factor(2) ### 2 = Pas reçu | 1 = Reçu
       }
     }
     txt1 <- paste("levels(data_loc$HH0301",lettre,") <- c(1,2)", sep = "")

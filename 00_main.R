@@ -26,7 +26,7 @@ sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
 pays <- "BE"
-num_vague <- 3 # Pour les graphiques
+num_vague <- 2 # Pour les graphiques
 
 montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
 faire_tourner_recherche_pvalue_opti <- TRUE
@@ -137,7 +137,7 @@ source(paste(repo_prgm , "03_nettoyage_preparation.R" , sep = "/"))
 # HB2300 = Loyer mensuel (hors électricité, internet...) SI LOCATAIRE == SI HB0300 = 3
 # HB0500 = % of ownership of household main residence
 # HB0900 = Valeur TOTALE du logement ==> Même si détenud qu'à 50/50 avec le conjoint par ex 
-
+# HB2410 = number of properties other than household main residence ==> PBM : les immeubles contenant plusieurs appartements peuvent être comptés comme 1
 
 
 intersection <- intersect(liste_var_interet, colnames(data_complete))
@@ -1206,8 +1206,46 @@ data_complete$HW0010
 
 
 
+# HH030xA = what kind of assets received ? Money
+# HH030xB = what kind of assets received ? Dwelling
+# HH030xC = what kind of assets received ? Use of a dwelling (under reserve or usufruct)
+# HH030xD = what kind of assets received ? Land
+# HH030xE = what kind of assets received ? Business
+# HH030xF = what kind of assets received ? Securities, shares
+# HH030xG = what kind of assets received ? Jewellery, furniture, artwork
+# HH030xH = what kind of assets received ? Life insurance
+# HH030xJ = what kind of assets received ? Car / vehicle I - Other assets (specify)
+
+data_pays$HH030A_cons
 
 
+var <- "HH030A_1"
+data_loc <- data_complete[VAGUE == 2 & SA0100 == "BE"]
+locvar <- tableau_binaire(var, data_loc, count_na = TRUE) # ICI 1 = Oui, 2 = Non
+locvar
+
+
+
+var <- "HH030B_1"
+data_loc <- data_complete[VAGUE == 2 & SA0100 == "BE"]
+locvar <- tableau_binaire(var, data_loc, count_na = TRUE) # ICI 1 = Oui, 2 = Non
+locvar
+
+
+var <- "HH030C_1"
+data_loc <- data_complete[VAGUE == 2 & SA0100 == "BE"]
+locvar <- tableau_binaire(var, data_loc, count_na = TRUE) # ICI 1 = Oui, 2 = Non
+locvar
+
+
+
+data_complete[VAGUE == 2 & SA0100 == "BE" & is.na(HH030A_1) & DOINHERIT == 1]
+
+# HH030",lettre,"_cons
+
+cor(as.numeric(data_complete[VAGUE == 2 & SA0100 == "BE"]$HH030B_1), data_complete[VAGUE == 2 & SA0100 == "BE"]$DA1120, use="complete.obs")
+cor(as.numeric(data_complete[VAGUE == 2 & SA0100 == "BE"]$HH030B_1), data_complete[VAGUE == 2 & SA0100 == "BE"]$DA1110, use="complete.obs")
+cor(as.numeric(data_complete[VAGUE == 2 & SA0100 == "BE"]$HH030B_1), as.numeric(data_complete[VAGUE == 2 & SA0100 == "BE"]$DA1110I), use="complete.obs")
 
 
 
