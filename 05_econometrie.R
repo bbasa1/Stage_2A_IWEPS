@@ -4,7 +4,7 @@
 # Ici toutes les fonctions qui permettent de sortir des résultats d'économétrie
 
 
-recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = -1, annee_max = 3, faire_tracer = TRUE, titre, titre_save, que_heritiers = TRUE, que_proprio = TRUE, que_logit = FALSE){
+recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = -1, annee_max = 98, faire_tracer = TRUE, titre, titre_save, que_heritiers = TRUE, que_proprio = TRUE, que_logit = FALSE){
   ## Produit la courbe de pvalue et coeff associés à G dans la régression Y sur G pour trouver la valeur du montant minimal d'héritage optimal
   ## Utilise les deux fonctions ci-dessous
   sous_data_loc <- copy(data_loc)
@@ -352,7 +352,7 @@ dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, anne
 ##################################### Quid de la valeur du bien immobilier ? ######################
 
 
-effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial, titre, titre_save, caption_text, col_montant_bien = "HB0900"){
+effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial, titre, titre_save, caption_text, col_montant_bien = "HB0900", annee_min = -1, annee_max=3){
   # Après la régression sur le fait d'être propriétaire, on fait une régression sur la valeur de la propriété principale
   # Avoir reçu un héritage augmente-t-il la valeur de la résidence principale ?
   
@@ -369,7 +369,7 @@ effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial, titre
     liste_count <- append(liste_count, n)
     
     data_loc[, Reg_G := 0]
-    data_loc[Annee_achat_heritage >= 0 & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
+    data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
     liste_effectifs_1 <- append(liste_effectifs_1, 100 * sum(data_loc$Reg_G)/ntot)
     
   }

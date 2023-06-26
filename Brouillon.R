@@ -160,3 +160,44 @@ world_moll$name_sort
 nrow(world_moll)
 
 
+
+
+
+# titre = "Carte d'Europe des indices de Gini sur les patrimoines net"
+# 
+# map_path = "C:/Users/Benjamin/Desktop/IWEPS/Data/Data_intermediaire/" + "world-administrative-boundaries.geojson"
+# data_path = "C:/Users/Benjamin/Desktop/IWEPS/Data/Data_intermediaire/Gini_carte.csv"
+# 
+# def generation_map_Gini_UE(data_path, titre, titre_save = "C:/Users/Benjamin/Desktop/IWEPS/Sorties/Carte_Gini_pat_net.pdf") :
+
+
+
+library(reticulate)
+
+
+
+py$titre <- "Carte d'Europe des indices de Gini sur les patrimoines net"
+py$map_path <- "C:/Users/Benjamin/Desktop/IWEPS/Data/Data_intermediaire/world-administrative-boundaries.geojson"
+py$data_path <- "C:/Users/Benjamin/Desktop/IWEPS/Data/Data_intermediaire/Gini_carte.csv"
+py$titre_save <- "C:/Users/Benjamin/Desktop/IWEPS/Sorties/Carte_Gini_pat_net.pdf"
+
+# def generation_map_Gini_UE(data_path, titre, titre_save = "C:/Users/Benjamin/Desktop/IWEPS/Sorties/Carte_Gini_pat_net.pdf") :
+
+
+
+# a <- 1
+
+# py$a <- 1
+
+
+py_run_file(paste(repo_prgm, "/Map_Gini_EU.py", sep = ""))
+
+
+
+# inspect <- import("inspect")
+
+converted_func <- r_to_py(generation_map_Gini_UE(data_path, titre, titre_save))
+
+repo_prgm
+
+

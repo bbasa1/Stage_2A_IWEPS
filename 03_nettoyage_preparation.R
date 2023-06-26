@@ -898,3 +898,22 @@ calcul_gini <- function(liste_y){
   
   return(2*sum(liste_iy)/(n*sum(liste_y)) - (n+1)/n)
 }
+
+
+
+calcul_gini_pays <- function(data_loc, type_pat_loc){
+  # Produit les indices de Gini par pays pour une variable donnée
+  data_for_plot <- as.data.table(1:nb_quantiles)
+  setnames(data_for_plot, 'V1', "Quantiles")
+  data_for_plot$Quantiles <- as.numeric(data_for_plot$Quantiles)
+  data_loc[, Quantiles := 
+             hutils::weighted_ntile(get(type_pat_loc), weights =  sum(HW0010), nb_quantiles)]
+  data_for_plot_loc <- data_loc[,
+                                lapply(.SD, sum, na.rm = TRUE), 
+                                by = .(Quantiles),
+                                .SDcols = names(data_loc) == type_pat_loc][order(Quantiles)]
+  data_for_plot_loc[, cum_sum := 100*cumsum(get(type_pat_loc))/sum(get(type_pat_loc), na.rm=TRUE)]
+  data_for_plot_loc$Quantiles <- as.numeric(data_for_plot_loc$Quantiles)
+  data_for_plot <- merge(data_for_plot, data_for_plot_loc, by = "Quantiles")
+  return(calcul_gini(data_for_plot$cum_sum))
+}
