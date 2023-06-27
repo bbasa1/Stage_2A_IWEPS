@@ -544,6 +544,10 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
   xlabel <- ""
   ylabel <- "Nombre de ménages"
   
+  if(all(data_pour_plot$Effectifs == 0)){
+    # La variable est sans doute absence pour la vague on ne peut pas tracer...
+    return(FALSE)
+  }
   
   p <- ggplot(data = data_pour_plot, aes(x = reorder(.data[[x]], .data[[sortby_x]]), y = .data[[y]], fill = .data[[fill]])) +
     geom_bar(stat="identity", position=position_dodge()) + 
@@ -566,6 +570,8 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
   
   if(retourner_base){
     return(data_pour_plot)
+  }else{
+    return(TRUE)
   }
 }
 
@@ -617,6 +623,8 @@ nettoyage_sexe <- function(data_loc){ # Renome les modalités de DHGENDERH1
   ]
   return(data_loc)
 }
+
+
 
 
 nettoyage_education <- function(data_loc){
@@ -680,6 +688,18 @@ nettoyage_DA1120I <- function(data_loc){
   )]
   return(data_loc)
 }
+
+nettoyage_SA0100 <- function(data_loc){
+  data_loc[, label_SA0100 := factor(
+    fcase(
+      SA0100 == "FR"," France",
+      SA0100 == "IT"," Italie",
+      SA0100 == "DE"," Allemagne",
+      SA0100 == "BE"," Belgique"
+    )
+  )]
+  return(data_loc)}
+
 
 
 nettoyage_type_menage <- function(data_for_plot_loc, var_sum){ # Renome proprement les modalités de DHHTYPE pour en faire une appélation compréhensible avec le nb de ménages concernés

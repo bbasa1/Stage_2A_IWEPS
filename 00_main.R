@@ -25,11 +25,11 @@ liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
-pays <- "BE"
+pays <- "IT"
 num_vague <- 2 # Pour les graphiques
 
 montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
-faire_tourner_recherche_pvalue_opti <- TRUE
+faire_tourner_recherche_pvalue_opti <- FALSE
 nb_points_recherche <- 100
 liste_montant_initial <- lseq(100, 500000, nb_points_recherche)
 
@@ -510,7 +510,7 @@ try(summary(mysvyglm), silent = TRUE)
 ######################### On passe tout ça sous forme de fonction pour voir facilement la dépendance avec le montant minimal d'héritage ################
 source(paste(repo_prgm , "05_econometrie.R" , sep = "/"))
 annee_min = -1
-annee_max = 3
+annee_max = 8
 
 data_pays[(is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := - 99] # Pas d'achat mais un héritage
 data_pays[(!is.na(HB0700) & is.na(Montant_heritage_1)), Annee_achat_heritage :=  99] # Achat mais pas d'héritage
@@ -565,6 +565,8 @@ if(faire_tourner_recherche_pvalue_opti){
   # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
   data_loc <- copy(data_pays)[VAGUE == num_vague]
   # data_loc <- copy(data_pays)[is.na(HH030B_1) | HH030B_1 == "2"]
+  # data_loc <- copy(data_pays)[HH030A_1 == '1' | is.na(HH030B_1)]
+  
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_heritier_logit.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
   titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les héritiers (", nom_pays, " & vague ",num_vague,")", sep = "")
@@ -577,6 +579,7 @@ if(faire_tourner_recherche_pvalue_opti){
   # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
   data_loc <- copy(data_pays)[VAGUE == num_vague]
   # data_loc <- copy(data_pays)[is.na(HH030B_1) | HH030B_1 == "2"]
+  # data_loc <- copy(data_pays)[HH030A_1 == '1' | is.na(HH030B_1)]
   
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_proprios_logit.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
@@ -590,6 +593,8 @@ if(faire_tourner_recherche_pvalue_opti){
   # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
   # data_loc <- copy(data_pays)[is.na(HH030B_1) | HH030B_1 == "2"]
   data_loc <- copy(data_pays)[VAGUE == num_vague]
+  # data_loc <- copy(data_pays)[HH030A_1 == '1' | is.na(HH030B_1)]
+  
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_proprios_her_logit.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
   titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les proprios et les héritiers (", nom_pays, " & vague ",num_vague,")", sep = "")
@@ -603,6 +608,8 @@ if(faire_tourner_recherche_pvalue_opti){
   # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
   data_loc <- copy(data_pays)[VAGUE == num_vague]
   # data_loc <- copy(data_pays)[is.na(HH030B_1) | HH030B_1 == "2"]
+  # data_loc <- copy(data_pays)[HH030A_1 == '1' | is.na(HH030B_1)]
+  
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po_logit.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
   titre <- paste("Résultats des régressions de Y sur G\nen considérant comme population initiale toute la population (", nom_pays, " & vague ",num_vague,")", sep = "")
@@ -613,6 +620,11 @@ if(faire_tourner_recherche_pvalue_opti){
   recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
 }
 
+
+# nrow(data_pays[VAGUE == num_vague])
+# nrow(data_pays)
+# nrow(data_pays[is.na(HH030B_1) | HH030B_1 == "2"])
+# nrow(data_pays[HH030A_1 == '1' | is.na(HH030B_1)])
 
 ############ Recherche + précise du montant optimal
 # 
@@ -793,8 +805,10 @@ titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop.pdf", sep = 
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
 if(!all(is.na(data_loc[[var_diff_loc]])) & !all(data_loc[[var_diff_loc]] == "NAN")){
-  liste_chemins <- append(liste_chemins, titre_save)
   prop_non_prop <- trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs, retourner_base=TRUE)
+  if(any(class(prop_non_prop) == "data.frame")){ # Si le tracé a pu se faire
+    liste_chemins <- append(liste_chemins, titre_save)
+  }
 }
 
 
@@ -810,7 +824,6 @@ titre <- paste("Distribution des revenus net annuels du ménage,\npour les ména
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop_distrib_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 if(!all(is.na(data_loc[[fill]]))){
-  liste_chemins <- append(liste_chemins, titre_save)
   trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel)
 }
 
@@ -842,8 +855,10 @@ titre_save <- paste(pays,"_V",num_vague,"_Differences_heritiers_non_heritiers.pd
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
 if(!all(is.na(data_loc[[fill]]))){
-  liste_chemins <- append(liste_chemins, titre_save)
   heritier_non_heritier <- trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs, retourner_base=TRUE)
+  if(any(class(prop_non_prop) == "data.frame")){ # Si le tracé a pu se faire
+    liste_chemins <- append(liste_chemins, titre_save)
+  }
 }
 
 data_loc <- data_pays[VAGUE == num_vague]
@@ -888,8 +903,10 @@ titre_save <- paste(pays,"_V",num_vague,"_Differences_attendent_her_non_attenden
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
 if(!all(is.na(data_loc[[fill]]))){
-  liste_chemins <- append(liste_chemins, titre_save)
   trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs)
+  if(any(class(prop_non_prop) == "data.frame")){ # Si le tracé a pu se faire
+    liste_chemins <- append(liste_chemins, titre_save)
+  }
 }
 
 
@@ -934,8 +951,10 @@ titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_res_sec_non_prop.pdf"
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
 if(!all(is.na(data_loc[[fill]]))){
-  liste_chemins <- append(liste_chemins, titre_save)
   trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs)
+  if(any(class(prop_non_prop) == "data.frame")){ # Si le tracé a pu se faire
+    liste_chemins <- append(liste_chemins, titre_save)
+  }
 }
 
 # Pour les variables continues
@@ -980,8 +999,10 @@ titre_save <- paste(pays,"_V",num_vague,"_Differences_surcharge_non_surcharge.pd
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
 if(!all(is.na(data_loc[[fill]]))){
-  liste_chemins <- append(liste_chemins, titre_save)
   trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs)
+  if(any(class(prop_non_prop) == "data.frame")){ # Si le tracé a pu se faire
+    liste_chemins <- append(liste_chemins, titre_save)
+  }
 }
 
 
@@ -1049,16 +1070,44 @@ for(type_pat in names(liste_type_patrimoines)){
   
   # Puis on appelle Python pour produire les cartes
   # ATTENTION il faut mettre py$ avant toutes les variables si on veut qu'elles soient récupérées par Python
-  py$titre <- paste("Carte d'Europe des indices de Gini : ",liste_type_patrimoines[type_pat],"\n Pour la vague 3", sep = "")
-  py$map_path <- "C:/Users/Benjamin/Desktop/IWEPS/Data/Data_intermediaire/world-administrative-boundaries.geojson" # A priori à ne pas toucher
-  py$data_path <- data_path
+
   titre_save <- paste("V",num_vague_loc,"_Carte_Gini_",type_pat,".pdf", sep = "")
   titre_save <- paste(repo_sorties_initial, titre_save, sep ='/')
-  py$titre_save <- titre_save
   liste_chemins <- append(liste_chemins, titre_save)
   
+  # py$titre <- paste("Carte d'Europe des indices de Gini : ",liste_type_patrimoines[type_pat],"\n Pour la vague 3", sep = "")
+  # py$map_path <- "C:/Users/Benjamin/Desktop/IWEPS/Data/Data_intermediaire/world-administrative-boundaries.geojson" # A priori à ne pas toucher
+  # py$data_path <- data_path
+  # py$titre_save <- titre_save
+  
+  titre <- paste("Carte d'Europe des indices de Gini : ",liste_type_patrimoines[type_pat],"\n Pour la vague 3", sep = "")
+  map_path <- "C:/Users/Benjamin/Desktop/IWEPS/Data/Data_intermediaire/world-administrative-boundaries.geojson" # A priori à ne pas toucher
+  # data_path <- data_path
+  # titre_save <- titre_save
+  
+
+  
+  py_run_file(paste(repo_prgm, "/Map_Gini_EU_rstudio.py", sep = ""))
+  
+  
+  # reticulate::source_python(paste(repo_prgm, "/Map_Gini_EU.py", sep = ""))
+  
+  # titre <- r_to_py(titre)
+  # map_path <- r_to_py(map_path)
+  # data_path <- r_to_py(data_path)
+  # titre_save <- r_to_py(titre_save)
+  
   # Appel du script
-  py_run_file(paste(repo_prgm, "/Map_Gini_EU.py", sep = ""))
+  # py_run_file(paste(repo_prgm, "/Map_Gini_EU.py", sep = ""))
+  
+  
+
+  
+  
+  # reticulate::repl_python()
+  # import generation_map_Gini_UE
+  
+  # generation_map_Gini_UE(data_path, titre, titre_save)
 }
   
 
@@ -1084,6 +1133,23 @@ for(type_pat in names(liste_type_patrimoines)){
 # melted[, sum(Effectifs), by = c("Variable", "Vague")]
 
 
+# La distribution des montants d'héritage entre les pays
+data_loc <- data_complete[SA0100 %in%  c("FR", 'IT', "DE", "BE") & VAGUE == num_vagye]
+data_loc <- nettoyage_SA0100(data_loc)
+x <- "Montant_heritage_1"
+fill <- "label_SA0100"
+limits_x <- 1000000
+titre <- paste("Distribution du montant du premier héritage ou don reçu par les ménages\n Pour la vague ",,num_vague sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Distrib_montant_heritage.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+liste_chemins <- append(liste_chemins, titre_save)
+ylabel <- "Effectifs"
+xlabel <- "Montant du premier héritage reçu chronologiquement par le ménage"
+filllabel <- "Pays"
+facet <- "label_SA0100"
+nbins <- 75
+
+trace_distrib_normalise(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel,facet, trans="log10", nbins)
 
 
 
@@ -1203,26 +1269,26 @@ dt_casted
 # HB0300
 # SA0100
 
-sous_data <- data_complete[VAGUE == num_vague,]
-dw <- svydesign(ids = ~1, data = sous_data, weights = ~ sous_data$HW0010)
-dt <- as.data.table(100*svytable(~ HB0300 + SA0100, dw)/sum(sous_data$HW0010))
-dt_casted <- dcast(dt, SA0100 ~ HB0300,)
-setnames(dt_casted, "1", "Proprio_complet")
-setnames(dt_casted, "2", "Proprio_partiel")
-setnames(dt_casted, "3", "Loue")
-setnames(dt_casted, "4", "Usage_gratuit")
-
-dt_casted$somme <- dt_casted$Proprio_complet +
-  dt_casted$Proprio_partiel +
-  dt_casted$Loue +
-  dt_casted$Usage_gratuit
-
-dt_casted$SA0100 <- as.character(dt_casted$SA0100)
-liste_cols <- c("Proprio_complet", "Proprio_partiel", "Loue", "Usage_gratuit", "somme")
-summed <- as.data.frame(t(colSums(dt_casted[,..liste_cols])))
-dt_casted <- rbindlist(list(dt_casted,summed), fill = TRUE)
-
-dt_casted
+# sous_data <- data_complete[VAGUE == num_vague,]
+# dw <- svydesign(ids = ~1, data = sous_data, weights = ~ sous_data$HW0010)
+# dt <- as.data.table(100*svytable(~ HB0300 + SA0100, dw)/sum(sous_data$HW0010))
+# dt_casted <- dcast(dt, SA0100 ~ HB0300,)
+# setnames(dt_casted, "1", "Proprio_complet")
+# setnames(dt_casted, "2", "Proprio_partiel")
+# setnames(dt_casted, "3", "Loue")
+# setnames(dt_casted, "4", "Usage_gratuit")
+# 
+# dt_casted$somme <- dt_casted$Proprio_complet +
+#   dt_casted$Proprio_partiel +
+#   dt_casted$Loue +
+#   dt_casted$Usage_gratuit
+# 
+# dt_casted$SA0100 <- as.character(dt_casted$SA0100)
+# liste_cols <- c("Proprio_complet", "Proprio_partiel", "Loue", "Usage_gratuit", "somme")
+# summed <- as.data.frame(t(colSums(dt_casted[,..liste_cols])))
+# dt_casted <- rbindlist(list(dt_casted,summed), fill = TRUE)
+# 
+# dt_casted
   
 
 
@@ -1248,13 +1314,13 @@ dt_casted
 
 # data_complete[VAGUE == 2, table(Surcharge_logement), by = SA0100]
 
-table(data_complete[VAGUE == 2 & SA0100 == "DE"]$Surcharge_logement, useNA ="ifany")
-
-
-
-data_complete[VAGUE == 2 & SA0100 == "DE", sum(HW0010), by = Surcharge_logement]
-
-data_complete$HW0010
+# table(data_complete[VAGUE == 2 & SA0100 == "DE"]$Surcharge_logement, useNA ="ifany")
+# 
+# 
+# 
+# data_complete[VAGUE == 2 & SA0100 == "DE", sum(HW0010), by = Surcharge_logement]
+# 
+# data_complete$HW0010
 
 
 
@@ -1273,38 +1339,38 @@ data_complete$HW0010
 # HH030xH = what kind of assets received ? Life insurance
 # HH030xJ = what kind of assets received ? Car / vehicle I - Other assets (specify)
 
-data_pays$HH030A_cons
-
-
-var <- "HH030A_1"
-data_loc <- data_complete[VAGUE == 2 & SA0100 == "BE"]
-locvar <- tableau_binaire(var, data_loc, count_na = TRUE) # ICI 1 = Oui, 2 = Non
-locvar
-
-
-
-var <- "HH030B_1"
-data_loc <- data_complete[VAGUE == 2 & SA0100 == "BE"]
-locvar <- tableau_binaire(var, data_loc, count_na = TRUE) # ICI 1 = Oui, 2 = Non
-locvar
-
-
-
-
-var <- "HH030C_1"
-data_loc <- data_complete[VAGUE == 2 & SA0100 == "BE"]
-locvar <- tableau_binaire(var, data_loc, count_na = TRUE) # ICI 1 = Oui, 2 = Non
-locvar
-
-
-
-data_complete[VAGUE == 2 & SA0100 == "BE" & is.na(HH030A_1) & DOINHERIT == 1]
-
-# HH030",lettre,"_cons
-
-cor(as.numeric(data_complete[VAGUE == 2 & SA0100 == "BE"]$HH030B_1), data_complete[VAGUE == 2 & SA0100 == "BE"]$DA1120, use="complete.obs")
-cor(as.numeric(data_complete[VAGUE == 2 & SA0100 == "BE"]$HH030B_1), data_complete[VAGUE == 2 & SA0100 == "BE"]$DA1110, use="complete.obs")
-cor(as.numeric(data_complete[VAGUE == 2 & SA0100 == "BE"]$HH030B_1), as.numeric(data_complete[VAGUE == 2 & SA0100 == "BE"]$DA1110I), use="complete.obs")
+# data_pays$HH030A_cons
+# 
+# 
+# var <- "HH030A_1"
+# data_loc <- data_complete[VAGUE == 2 & SA0100 == "BE"]
+# locvar <- tableau_binaire(var, data_loc, count_na = TRUE) # ICI 1 = Oui, 2 = Non
+# locvar
+# 
+# 
+# 
+# var <- "HH030B_1"
+# data_loc <- data_complete[VAGUE == 2 & SA0100 == "BE"]
+# locvar <- tableau_binaire(var, data_loc, count_na = TRUE) # ICI 1 = Oui, 2 = Non
+# locvar
+# 
+# 
+# 
+# 
+# var <- "HH030C_1"
+# data_loc <- data_complete[VAGUE == 2 & SA0100 == "BE"]
+# locvar <- tableau_binaire(var, data_loc, count_na = TRUE) # ICI 1 = Oui, 2 = Non
+# locvar
+# 
+# 
+# 
+# data_complete[VAGUE == 2 & SA0100 == "BE" & is.na(HH030A_1) & DOINHERIT == 1]
+# 
+# # HH030",lettre,"_cons
+# 
+# cor(as.numeric(data_complete[VAGUE == 2 & SA0100 == "BE"]$HH030B_1), data_complete[VAGUE == 2 & SA0100 == "BE"]$DA1120, use="complete.obs")
+# cor(as.numeric(data_complete[VAGUE == 2 & SA0100 == "BE"]$HH030B_1), data_complete[VAGUE == 2 & SA0100 == "BE"]$DA1110, use="complete.obs")
+# cor(as.numeric(data_complete[VAGUE == 2 & SA0100 == "BE"]$HH030B_1), as.numeric(data_complete[VAGUE == 2 & SA0100 == "BE"]$DA1110I), use="complete.obs")
 
 
 
@@ -1327,6 +1393,7 @@ cor(as.numeric(data_complete[VAGUE == 2 & SA0100 == "BE"]$HH030B_1), as.numeric(
 
 
 
+# hist(data_pays$Montant_heritage_1)
 
 
 
@@ -1334,3 +1401,91 @@ cor(as.numeric(data_complete[VAGUE == 2 & SA0100 == "BE"]$HH030B_1), as.numeric(
 
 
 
+
+
+sous_data_loc <- data_pays[VAGUE == num_vague]
+# On créé les groupes
+sous_data_loc[, Reg_Y := as.numeric(DA1110I) - 1] # 1=Oui 0=Non
+# table(sous_data_loc$Reg_Y)
+
+sous_data_loc[, Reg_G :=as.numeric(DOINHERIT) - 1]
+sous_data_loc[Reg_G > 1, Reg_G := 0]
+# table(sous_data_loc$Reg_G)
+
+
+# table(sous_data_loc$Reg_G, sous_data_loc$Reg_Y)
+
+sous_data_loc <- ISCO_simplifie(sous_data_loc)
+
+
+denyprobit <- glm(Reg_Y ~ Reg_G, 
+                  family = binomial(link = "logit"), 
+                  data = sous_data_loc)
+dt_prep_probit <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)
+setnames(dt_prep_probit, "Pr(>|z|)", "pvalue")
+dt_prep_probit
+beta_0 <- dt_prep_probit[rn == "(Intercept)"]$Estimate
+beta_G <- dt_prep_probit[rn == "Reg_G"]$Estimate
+
+
+Lambda <- function(x){return(1/(1+exp(-x)))}
+# Lambda(beta_0 + beta_G) - Lambda(beta_0) # L'effet moyen du traitement ATE
+dt_prep_probit$delta_ATE <- c(0, Lambda(beta_0 + beta_G) - Lambda(beta_0))
+titre_save <- paste(pays,"_V",num_vague,"_Reg_logit_Y_G.xlsx", sep = "")
+write.xlsx(dt_prep_probit, paste(repo_sorties,titre_save, sep = "/"))
+
+
+
+
+denyprobit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
+                  family = binomial(link = "logit"), 
+                  data = sous_data_loc)
+dt_prep_probit <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)
+setnames(dt_prep_probit, "Pr(>|z|)", "pvalue")
+titre_save <- paste(pays,"_V",num_vague,"_Reg_logit_G_X.xlsx", sep = "")
+write.xlsx(dt_prep_probit, paste(repo_sorties,titre_save, sep = "/"))
+
+# dt_prep_probit
+# dt_prep_probit[rn != "(Intercept)" & pvalue <= 0.01]
+
+
+denyprobit <- glm(Reg_Y ~ Reg_G + DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
+                  family = binomial(link = "logit"), 
+                  data = sous_data_loc)
+dt_prep_probit <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)
+setnames(dt_prep_probit, "Pr(>|z|)", "pvalue")
+titre_save <- paste(pays,"_V",num_vague,"_Reg_logit_Y_G_X.xlsx", sep = "")
+write.xlsx(dt_prep_probit, paste(repo_sorties,titre_save, sep = "/"))
+
+
+
+# liste_cols_reg_poids <- c("HW0010", "Reg_G", "Reg_Y", "DHAGEH1B", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE", "DHEMPH1", "PE0300_simpl")
+# dw <- svydesign(ids = ~1, data = sous_data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
+# svyciprop(Reg_Y ~ Reg_G, dw, method = "logit", level = 0.95)
+
+
+# svyciprop(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, dw, method = "logit", level = 0.95)
+# 
+# table(sous_data_loc$Reg_Y)
+# 
+# # zelig(Reg_Y ~ Reg_G, model = "logit.survey", weights = sous_data_loc$HW0010, data = sous_data_loc[,..liste_cols_reg_poids])
+# 
+# zelig(Reg_Y ~ Reg_G, model = "ls", weights = sous_data_loc$HW0010, data = sous_data_loc[,..liste_cols_reg_poids])
+# 
+# Zout <- zelig(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, model = "logit.survey", weights = sous_data_loc$HW0010, data = sous_data_loc[,..liste_cols_reg_poids])
+# Zout <- zelig(Reg_Y ~ Reg_G + DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, model = "logit.survey", weights = sous_data_loc$HW0010, data = sous_data_loc[,..liste_cols_reg_poids])
+# 
+
+
+
+
+
+# data(api, package = "survey")
+# 
+# apistrat$yr.rnd.numeric <- as.numeric(apistrat$yr.rnd == "Yes")
+# zelig(yr.rnd.numeric ~ meals + mobility, model = "logit.survey",
+#       weights = apistrat$pw, data = apistrat)
+# 
+# 
+# apistrat$meals
+# apistrat$mobility

@@ -195,6 +195,40 @@ trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, y
 }
 
 
+
+trace_distrib_normalise <- function(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel,facet, trans="log10", nbins = 100){
+  #Trace la distribution de la variable, mais normalisée pour sommer à 1
+  
+  p <- ggplot(data = data_loc,
+              mapping = aes(data_loc[[x]], weight = HW0010, fill = data_loc[[fill]])) +
+    geom_histogram(aes(y=..density..), color="black", alpha=0.75, position="dodge", bins=nbins) +
+    scale_x_continuous(trans=trans, labels = scales::dollar_format(
+      prefix = "",
+      suffix = " €",
+      big.mark = " ",
+      decimal.mark = ","), n.breaks = 30) +
+    scale_color_brewer(palette="Dark2") +
+    labs(title=titre,
+         x= xlabel,
+         y= ylabel,
+         fill = filllabel) +
+    scale_y_continuous(labels = scales::dollar_format(
+      prefix = "",
+      suffix = "",
+      big.mark = " ",
+      decimal.mark = ",")) +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+    facet_wrap(~factor(.data[[facet]]), ncol = 2)
+  
+  
+  p
+  
+  ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
+  print(p) 
+  
+}
+
+
 trace_courbes <- function(melted_loc, x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text = ""){
   ### Trace les points contenus dans melted_loc
   

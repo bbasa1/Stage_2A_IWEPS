@@ -115,3 +115,6 @@ library(base)
 
 library(reticulate)
 
+
+library(Zelig)
+# devtools::install_github('IQSS/Zelig') # N'installer que les packages CRAN en cas de pbm
