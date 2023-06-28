@@ -695,7 +695,22 @@ nettoyage_SA0100 <- function(data_loc){
       SA0100 == "FR"," France",
       SA0100 == "IT"," Italie",
       SA0100 == "DE"," Allemagne",
-      SA0100 == "BE"," Belgique"
+      SA0100 == "BE"," Belgique",
+      SA0100 == "PT"," Portugal",
+      SA0100 == "ES"," Espagne",
+      SA0100 == "HU"," Hongrie"
+    )
+  )]
+  return(data_loc)}
+
+nettoyage_patrimoine <- function(data_loc){
+  data_loc[, label_patrimoine := factor(
+    fcase(
+      patrimoine == "DA3001", "Patrimoine brut",
+      patrimoine == "DA1000", "Patrimoine physique",
+      patrimoine == "DA2100", "Patrimoine financier",
+      patrimoine == "DL1000", "Dettes",
+      patrimoine == "DN3001", "Patrimoine net"
     )
   )]
   return(data_loc)}

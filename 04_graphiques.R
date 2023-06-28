@@ -115,7 +115,7 @@ trace_distrib_variable <- function(data_loc, x, fill, xlabel, ylabel,filllabel, 
   ### Trace l'histogramme d'une variable. Avec ou sans sous-décomposition fill
   
   if(!is.na(fill)){
-    p <- ggplot(data_loc, aes(x = data_loc[[x]], fill = data_loc[[fill]])) + 
+    p <- ggplot(data_loc, aes(x = data_loc[[x]], fill = data_loc[[fill]], weight = HW0010)) + 
       geom_histogram(binwidth=2, color="black", alpha = 0.75) +
       scale_fill_viridis(discrete = TRUE, breaks=liste_breaks_fill) +
       labs(title=titre,
@@ -123,6 +123,11 @@ trace_distrib_variable <- function(data_loc, x, fill, xlabel, ylabel,filllabel, 
            y= ylabel,
            fill = filllabel) +
       scale_x_continuous(breaks = liste_breaks_x, limits = limits_x) +
+      scale_y_continuous(labels = scales::dollar_format(
+        prefix = "",
+        suffix = "",
+        big.mark = " ",
+        decimal.mark = ",")) +
       theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) + 
       annotate("text", x=-25, y = Inf, vjust = 15, label= "Achat immobilier plus ancien", size=5) +
       annotate("text", x=25, y = Inf, vjust = 15, label= "Réception de l'héritage plus ancien", size=5)
@@ -131,12 +136,17 @@ trace_distrib_variable <- function(data_loc, x, fill, xlabel, ylabel,filllabel, 
     # annotate("text", x=-25, y=80, label= "Achat immobilier plus ancien", size=5) +
     # annotate("text", x=25, y=80, label= "Réception de l'héritage plus ancien", size=5)
   }else{
-    p <- ggplot(data_loc, aes(x = data_loc[[x]])) + 
+    p <- ggplot(data_loc, aes(x = data_loc[[x]], weight = HW0010)) + 
       geom_histogram(binwidth=2, color="black", alpha = 0.75) +
       labs(title=titre,
            x= xlabel,
            y= ylabel) +
       scale_x_continuous(breaks = liste_breaks_x, limits = limits_x) +
+      scale_y_continuous(labels = scales::dollar_format(
+        prefix = "",
+        suffix = "",
+        big.mark = " ",
+        decimal.mark = ",")) +
       theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
       annotate("text", x=-25, y = Inf, vjust = 15, label= "Achat immobilier plus ancien", size=5) +
       annotate("text", x=25, y = Inf, vjust = 15, label= "Réception de l'héritage plus ancien", size=5)
@@ -147,7 +157,7 @@ trace_distrib_variable <- function(data_loc, x, fill, xlabel, ylabel,filllabel, 
 }
 
 
-trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel, trans="log10", faire_tableau = TRUE){
+trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel, trans="log10", faire_tableau = TRUE, suffix_x = " €",orientation_label=45){
   # On commence par récupérer la médiane pour pouvoir plot
   med <- data_loc[, median(get(x), na.rm = TRUE), by = get(fill)]
   setnames(med, "V1", paste(xlabel, "\n(Médiane)", sep =))
@@ -167,11 +177,11 @@ trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, y
   }
   
   p <- ggplot(data = data_loc,
-           mapping = aes(data_loc[[x]], weight = HW0010, fill = data_loc[[fill]])) +
+           mapping = aes(data_loc[[x]], weight = HW0010, fill = data_loc[[fill]], weight = HW0010)) +
       geom_histogram(color="black", alpha=0.6, position="identity", bins=nbins) +
       scale_x_continuous(trans=trans, labels = scales::dollar_format(
         prefix = "",
-        suffix = " €",
+        suffix = suffix_x,
         big.mark = " ",
         decimal.mark = ","), n.breaks = 30) +
       scale_color_brewer(palette="Dark2") +
@@ -184,7 +194,7 @@ trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, y
         suffix = "",
         big.mark = " ",
         decimal.mark = ",")) +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+    theme(axis.text.x = element_text(angle = orientation_label, vjust = 1, hjust=1)) +
     annotate(geom = "table", x = x_table, y = y_max, label = list(med), 
              vjust = 1, hjust = 0)
   
@@ -196,18 +206,18 @@ trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, y
 
 
 
-trace_distrib_normalise <- function(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel,facet, trans="log10", nbins = 100){
+trace_distrib_normalise <- function(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel,facet, trans="log10", nbins = 100, suffix_x = " €", orientation_label=45){
   #Trace la distribution de la variable, mais normalisée pour sommer à 1
   
   p <- ggplot(data = data_loc,
-              mapping = aes(data_loc[[x]], weight = HW0010, fill = data_loc[[fill]])) +
+              mapping = aes(data_loc[[x]], weight = HW0010, fill = data_loc[[fill]], weight = HW0010)) +
     geom_histogram(aes(y=..density..), color="black", alpha=0.75, position="dodge", bins=nbins) +
     scale_x_continuous(trans=trans, labels = scales::dollar_format(
       prefix = "",
-      suffix = " €",
+      suffix = suffix_x,
       big.mark = " ",
-      decimal.mark = ","), n.breaks = 30) +
-    scale_color_brewer(palette="Dark2") +
+      decimal.mark = ","), n.breaks = 20) +
+    scale_fill_viridis(discrete = TRUE) +
     labs(title=titre,
          x= xlabel,
          y= ylabel,
@@ -217,9 +227,32 @@ trace_distrib_normalise <- function(data_loc, x, fill, titre, titre_save, xlabel
       suffix = "",
       big.mark = " ",
       decimal.mark = ",")) +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+    theme(axis.text.x = element_text(angle = orientation_label, vjust = 1, hjust=1)) +
     facet_wrap(~factor(.data[[facet]]), ncol = 2)
-  
+  # +
+  #   geom_vline(xintercept = mean(data_loc[[x]]),        # Add line for mean
+  #              col = "red",
+  #              lwd = 2,
+  #              linetype = 'twodash') +
+  #   annotate("text",                        # Add text for mean
+  #            x = mean(data_loc[[x]]) * 1.1,
+  #            y = y_text,
+  #            label = paste("Moyenne =", round(mean(data_loc[[x]]))),
+  #            col = "red",
+  #            size = 3, 
+  #            angle = 90) +
+  # 
+  # geom_vline(xintercept = median(data_loc[[x]]),        # Add line for median
+  #            col = "blue",
+  #            lwd = 2,
+  #            linetype = 'twodash') +
+  #   annotate("text",                        # Add text for median
+  #            x = mean(data_loc[[x]]) * (1/1.1),
+  #            y = y_text,
+  #            label = paste("Médiane =", round(median(data_loc[[x]]))),
+  #            col = "blue",
+  #            size = 3, 
+  #            angle = 90)
   
   p
   
@@ -254,4 +287,39 @@ trace_courbes <- function(melted_loc, x, y, color, facet, xlabel, ylabel, colorl
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
   print(p)
+}
+
+
+trace_boxplot <- function(data_loc, x, fill, facet, titre, titre_save, xlabel, filllabel, xlim = c(0,70), suffix_x = ""){
+  # Trace un boxplot : Carré = Q25, Q50 et Q75
+  
+  # On commence par préparer une case "Ensemble" 
+  data_loc$Ensemble <- "Ensemble"
+  melted_loc <- melt(data_loc, 
+                     id.vars = c(x, fill, "HW0010"), 
+                     measure.vars  = c(facet, "Ensemble"),
+                     variable.name = "variable",
+                     value.name    = "value")
+  facet_trace <- "value"
+
+    p <- ggplot(melted_loc, aes(x = melted_loc[[x]], fill = melted_loc[[fill]], weight = HW0010)) +
+    geom_boxplot(color="black", outlier.alpha = 0.35)+
+    scale_fill_viridis(discrete=TRUE) +
+    labs(title=titre,
+         x= xlabel,
+         fill = filllabel) +
+    scale_x_continuous(n.breaks = 20, limits = xlim,
+                       labels = scales::dollar_format(
+                         prefix = "",
+                         suffix = suffix_x,
+                         big.mark = " ",
+                         decimal.mark = ",")) +
+    facet_wrap(~factor(.data[[facet_trace]]), scales='free') +
+    coord_flip() +
+    theme(axis.text.x=element_blank())  #remove x axis labels
+    
+  p
+  
+  ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
+  print(p) 
 }

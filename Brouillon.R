@@ -201,3 +201,47 @@ converted_func <- r_to_py(generation_map_Gini_UE(data_path, titre, titre_save))
 repo_prgm
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+library(ggplot2)
+data('iris')
+
+# y_plot <- 2:50
+# x_plot <- log(2*y_plot)
+
+x_plot <- 2:50
+y_plot <- exp(2*x_plot) + rnorm(length(x_plot), 0, 1)
+df <- as.data.frame(list(x_plot,y_plot))
+
+
+formula <- y ~ exp(x)
+# formula <- y ~ x
+
+ggplot(df, aes(x=x_plot, y=y_plot)) + 
+  geom_point(color='red') + 
+  geom_smooth(method="lm", formula = formula) +
+  stat_regline_equation(
+    aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~")),
+    formula = formula)
++
+    scale_y_continuous(trans='log10')
+      
+
+
+
+
+
+

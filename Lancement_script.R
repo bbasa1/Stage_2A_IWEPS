@@ -15,13 +15,17 @@ repo_sorties <- paste(repgen, "Sorties" , sep = "/")
 repo_data <- paste(repgen, "Data" , sep = "/")
 repo_inter <- paste(repgen, "Bases_intermediaires" , sep = "/")
 
-source(paste(repo_prgm , "00_main.R" , sep = "/"))
+# source(paste(repo_prgm , "00_main.R" , sep = "/"))
 
+# for(pays in c("DE", "BE", "FR", "IT")){
 
-
-for(pays in c("DE", "BE", "FR", "IT")){
-  for(num_vague in 1:4){
+for(pays in c("DE","FR", "BE", "IT", "PT", "ES")){
+  for(num_vague in 2:2){
     try(source(paste(repo_prgm , "00_main.R" , sep = "/")))
-    
+  }}
+
+for(pays in c("DE","FR", "BE", "IT", "PT", "ES")){
+for(num_vague in 1:4){
+    try(source(paste(repo_prgm , "00_main.R" , sep = "/")))
   }
 }

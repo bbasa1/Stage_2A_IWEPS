@@ -25,13 +25,16 @@ liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
-pays <- "IT"
-num_vague <- 2 # Pour les graphiques
+pays <- "BE" # Le pays qu'on souhaite
+num_vague <- 2 # La vague qu'on souhaite
+utiliser_data_sauvegardee <- TRUE # Mettre FALSE si la table concaténée pays/année n'a jamais été formée, mettre TRUE si elle a déjà été formée (permet de juste l'importer)
+liste_pays_traces <- c("FR", 'IT', "DE", "BE", 'ES', 'PT', "HU")
+
 
 montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on considère l'héritage reçu comme conséquant. Pour la partie économétrie
-faire_tourner_recherche_pvalue_opti <- FALSE
+faire_tourner_recherche_pvalue_opti <- TRUE
 nb_points_recherche <- 100
-liste_montant_initial <- lseq(100, 500000, nb_points_recherche)
+liste_montant_initial <- lseq(1, 500000, nb_points_recherche)
 
 ################################################################################
 # ============================ 02 IMPORTATION ==================================
@@ -56,7 +59,14 @@ liste_var_interet <- union(liste_var_continues, liste_var_categorielles)
 
 
 source(paste(repo_prgm , "02_importation_data.R" , sep = "/"))
-data_complete <- importation_toutes_vagues(num_table_loc = 1)
+if(utiliser_data_sauvegardee){ # Bon autant juste importer la dable si elle est déjà sauvegardée
+  load(file = paste(repo_data, "/Data_intermediaire/data_complete.Rdata", sep = ""))
+  print("Table importée !")
+}else{
+  data_complete <- importation_toutes_vagues(num_table_loc = 1)
+  save(data_complete, file = paste(repo_data, "/Data_intermediaire/data_complete.Rdata", sep = ""))
+  print("Table créé et sauvegardée !")
+}
 nom_pays <- dico_pays[pays]
 
 
@@ -280,7 +290,7 @@ graphique_variance_pat_age(data_loc, liste_type_patrimoines, titre, titre_save)
 ######################### Tracé : le date d'achat de la HMR - la date de l'héritage
 titre <- paste("Distribution de la variable :\ndate d'aquisition de la résidence principale actuelle - date du premier don ou héritage reçu\n(", nom_pays, "& vague ",num_vague,")", sep = "")
 xlabel <- "Année (coupé à 50) "
-ylabel <- "Nombre d'occurence"
+ylabel <- "Nombre de ménages"
 filllabel <- "Niveau d'éducation\nde la personne de\nréférence du ménage"
 titre_save <-  paste(pays,"_V",num_vague,"_Distrib_diff_annees_heritage_achat_detaille.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
@@ -297,7 +307,7 @@ trace_distrib_variable(data_loc, x, fill, xlabel, ylabel,filllabel, titre, titre
 
 titre <- paste("Distribution de la variable :\ndate d'aquisition de la résidence principale actuelle - date du premier don ou héritage reçu\n (", nom_pays, " & vague ",num_vague,")", sep = "")
 xlabel <- "Année (coupé à 50) "
-ylabel <- "Nombre d'occurence"
+ylabel <- "Nombre de ménages"
 filllabel <- NaN
 titre_save <- paste(pays,"_V",num_vague,"_Distrib_diff_annees_heritage_achat_non_detaille.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
@@ -509,116 +519,205 @@ try(summary(mysvyglm), silent = TRUE)
 ########################## AVEC LA DATE D'ACHAT - LA DATE D'HERITAGE  ######################################################### 
 ######################### On passe tout ça sous forme de fonction pour voir facilement la dépendance avec le montant minimal d'héritage ################
 source(paste(repo_prgm , "05_econometrie.R" , sep = "/"))
-annee_min = -1
-annee_max = 8
+
+if(faire_tourner_recherche_pvalue_opti){
+  # D'abord avec Régression linéaire, probit et logit
+  data_loc <- copy(data_pays)[VAGUE == num_vague]
+  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po.pdf", sep = "")
+  titre_save <- paste(repo_sorties, titre_save, sep ='/')
+  titre <- paste("Résultats des régressions de Y sur G (", nom_pays, " & vague ",num_vague,")", sep = "")
+  que_heritiers <- FALSE
+  que_proprio <- FALSE
+  que_logit <- FALSE
+  if(!all(is.na(data_loc$Montant_heritage_1))){ #En Italie pour certaines vagues ce n'est pas renseigné...
+    liste_chemins <- append(liste_chemins, titre_save)
+    recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+  }
+
+  data_loc <- copy(data_pays)[VAGUE == num_vague]
+  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po_logit.pdf", sep = "")
+  titre_save <- paste(repo_sorties, titre_save, sep ='/')
+  titre <- paste("Résultats des régressions de Y sur G (", nom_pays, " & vague ",num_vague,")", sep = "")
+  que_heritiers <- FALSE
+  que_proprio <- FALSE
+  que_logit <- TRUE
+  if(!all(is.na(data_loc$Montant_heritage_1))){ #En Italie pour certaines vagues ce n'est pas renseigné...
+    liste_chemins <- append(liste_chemins, titre_save)
+    recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+  }
+}
+
+##################################################### Sauvegarde des données dans le cas montant_heritage_min = 0
+
+sous_data_loc <- data_pays[VAGUE == num_vague]
+# On créé les groupes
+sous_data_loc[, Reg_Y := as.numeric(DA1110I) - 1] # 1=Oui 0=Non
+table(sous_data_loc$DA1110I)
+
+sous_data_loc[, Reg_G :=as.numeric(DOINHERIT) - 1]
+sous_data_loc[Reg_G > 1, Reg_G := 0]
+# table(sous_data_loc$Reg_G)
+
+
+# table(sous_data_loc$Reg_G, sous_data_loc$Reg_Y)
+
+sous_data_loc <- ISCO_simplifie(sous_data_loc)
+
+
+denyprobit <- glm(Reg_Y ~ Reg_G, 
+                  family = binomial(link = "logit"), 
+                  data = sous_data_loc)
+dt_prep_probit <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)
+setnames(dt_prep_probit, "Pr(>|z|)", "pvalue")
+dt_prep_probit
+beta_0 <- dt_prep_probit[rn == "(Intercept)"]$Estimate
+beta_G <- dt_prep_probit[rn == "Reg_G"]$Estimate
+
+
+Lambda <- function(x){return(1/(1+exp(-x)))}
+dt_prep_probit$delta_ATE <- c(0, Lambda(beta_0 + beta_G) - Lambda(beta_0))
+titre_save <- paste(pays,"_V",num_vague,"_Reg_logit_Y_G.xlsx", sep = "")
+write.xlsx(dt_prep_probit, paste(repo_sorties,titre_save, sep = "/"))
+
+
+denyprobit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
+                  family = binomial(link = "logit"), 
+                  data = sous_data_loc)
+dt_prep_probit <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)
+setnames(dt_prep_probit, "Pr(>|z|)", "pvalue")
+titre_save <- paste(pays,"_V",num_vague,"_Reg_logit_G_X.xlsx", sep = "")
+write.xlsx(dt_prep_probit, paste(repo_sorties,titre_save, sep = "/"))
+
+
+denyprobit <- glm(Reg_Y ~ Reg_G + DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
+                  family = binomial(link = "logit"), 
+                  data = sous_data_loc)
+dt_prep_probit <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)
+setnames(dt_prep_probit, "Pr(>|z|)", "pvalue")
+titre_save <- paste(pays,"_V",num_vague,"_Reg_logit_Y_G_X.xlsx", sep = "")
+write.xlsx(dt_prep_probit, paste(repo_sorties,titre_save, sep = "/"))
+
+
+########## On a trouvé une variable G qui n'est pas trop corrélée aux variables socio-éco : On régresse G sur la valeur de la HMR
+## Ca chance pas grand chose qu'on passe par l'un ou par l'autre en vrai... (DA1110 & HB0900)
+
+annee_min = 0
+annee_max = 100
 
 data_pays[(is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := - 99] # Pas d'achat mais un héritage
 data_pays[(!is.na(HB0700) & is.na(Montant_heritage_1)), Annee_achat_heritage :=  99] # Achat mais pas d'héritage
 data_pays[(!is.na(HB0700) & !is.na(Montant_heritage_1)), Annee_achat_heritage := HB0700 - Annee_heritage_1]
 
-
-count(data_pays[Annee_achat_heritage %in% -98:98])
-count(data_pays[Annee_achat_heritage == 99])
-count(data_pays[Annee_achat_heritage == -99])
-
-if(faire_tourner_recherche_pvalue_opti){
-  # D'abord avec les 3 régressions
-  # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
-  data_loc <- copy(data_pays)[VAGUE == num_vague]
-  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_heritier.pdf", sep = "")
-  titre_save <- paste(repo_sorties, titre_save, sep ='/')
-  titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les héritiers (", nom_pays, " & vague ",num_vague,")", sep = "")
+data_loc <- copy(data_pays[VAGUE == num_vague & DA1110I == '1']) # Que les proprio
+titre_save <- paste(pays,"_V",num_vague,"_effet_heritage_val_HMR_HB0900.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+titre <- paste("Effet du fait de recevoir un don ou \nun héritage sur la valeur de la résidence principale (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!all(is.na(data_loc$Montant_heritage_1))){
   liste_chemins <- append(liste_chemins, titre_save)
-  que_heritiers <- TRUE
-  que_proprio <- FALSE
-  que_logit <- FALSE
-  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
-  
-  # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
-  data_loc <- copy(data_pays)[VAGUE == num_vague]
-  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_proprios.pdf", sep = "")
-  titre_save <- paste(repo_sorties, titre_save, sep ='/')
-  titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les proprios (", nom_pays, " & vague ",num_vague,")", sep = "")
-  liste_chemins <- append(liste_chemins, titre_save)
-  que_heritiers <- FALSE
-  que_proprio <- TRUE
-  que_logit <- FALSE
-  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
-  
-  # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
-  data_loc <- copy(data_pays)[VAGUE == num_vague]
-  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po.pdf", sep = "")
-  titre_save <- paste(repo_sorties, titre_save, sep ='/')
-  titre <- paste("Résultats des régressions de Y sur G\nen considérant comme population initiale toute la population (", nom_pays, " & vague ",num_vague,")", sep = "")
-  liste_chemins <- append(liste_chemins, titre_save)
-  que_heritiers <- FALSE
-  que_proprio <- FALSE
-  que_logit <- FALSE
-  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+  effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial, titre, titre_save, caption_text, "HB0900", annee_min = annee_min, annee_max=annee_max)
 }
 
 
 
 
-if(faire_tourner_recherche_pvalue_opti){
-  # D'abord avec les 3 régressions
-  # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
-  data_loc <- copy(data_pays)[VAGUE == num_vague]
-  # data_loc <- copy(data_pays)[is.na(HH030B_1) | HH030B_1 == "2"]
-  # data_loc <- copy(data_pays)[HH030A_1 == '1' | is.na(HH030B_1)]
-  
-  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_heritier_logit.pdf", sep = "")
-  titre_save <- paste(repo_sorties, titre_save, sep ='/')
-  titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les héritiers (", nom_pays, " & vague ",num_vague,")", sep = "")
-  liste_chemins <- append(liste_chemins, titre_save)
-  que_heritiers <- TRUE
-  que_proprio <- FALSE
-  que_logit <- TRUE
-  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
-  
-  # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
-  data_loc <- copy(data_pays)[VAGUE == num_vague]
-  # data_loc <- copy(data_pays)[is.na(HH030B_1) | HH030B_1 == "2"]
-  # data_loc <- copy(data_pays)[HH030A_1 == '1' | is.na(HH030B_1)]
-  
-  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_proprios_logit.pdf", sep = "")
-  titre_save <- paste(repo_sorties, titre_save, sep ='/')
-  titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les proprios (", nom_pays, " & vague ",num_vague,")", sep = "")
-  liste_chemins <- append(liste_chemins, titre_save)
-  que_heritiers <- FALSE
-  que_proprio <- TRUE
-  que_logit <- TRUE
-  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
-  
-  # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
-  # data_loc <- copy(data_pays)[is.na(HH030B_1) | HH030B_1 == "2"]
-  data_loc <- copy(data_pays)[VAGUE == num_vague]
-  # data_loc <- copy(data_pays)[HH030A_1 == '1' | is.na(HH030B_1)]
-  
-  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_proprios_her_logit.pdf", sep = "")
-  titre_save <- paste(repo_sorties, titre_save, sep ='/')
-  titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les proprios et les héritiers (", nom_pays, " & vague ",num_vague,")", sep = "")
-  liste_chemins <- append(liste_chemins, titre_save)
-  que_heritiers <- TRUE
-  que_proprio <- TRUE
-  que_logit <- TRUE
-  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
-  
-  
-  # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
-  data_loc <- copy(data_pays)[VAGUE == num_vague]
-  # data_loc <- copy(data_pays)[is.na(HH030B_1) | HH030B_1 == "2"]
-  # data_loc <- copy(data_pays)[HH030A_1 == '1' | is.na(HH030B_1)]
-  
-  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po_logit.pdf", sep = "")
-  titre_save <- paste(repo_sorties, titre_save, sep ='/')
-  titre <- paste("Résultats des régressions de Y sur G\nen considérant comme population initiale toute la population (", nom_pays, " & vague ",num_vague,")", sep = "")
-  liste_chemins <- append(liste_chemins, titre_save)
-  que_heritiers <- FALSE
-  que_proprio <- FALSE
-  que_logit <- TRUE
-  recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
-}
+# if(faire_tourner_recherche_pvalue_opti){
+#   # D'abord avec les 3 régressions
+#   # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+#   data_loc <- copy(data_pays)[VAGUE == num_vague]
+#   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_heritier.pdf", sep = "")
+#   titre_save <- paste(repo_sorties, titre_save, sep ='/')
+#   titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les héritiers (", nom_pays, " & vague ",num_vague,")", sep = "")
+#   liste_chemins <- append(liste_chemins, titre_save)
+#   que_heritiers <- TRUE
+#   que_proprio <- FALSE
+#   que_logit <- FALSE
+#   recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+#   
+#   # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+#   data_loc <- copy(data_pays)[VAGUE == num_vague]
+#   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_proprios.pdf", sep = "")
+#   titre_save <- paste(repo_sorties, titre_save, sep ='/')
+#   titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les proprios (", nom_pays, " & vague ",num_vague,")", sep = "")
+#   liste_chemins <- append(liste_chemins, titre_save)
+#   que_heritiers <- FALSE
+#   que_proprio <- TRUE
+#   que_logit <- FALSE
+#   recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+#   
+#   # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+#   data_loc <- copy(data_pays)[VAGUE == num_vague]
+#   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po.pdf", sep = "")
+#   titre_save <- paste(repo_sorties, titre_save, sep ='/')
+#   titre <- paste("Résultats des régressions de Y sur G\nen considérant comme population initiale toute la population (", nom_pays, " & vague ",num_vague,")", sep = "")
+#   liste_chemins <- append(liste_chemins, titre_save)
+#   que_heritiers <- FALSE
+#   que_proprio <- FALSE
+#   que_logit <- FALSE
+#   recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+# }
+# 
+# 
+# 
+# 
+# if(faire_tourner_recherche_pvalue_opti){
+#   # D'abord avec les 3 régressions
+#   # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+#   data_loc <- copy(data_pays)[VAGUE == num_vague]
+#   # data_loc <- copy(data_pays)[is.na(HH030B_1) | HH030B_1 == "2"]
+#   # data_loc <- copy(data_pays)[HH030A_1 == '1' | is.na(HH030B_1)]
+#   
+#   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_heritier_logit.pdf", sep = "")
+#   titre_save <- paste(repo_sorties, titre_save, sep ='/')
+#   titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les héritiers (", nom_pays, " & vague ",num_vague,")", sep = "")
+#   liste_chemins <- append(liste_chemins, titre_save)
+#   que_heritiers <- TRUE
+#   que_proprio <- FALSE
+#   que_logit <- TRUE
+#   recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+#   
+#   # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+#   data_loc <- copy(data_pays)[VAGUE == num_vague]
+#   # data_loc <- copy(data_pays)[is.na(HH030B_1) | HH030B_1 == "2"]
+#   # data_loc <- copy(data_pays)[HH030A_1 == '1' | is.na(HH030B_1)]
+#   
+#   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_proprios_logit.pdf", sep = "")
+#   titre_save <- paste(repo_sorties, titre_save, sep ='/')
+#   titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les proprios (", nom_pays, " & vague ",num_vague,")", sep = "")
+#   liste_chemins <- append(liste_chemins, titre_save)
+#   que_heritiers <- FALSE
+#   que_proprio <- TRUE
+#   que_logit <- TRUE
+#   recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+#   
+#   # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+#   # data_loc <- copy(data_pays)[is.na(HH030B_1) | HH030B_1 == "2"]
+#   data_loc <- copy(data_pays)[VAGUE == num_vague]
+#   # data_loc <- copy(data_pays)[HH030A_1 == '1' | is.na(HH030B_1)]
+#   
+#   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_proprios_her_logit.pdf", sep = "")
+#   titre_save <- paste(repo_sorties, titre_save, sep ='/')
+#   titre <- paste("Résultats des régressions de Y sur G\nen ne considérant comme population initiale que les proprios et les héritiers (", nom_pays, " & vague ",num_vague,")", sep = "")
+#   liste_chemins <- append(liste_chemins, titre_save)
+#   que_heritiers <- TRUE
+#   que_proprio <- TRUE
+#   que_logit <- TRUE
+#   recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+#   
+#   
+#   # liste_montant_initial <- lseq(3000, 500000, nb_points_recherche)
+#   data_loc <- copy(data_pays)[VAGUE == num_vague]
+#   # data_loc <- copy(data_pays)[is.na(HH030B_1) | HH030B_1 == "2"]
+#   # data_loc <- copy(data_pays)[HH030A_1 == '1' | is.na(HH030B_1)]
+#   
+#   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po_logit.pdf", sep = "")
+#   titre_save <- paste(repo_sorties, titre_save, sep ='/')
+#   titre <- paste("Résultats des régressions de Y sur G\nen considérant comme population initiale toute la population (", nom_pays, " & vague ",num_vague,")", sep = "")
+#   liste_chemins <- append(liste_chemins, titre_save)
+#   que_heritiers <- FALSE
+#   que_proprio <- FALSE
+#   que_logit <- TRUE
+#   recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+# }
 
 
 # nrow(data_pays[VAGUE == num_vague])
@@ -672,9 +771,6 @@ if(faire_tourner_recherche_pvalue_opti){
 
 
 
-########## On a trouvé une variable G qui n'est pas trop corrélée aux variables socio-éco : On régresse G sur la valeur de la HMR
-## Ca chance pas grand chose qu'on passe par l'un ou par l'autre en vrai... (DA1110 & HB0900)
-
 # data_loc <- copy(data_pays[VAGUE == num_vague & Annee_achat_heritage > - 98]) # Que les proprio
 # liste_montant_initial <- lseq(10, 500000, 250)
 # titre_save <- paste(pays,"_V",num_vague,"_effet_heritage_val_HMR_DA1110.pdf", sep = "")
@@ -682,13 +778,15 @@ if(faire_tourner_recherche_pvalue_opti){
 # titre <- paste("Effet du fait de recevoir un don ou \nun héritage sur la valeur de la résidence principale (", nom_pays, " & vague ",num_vague,")", sep = "")
 # liste_chemins <- append(liste_chemins, titre_save)
 # effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial, titre, titre_save, caption_text, "DA1110")
-
-data_loc <- copy(data_pays[VAGUE == num_vague & Annee_achat_heritage > - 98]) # Que les proprio
-titre_save <- paste(pays,"_V",num_vague,"_effet_heritage_val_HMR_HB0900.pdf", sep = "")
-titre_save <- paste(repo_sorties, titre_save, sep ='/')
-titre <- paste("Effet du fait de recevoir un don ou \nun héritage sur la valeur de la résidence principale (", nom_pays, " & vague ",num_vague,")", sep = "")
-liste_chemins <- append(liste_chemins, titre_save)
-effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial, titre, titre_save, caption_text, "HB0900", annee_min = annee_min, annee_max=annee_max)
+# 
+# data_loc <- copy(data_pays[VAGUE == num_vague & Annee_achat_heritage > - 98]) # Que les proprio
+# titre_save <- paste(pays,"_V",num_vague,"_effet_heritage_val_HMR_HB0900.pdf", sep = "")
+# titre_save <- paste(repo_sorties, titre_save, sep ='/')
+# titre <- paste("Effet du fait de recevoir un don ou \nun héritage sur la valeur de la résidence principale (", nom_pays, " & vague ",num_vague,")", sep = "")
+# if(!all(is.na(data_loc$Montant_heritage_1))){
+#   liste_chemins <- append(liste_chemins, titre_save)
+#   effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial, titre, titre_save, caption_text, "HB0900", annee_min = annee_min, annee_max=annee_max)
+# }
 
 
 
@@ -825,6 +923,8 @@ titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop_distrib_reve
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 if(!all(is.na(data_loc[[fill]]))){
   trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel)
+  liste_chemins <- append(liste_chemins, titre_save)
+  
 }
 
 # table(data_loc$DA1110I)
@@ -871,7 +971,6 @@ filllabel <- "Ménage héritier"
 titre <- paste("Distribution des revenus net annuels du ménage,\npour les ménages qui ont eu un héritage, \net ceux qui n'en ont pas eu (", nom_pays, " & vague ",num_vague,")", sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Differences_heritiers_non_heritiers_distrib_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-liste_chemins <- append(liste_chemins, titre_save)
 if(!all(is.na(data_loc[[fill]]))){
   liste_chemins <- append(liste_chemins, titre_save)
   trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel)
@@ -975,7 +1074,7 @@ if(!all(is.na(data_loc[[fill]]))){
 
 
 
-########## Surcharge de logement ou non
+############################## Surcharge de logement ou non
 data_loc <- data_pays[VAGUE == num_vague]
 data_loc <- nettoyage_Surcharge(data_loc)
 liste_variables_loc <-c(
@@ -1010,7 +1109,7 @@ if(!all(is.na(data_loc[[fill]]))){
 
 
 
-######## Coût du logement entre les propriétaires et les non propriétaires
+############################## Coût du logement entre les propriétaires et les non propriétaires
 data_loc <- data_pays[VAGUE == num_vague]
 data_loc[Charge_logement == 0, Charge_logement:= 1]
 data_loc <- nettoyage_DA1110I(data_loc)
@@ -1029,6 +1128,142 @@ if(!all(is.na(data_loc[[fill]]))){
 }
 
 
+data_loc <- data_pays[VAGUE == num_vague]
+data_loc[, Charge_logement_salaire_modif := Charge_logement_salaire]
+data_loc[Charge_logement_salaire_modif >= 100, Charge_logement_salaire_modif := 100]
+data_loc <- nettoyage_DA1110I(data_loc)
+x <- "Charge_logement_salaire_modif"
+fill <- "label_DA1110I"
+xlabel <- "Charge du logement en % du revenu net (borné à 100%)"
+ylabel <- "Nombre de ménages"
+filllabel <- "Ménage propriétaire\nde sa résidence\nprincipale"
+titre <- paste("Distribution des dépenses de logement mensuels du ménage, en % du revenu net\npour les ménages propriétaires de leur résidence principale et pour les non propriétaires\n(remboursement du prêt, ou loyer)\n(", nom_pays, " & vague ",num_vague,")", sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop_distrib_depense_prct_revenu.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+faire_tableau <- FALSE
+if(!all(is.na(data_loc[[fill]]))){
+  liste_chemins <- append(liste_chemins, titre_save)
+  trace_distrib_simple(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel, trans="identity", faire_tableau, suffix_x = " %", orientation_label=0)
+}
+
+## Puis le boxplot
+data_loc <- data_complete[SA0100 %in% liste_pays_traces & VAGUE == num_vague]
+data_loc <- nettoyage_SA0100(data_loc)
+data_loc <- nettoyage_DA1110I(data_loc)
+x <- "Charge_logement_salaire"
+fill <- "label_SA0100"
+titre <- paste("Distribution des dépenses de logement mensuels du ménage, en % du revenu net\npour les ménages propriétaires de leur résidence principale et pour les non propriétaires\n(remboursement du prêt, ou loyer)\n(vague ",num_vague,")", sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Boxplot_distrib_depense_prct_revenu.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+xlabel <- "% du revenu net dépensé pour se loger (bloqué à 100%)"
+filllabel <- "Pays"
+facet <- "label_DA1110I"
+
+trace_boxplot(data_loc, x, fill, facet, titre, titre_save, xlabel, filllabel, xlim = c(0,100))
+liste_chemins <- append(liste_chemins, titre_save)
+
+
+
+
+
+
+
+
+##############################  La distribution des montants d'héritage entre les pays
+data_loc <- data_complete[SA0100 %in%  liste_pays_traces & VAGUE == num_vague]
+data_loc <- nettoyage_SA0100(data_loc)
+x <- "Montant_heritage_1"
+fill <- "label_SA0100"
+limits_x <- 1000000
+titre <- paste("Distribution du montant du premier héritage ou don reçu par les ménages\n Pour la vague ",num_vague, sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Distrib_montant_heritage.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+ylabel <- "Densité"
+xlabel <- "Montant du premier héritage reçu chronologiquement par le ménage"
+filllabel <- "Pays"
+facet <- "label_SA0100"
+nbins <- 75
+
+if(!all(is.na(data_loc$Montant_heritage_1))){
+  trace_distrib_normalise(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel,facet, trans="log10", nbins)
+  liste_chemins <- append(liste_chemins, titre_save)
+}
+
+
+
+
+############################## La distribution de l'âge de répeption du premier héritage
+data_loc <- data_complete[SA0100 %in%  liste_pays_traces & VAGUE == num_vague]
+data_loc <- nettoyage_SA0100(data_loc)
+data_loc <- nettoyage_DA1110I(data_loc)
+data_loc$Cb_annee_depuis_heritage <- as.numeric(as.character(data_loc$SA0200)) - as.numeric(data_loc$Annee_heritage_1)
+data_loc$Age_heritage_1 <- as.numeric(data_loc$DHAGEH1) - data_loc$Cb_annee_depuis_heritage
+data_loc <- data_loc[Age_heritage_1 >= -1]
+
+x <- "Age_heritage_1"
+fill <- "label_SA0100"
+limits_x <- 1000000
+titre <- paste("Distribution de l'âge de la personne référence du ménage lors de la réception du premier héritage ou du premier don\n Pour la vague ",num_vague, sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Distrib_age_heritage.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+ylabel <- "Densité"
+xlabel <- "Âge de la personne référence du ménage"
+filllabel <- "Pays"
+facet <- "label_SA0100"
+nbins <- 20
+
+## D'abord la distribution
+if(!all(is.na(data_loc$Age_heritage_1))){
+  trace_distrib_normalise(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel,facet, trans="identity", nbins, suffix_x = "")
+  liste_chemins <- append(liste_chemins, titre_save)
+}
+
+## Puis le boxplot
+x <- "Age_heritage_1"
+fill <- "label_SA0100"
+titre <- paste("Distribution de l'âge de la personne référence du ménage lors de la réception du premier héritage ou du premier don\npour les ménages propriétaires de leur résidence principale, et pour les non propriétaires\n Pour la vague ",num_vague, sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Boxplot_age_heritage.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+xlabel <- "Âge de la personne référence du ménage"
+filllabel <- "Pays"
+facet <- "label_DA1110I"
+
+trace_boxplot(data_loc, x, fill, facet, titre, titre_save, xlabel, filllabel)
+liste_chemins <- append(liste_chemins, titre_save)
+
+
+
+
+############################## La distribution des patrimoines suivant le sexe
+liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
+                            "DA1000" = "Patrimoine physique",
+                            "DA2100" = "Patrimoine financier",
+                            "DL1000" = "Dettes",
+                            "DN3001" = "Patrimoine net")
+
+data_loc <- data_pays[VAGUE == num_vague]
+data_loc <- nettoyage_sexe(data_loc)
+data_loc <- melt(data_loc, 
+                   id.vars = , c("HW0010", "Sexe"),
+                   measure.vars  = names(liste_type_patrimoines),
+                   variable.name = "patrimoine",
+                   value.name    = "value_1")
+
+data_loc <- nettoyage_patrimoine(data_loc)
+x <- "value_1"
+fill <- "label_patrimoine"
+titre <- paste("Distribution de l'âge de la personne référence du ménage lors de la réception du premier héritage ou du premier don\npour les ménages propriétaires de leur résidence principale, et pour les non propriétaires\n Pour la vague ",num_vague, sep = "")
+titre_save <- paste(pays,"_V",num_vague,"_Boxplot_sexe_patrimoine.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+xlabel <- "Âge de la personne référence du ménage"
+filllabel <- "Type de patrimoine"
+facet <- "Sexe"
+
+trace_boxplot(data_loc, x, fill, facet, titre, titre_save, xlabel, filllabel, xlim = c(-10000, 1000000), suffix_x = " €")
+liste_chemins <- append(liste_chemins, titre_save)
+
+
+
 
 ############################################################################################################################### 
 ############################## GENERATION DE CARTES D'INDICES DE FINI EN EUROPE ############################################### 
@@ -1040,16 +1275,14 @@ type_pat_loc <- "DN3001"
 data_path <- "C:/Users/Benjamin/Desktop/IWEPS/Data/Data_intermediaire/Gini_carte.csv" #Là où on va stocker les données pour faire la carte
 num_vague_loc <- 3 # La seule où on a des données pour la Hongrie et la Littuanie...
 
-
-
 liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DA1000" = "Patrimoine physique",
                             "DA2100" = "Patrimoine financier",
                             "DL1000" = "Dettes",
                             "DN3001" = "Patrimoine net")
 
+
 for(type_pat in names(liste_type_patrimoines)){
-  
   # On récupère les indices de Gini pour tous les pays
   liste_pays <- levels(data_complete[VAGUE == num_vague_loc]$SA0100)
   liste_gini <- c()
@@ -1057,57 +1290,23 @@ for(type_pat in names(liste_type_patrimoines)){
     gini <- calcul_gini_pays(data_complete[VAGUE == num_vague_loc & SA0100 == pays_loc], type_pat)
     liste_gini <- append(liste_gini, gini)
   }
-  
 
   # On les sauvegarde
   df <- as.data.frame(do.call(cbind, list(liste_pays, liste_gini)))
   setnames(df, c("V1", "V2"), c("Pays", "Gini"))
-  df
   
   paste(repo_data, "/Data_intermediaire/Gini_carte.csv", sep = "")
   write.csv(df, paste(repo_data, "/Data_intermediaire/Gini_carte.csv", sep = ""), row.names=FALSE)
   
   
   # Puis on appelle Python pour produire les cartes
-  # ATTENTION il faut mettre py$ avant toutes les variables si on veut qu'elles soient récupérées par Python
-
-  titre_save <- paste("V",num_vague_loc,"_Carte_Gini_",type_pat,".pdf", sep = "")
+  titre_save <- paste("Cartes/V",num_vague_loc,"_Carte_Gini_",type_pat,".pdf", sep = "")
   titre_save <- paste(repo_sorties_initial, titre_save, sep ='/')
   liste_chemins <- append(liste_chemins, titre_save)
-  
-  # py$titre <- paste("Carte d'Europe des indices de Gini : ",liste_type_patrimoines[type_pat],"\n Pour la vague 3", sep = "")
-  # py$map_path <- "C:/Users/Benjamin/Desktop/IWEPS/Data/Data_intermediaire/world-administrative-boundaries.geojson" # A priori à ne pas toucher
-  # py$data_path <- data_path
-  # py$titre_save <- titre_save
-  
   titre <- paste("Carte d'Europe des indices de Gini : ",liste_type_patrimoines[type_pat],"\n Pour la vague 3", sep = "")
   map_path <- "C:/Users/Benjamin/Desktop/IWEPS/Data/Data_intermediaire/world-administrative-boundaries.geojson" # A priori à ne pas toucher
-  # data_path <- data_path
-  # titre_save <- titre_save
-  
 
-  
   py_run_file(paste(repo_prgm, "/Map_Gini_EU_rstudio.py", sep = ""))
-  
-  
-  # reticulate::source_python(paste(repo_prgm, "/Map_Gini_EU.py", sep = ""))
-  
-  # titre <- r_to_py(titre)
-  # map_path <- r_to_py(map_path)
-  # data_path <- r_to_py(data_path)
-  # titre_save <- r_to_py(titre_save)
-  
-  # Appel du script
-  # py_run_file(paste(repo_prgm, "/Map_Gini_EU.py", sep = ""))
-  
-  
-
-  
-  
-  # reticulate::repl_python()
-  # import generation_map_Gini_UE
-  
-  # generation_map_Gini_UE(data_path, titre, titre_save)
 }
   
 
@@ -1133,23 +1332,13 @@ for(type_pat in names(liste_type_patrimoines)){
 # melted[, sum(Effectifs), by = c("Variable", "Vague")]
 
 
-# La distribution des montants d'héritage entre les pays
-data_loc <- data_complete[SA0100 %in%  c("FR", 'IT', "DE", "BE") & VAGUE == num_vagye]
-data_loc <- nettoyage_SA0100(data_loc)
-x <- "Montant_heritage_1"
-fill <- "label_SA0100"
-limits_x <- 1000000
-titre <- paste("Distribution du montant du premier héritage ou don reçu par les ménages\n Pour la vague ",,num_vague sep = "")
-titre_save <- paste(pays,"_V",num_vague,"_Distrib_montant_heritage.pdf", sep = "")
-titre_save <- paste(repo_sorties, titre_save, sep ='/')
-liste_chemins <- append(liste_chemins, titre_save)
-ylabel <- "Effectifs"
-xlabel <- "Montant du premier héritage reçu chronologiquement par le ménage"
-filllabel <- "Pays"
-facet <- "label_SA0100"
-nbins <- 75
 
-trace_distrib_normalise(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel,facet, trans="log10", nbins)
+
+
+
+
+
+
 
 
 
@@ -1266,6 +1455,34 @@ dt_casted
 # summary(svytable(~ DHHTYPE + DA1110I, dw))
 
 
+# 
+# liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
+#                             "DA1000" = "Patrimoine physique",
+#                             "DA2100" = "Patrimoine financier",
+#                             "DL1000" = "Dettes",
+#                             "DN3001" = "Patrimoine net")
+# 
+# 
+# data_complete$DHGENDERH1
+# 
+# data_complete[, sum(HW0010), by = ]
+# 
+# sous_data <- data_complete[VAGUE == num_vague & SA0100 == "BE",]
+# dw <- svydesign(ids = ~1, data = sous_data, weights = ~ sous_data$HW0010)
+# 
+# 
+# svyquantile(x = ~ DA3001, 
+#             design = dw, 
+#             na.rm = TRUE, 
+#             quantiles = c(.01, .25, .50, .75, .99))
+# 
+# 
+# svytable(~ DA3001 + DHGENDERH1, dw)
+# 
+# dt <- as.data.table(100*svytable(~ HB0300 + SA0100, dw)/sum(sous_data$HW0010))
+# 
+
+
 # HB0300
 # SA0100
 
@@ -1375,87 +1592,9 @@ dt_casted
 
 
 
-# titre <- paste("Distribution de la variable :\ndate d'aquisition de la résidence principale actuelle - date du premier don ou héritage reçu\n(", nom_pays, "& vague ",num_vague,")", sep = "")
-# xlabel <- "Année (coupé à 50) "
-# ylabel <- "Nombre d'occurence"
-# filllabel <- "Niveau d'éducation\nde la personne de\nréférence du ménage"
-# titre_save <-  paste(pays,"_V",num_vague,"_Distrib_diff_annees_heritage_achat_detaille.pdf", sep = "")
-# titre_save <- paste(repo_sorties, titre_save, sep ='/')
-# x <- "Annee_achat_heritage"
-# fill <- "label_education"
-# liste_breaks_fill <- c('< Brevet', 'Brevet', 'Bac', '> Bac')
-# data_loc <- data_pays[(VAGUE == num_vague & is.na(HH030B_1)) | (VAGUE == num_vague & HH030B_1 == "2")]
-# liste_breaks_x <- seq(-50, 50, 2)
-# limits_x <- c(-50,50)
-# liste_chemins <- append(liste_chemins, titre_save)
-# 
-# trace_distrib_variable(data_loc, x, fill, xlabel, ylabel,filllabel, titre, titre_save, liste_breaks_fill, liste_breaks_x, limits_x)
 
 
 
-# hist(data_pays$Montant_heritage_1)
-
-
-
-
-
-
-
-
-
-sous_data_loc <- data_pays[VAGUE == num_vague]
-# On créé les groupes
-sous_data_loc[, Reg_Y := as.numeric(DA1110I) - 1] # 1=Oui 0=Non
-# table(sous_data_loc$Reg_Y)
-
-sous_data_loc[, Reg_G :=as.numeric(DOINHERIT) - 1]
-sous_data_loc[Reg_G > 1, Reg_G := 0]
-# table(sous_data_loc$Reg_G)
-
-
-# table(sous_data_loc$Reg_G, sous_data_loc$Reg_Y)
-
-sous_data_loc <- ISCO_simplifie(sous_data_loc)
-
-
-denyprobit <- glm(Reg_Y ~ Reg_G, 
-                  family = binomial(link = "logit"), 
-                  data = sous_data_loc)
-dt_prep_probit <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)
-setnames(dt_prep_probit, "Pr(>|z|)", "pvalue")
-dt_prep_probit
-beta_0 <- dt_prep_probit[rn == "(Intercept)"]$Estimate
-beta_G <- dt_prep_probit[rn == "Reg_G"]$Estimate
-
-
-Lambda <- function(x){return(1/(1+exp(-x)))}
-# Lambda(beta_0 + beta_G) - Lambda(beta_0) # L'effet moyen du traitement ATE
-dt_prep_probit$delta_ATE <- c(0, Lambda(beta_0 + beta_G) - Lambda(beta_0))
-titre_save <- paste(pays,"_V",num_vague,"_Reg_logit_Y_G.xlsx", sep = "")
-write.xlsx(dt_prep_probit, paste(repo_sorties,titre_save, sep = "/"))
-
-
-
-
-denyprobit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
-                  family = binomial(link = "logit"), 
-                  data = sous_data_loc)
-dt_prep_probit <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)
-setnames(dt_prep_probit, "Pr(>|z|)", "pvalue")
-titre_save <- paste(pays,"_V",num_vague,"_Reg_logit_G_X.xlsx", sep = "")
-write.xlsx(dt_prep_probit, paste(repo_sorties,titre_save, sep = "/"))
-
-# dt_prep_probit
-# dt_prep_probit[rn != "(Intercept)" & pvalue <= 0.01]
-
-
-denyprobit <- glm(Reg_Y ~ Reg_G + DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
-                  family = binomial(link = "logit"), 
-                  data = sous_data_loc)
-dt_prep_probit <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)
-setnames(dt_prep_probit, "Pr(>|z|)", "pvalue")
-titre_save <- paste(pays,"_V",num_vague,"_Reg_logit_Y_G_X.xlsx", sep = "")
-write.xlsx(dt_prep_probit, paste(repo_sorties,titre_save, sep = "/"))
 
 
 
