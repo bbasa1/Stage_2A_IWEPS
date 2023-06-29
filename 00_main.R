@@ -25,8 +25,8 @@ liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
-pays <- "BE" # Le pays qu'on souhaite
-num_vague <- 2 # La vague qu'on souhaite
+# pays <- "BE" # Le pays qu'on souhaite
+# num_vague <- 2 # La vague qu'on souhaite
 utiliser_data_sauvegardee <- TRUE # Mettre FALSE si la table concaténée pays/année n'a jamais été formée, mettre TRUE si elle a déjà été formée (permet de juste l'importer)
 liste_pays_traces <- c("FR", 'IT', "DE", "BE", 'ES', 'PT', "HU")
 
@@ -762,10 +762,10 @@ data_loc <- melt(data_loc,
 data_loc <- nettoyage_patrimoine(data_loc)
 x <- "value_1"
 fill <- "label_patrimoine"
-titre <- paste("Distribution de l'âge de la personne référence du ménage lors de la réception du premier héritage ou du premier don\npour les ménages propriétaires de leur résidence principale, et pour les non propriétaires\n Pour la vague ",num_vague, sep = "")
+titre <- paste("Distribution du patrimoine par type et par sexe de la personne de référence du ménage\n Pour la vague ",num_vague, sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Boxplot_sexe_patrimoine.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-xlabel <- "Âge de la personne référence du ménage"
+xlabel <- "Sexe de la personne référence du ménage"
 filllabel <- "Type de patrimoine"
 facet <- "Sexe"
 
@@ -842,7 +842,6 @@ beta_0 <- dt_prep_probit[rn == "(Intercept)"]$Estimate
 beta_G <- dt_prep_probit[rn == "Reg_G"]$Estimate
 
 
-Lambda <- function(x){return(1/(1+exp(-x)))}
 dt_prep_probit$delta_ATE <- c(0, Lambda(beta_0 + beta_G) - Lambda(beta_0))
 titre_save <- paste(pays,"_V",num_vague,"_Reg_logit_Y_G.xlsx", sep = "")
 write.xlsx(dt_prep_probit, paste(repo_sorties,titre_save, sep = "/"))
@@ -898,6 +897,7 @@ sous_data_loc$Reg_Y <- sous_data_loc[[col_montant_bien]]
 sous_data_loc[, Reg_G := 0]
 sous_data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_1 >= 0, Reg_G := 1] # Reçu un héritage avant l'achat
 
+# table(sous_data_loc$Reg_G)
 # data_complete$SA0100
 sous_data_loc <- ISCO_simplifie(sous_data_loc)
 
@@ -1069,6 +1069,7 @@ dt_casted
 
 
 #   casted <- dcast(dt_precis[label_variable == "Logit"], Montant_initial ~ Statistique)
+
 
 
 # summary(svytable(~ DHHTYPE + DA1110I, dw))
@@ -1643,4 +1644,10 @@ dt_casted
 
 
 
-
+# sous_data_loc <- data_complete[VAGUE == num_vague & SA0100 == "PT"]
+# # sous_data_loc[, Reg_G := 0]
+# # sous_data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_1 >= 0, Reg_G := 1] # Reçu un héritage avant l'achat
+# sous_data_loc[, Reg_G :=as.numeric(DOINHERIT) - 1]
+# sous_data_loc[Reg_G > 1, Reg_G := 0]
+# nrow(sous_data_loc)
+# table(sous_data_loc$Reg_G)

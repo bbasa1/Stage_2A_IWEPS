@@ -23,7 +23,9 @@ for(pays in c("DE","FR", "BE", "IT", "PT", "ES")){
   for(num_vague in 2:2){
     print(paste("Pour le ", pays, " & vague ", num_vague, " : ", sep =))
     try(source(paste(repo_prgm , "00_main.R" , sep = "/")))
-  }}
+}}
+
+
 
 for(pays in c("DE","FR", "BE", "IT", "PT", "ES")){
 for(num_vague in 1:4){

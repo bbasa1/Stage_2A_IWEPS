@@ -41,6 +41,11 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
     dt_tot_reg <- rbindlist(list(dt_tot_reg, dt_loc), fill=TRUE)
   }
   
+  # On calcule les effets causaux 
+  dt_tot_reg[, Logit_delta_ATE := Lambda(Logit_coeff + Logit_coeff_0) -   Lambda(Logit_coeff_0)]
+  dt_tot_reg[, Probit_delta_ATE := Phi(Probit_coeff + Probit_coeff_0) -   Phi(Probit_coeff_0)]
+  dt_tot_reg[, Reg_lin_delta_ATE := Reg_lin_coeff]
+  
   ### On met en forme
   melted_pval <- melt(dt_tot_reg,
                       id.vars = "Montant_initial",
@@ -84,8 +89,19 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
   melted_coeff_X_Y$Statistique <- "Y sur (X,G) : Coefficiant associé à G"
   
   
+  melted_delta_ATE <- melt(dt_tot_reg,
+                           id.vars = "Montant_initial",
+                           measure.vars = c("Reg_lin_delta_ATE", "Logit_delta_ATE", "Probit_delta_ATE"),
+                           variable.name = "variable",
+                           value.name    = "value")
+  melted_delta_ATE$Statistique <- "Effet moyen du traitement G sur Y"
   
-  melted_final <- rbindlist(list(melted_pval, melted_coeff, melted_count, melted_pval_log, melted_coeff_log, melted_coeff_X_Y), fill=TRUE)
+
+  
+  # Lambda(beta_0 + beta_G) - Lambda(beta_0)
+  
+  
+  melted_final <- rbindlist(list(melted_pval, melted_coeff, melted_count, melted_pval_log, melted_coeff_log, melted_coeff_X_Y, melted_delta_ATE), fill=TRUE)
   melted_final$Statistique <- as.factor(melted_final$Statistique)
   
   table(melted_final$variable)
@@ -109,18 +125,43 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
       variable == "Reg_lin_coeff_exp", "Linéaire",
       variable == "Logit_coeff_exp", "Logit",
       variable == "Probit_coeff_exp", "Probit",
-      variable == "Logit_coeff_X_Y ", "Logit",
+      variable == "Logit_coeff_X_Y", "Logit",
       variable == "Reg_lin_coeff_X_Y", "Linéaire",
-      variable == "Probit_coeff_X_Y ", "Probit"
+      variable == "Probit_coeff_X_Y", "Probit",
+      variable == "Logit_delta_ATE", "Logit",
+      variable == "Reg_lin_delta_ATE", "Linéaire",
+      variable == "Probit_delta_ATE", "Probit"
     )
-  )
+  )    
   ]
+
   
   #### A corriger : Pour une raison que je ne m'explique pas il ne veut pas changer le label pour ces dernières lignes il faut le faire à la main...
-  melted_final[variable == "Reg_lin_coeff_X_Y", label_variable := "Linéaire"]
-  melted_final[variable == "Logit_coeff_X_Y", label_variable := "Logit"]
-  melted_final[variable == "Probit_coeff_X_Y", label_variable := "Probit"]
+  # melted_final[variable == "Reg_lin_coeff_X_Y", label_variable := "Linéaire"]
+  # melted_final[variable == "Logit_coeff_X_Y", label_variable := "Logit"]
+  # melted_final[variable == "Probit_coeff_X_Y", label_variable := "Probit"]
+  # 
+  # melted_final[variable == "Reg_lin_coeff_X_Y", label_variable := "Linéaire"]
+  # melted_final[variable == "Logit_coeff_X_Y", label_variable := "Logit"]
+  # melted_final[variable == "Probit_coeff_X_Y", label_variable := "Probit"]
   
+  melted_final[, Ordre_facet := factor(
+    fcase(
+      Statistique == "Y sur G : log(pvalue)", 1,
+      Statistique == "Y sur G : pvalue", 2,
+      Statistique == "G sur X : Nombre de modalités significatives à 1%", 3,
+      Statistique == "Y sur G : Coefficiant", 4,
+      Statistique == "Y sur G : Odd ratio", 5,
+      Statistique == "Effet moyen du traitement G sur Y", 6,
+      Statistique == "Y sur (X,G) : Coefficiant associé à G",7 
+    )
+  )    
+  ]  
+  
+  setorder(melted_final, cols = "Ordre_facet")  # Reorder data.table
+  
+  
+  # table(melted_final$Statistique)
 
   if(faire_tracer){
     ### on trace
@@ -134,7 +175,7 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
     color <- "label_variable"
     colorlabel <- "Régression"
     facet <- "Statistique"
-    ordre_facet <- "ordre_facet"
+    # ordre_facet <- "Ordre_facet"
     
     # caption_text <- "Y = Fait d'être propriétaire au moment de réception d'un héritage ou d'un don\n
     caption_text <- "Y = Fait d'être propriétaire\n
@@ -142,9 +183,9 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
                       X = Ensemble de variables socio-économiques du ménage"
     
     if(que_logit){
-      trace_courbes(melted_loc[label_variable == "Logit"], x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text)
+      trace_courbes(melted_loc[label_variable == "Logit" & Statistique != "Y sur G : pvalue"], x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text)
     }else{
-      trace_courbes(melted_loc, x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text)
+      trace_courbes(melted_loc[Statistique != "Y sur G : pvalue"], x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text)
       
     }
     
@@ -153,7 +194,8 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
   }
 }
 
-
+Lambda <- function(x){return(1/(1+exp(-x)))}
+Phi <- function(x){return(pnorm(x, 0, 1))}
 
 recuperation_pval <- function(sous_data_loc, montant_ini_loc, annee_min, annee_max, que_logit){
   # Utilise la fonction ci-dessous, permet de sortir sous une forme propre la pvalue et la valeur du coefficiant associés G dans la régression de Y sur G
@@ -182,6 +224,12 @@ recuperation_pval <- function(sous_data_loc, montant_ini_loc, annee_min, annee_m
   setnames(dt_loc_coeff, "V2", "Logit_coeff")
   setnames(dt_loc_coeff, "V3", "Probit_coeff")
   
+  dt_loc_coeff_0 <- as.data.table(list(dt_reg_lin[rn == "(Intercept)" ]$Estimate ,dt_logit[rn == "(Intercept)" ]$Estimate , dt_probit[rn == "(Intercept)" ]$Estimate ))
+  dt_loc_coeff_0$Montant_initial <- montant_ini_loc
+  setnames(dt_loc_coeff_0, "V1", "Reg_lin_coeff_0")
+  setnames(dt_loc_coeff_0, "V2", "Logit_coeff_0")
+  setnames(dt_loc_coeff_0, "V3", "Probit_coeff_0")
+  
   dt_loc_count <- as.data.table(list(count(dt_prep_reg_lin[pvalue < 0.01]), count(dt_prep_logit[pvalue < 0.01]), count(dt_prep_probit[pvalue < 0.01])))
   dt_loc_count$Montant_initial <- montant_ini_loc
   setnames(dt_loc_count, "n", "Reg_lin_count")
@@ -198,7 +246,10 @@ recuperation_pval <- function(sous_data_loc, montant_ini_loc, annee_min, annee_m
   merge_1 <- merge(dt_loc_pval, dt_loc_coeff, by = "Montant_initial")
   merge_2 <- merge(merge_1, dt_loc_count, by = "Montant_initial")
   merge_3 <- merge(merge_2, dt_loc_coeff_Y_X, by = "Montant_initial")
-  return(merge_3)
+  merge_4 <- merge(merge_3, dt_loc_coeff_0, by = "Montant_initial")
+  
+
+  return(merge_4)
 }
 
 dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, annee_min, annee_max, que_logit){
