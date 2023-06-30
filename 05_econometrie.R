@@ -585,7 +585,8 @@ regression_G_heritage <- function(data_loc, montant_ini_loc, annee_min, annee_ma
 faire_matching <- function(sous_data_loc, liste_outcomes = c("DA1110I"),
                            var_treatment = "DOINHERIT",
                            liste_cols_dummies = c("DHEDUH1", "DHGENDERH1", "DHHTYPE", "DHEMPH1", "PE0300_simpl"),
-                           liste_cols_continues = c("DHAGEH1", "DI2000")){
+                           liste_cols_continues = c("DHAGEH1", "DI2000"), 
+                           liste_modalites_ref){
   
   ### Cette fonction fait le matching et retourne les objets associés
   
@@ -595,13 +596,13 @@ faire_matching <- function(sous_data_loc, liste_outcomes = c("DA1110I"),
   
   
   sous_data_loc <- data_pays[VAGUE == num_vague,..liste_cols]
-  sous_data_loc$DHAGEH1 <- as.numeric(sous_data_loc$DHAGEH1)
-  sous_data_loc[PE0300_simpl == "-", PE0300_simpl := '0']
-  sous_data_loc[is.na(PE0300_simpl), PE0300_simpl := '10'] #Les gens pas en emplois sont mis dans ue catégorie à part, mais vu qu'on les capte avec la variable de statut pro...
-  sous_data_loc$PE0300_simpl <- droplevels(sous_data_loc$PE0300_simpl)
+  try(sous_data_loc$DHAGEH1 <- as.numeric(sous_data_loc$DHAGEH1), silent = TRUE)
+  try(sous_data_loc[PE0300_simpl == "-", PE0300_simpl := '0'],  silent = TRUE)
+  try(sous_data_loc[is.na(PE0300_simpl), PE0300_simpl := '10'],  silent = TRUE) #Les gens pas en emplois sont mis dans ue catégorie à part, mais vu qu'on les capte avec la variable de statut pro...
+  try(sous_data_loc$PE0300_simpl <- droplevels(sous_data_loc$PE0300_simpl),  silent = TRUE)
   
-  sous_data_loc[DHEDUH1 == "-2", DHEDUH1 := '0'] #Sinon ça bug avec la modalité -1...
-  sous_data_loc[DHEDUH1 == "-1", DHEDUH1 := '0']
+  try(sous_data_loc[DHEDUH1 == "-2", DHEDUH1 := '0'],  silent = TRUE) #Sinon ça bug avec la modalité -1...
+  try(sous_data_loc[DHEDUH1 == "-1", DHEDUH1 := '0'],  silent = TRUE)
   
   
   for (colonne in liste_cols_dummies){ # On passe en dummies les variables catégorielles
@@ -609,6 +610,7 @@ faire_matching <- function(sous_data_loc, liste_outcomes = c("DA1110I"),
     for (n in names(rs)) set(sous_data_loc, i = rs[[n]], j = paste(colonne, n, sep = "_"), v = 1)
   }
   sous_data_loc[, eval(liste_cols_dummies) :=NULL] # Puis on vire les colonnes initiales
+  sous_data_loc[, eval(liste_modalites_ref) :=NULL] # Et les modalités de référence
   
   
   # setnames(sous_data_loc, var_outcome, "outcome")
@@ -623,19 +625,21 @@ faire_matching <- function(sous_data_loc, liste_outcomes = c("DA1110I"),
   }
   sous_data_loc$treatment <- droplevels(sous_data_loc$treatment)
   
-  
+  ### On supprime les modalités de réference de la table 
+  # liste_modalites_ref <- 
+
   liste_col_names <- colnames(sous_data_loc) # On récupère les colonnes qui serviront à faire le matching
   txt_matching <- ""
   for(col in liste_col_names){
-    if(! col %in% c("outcome", "treatment", "HW0010")){txt_matching <- paste(txt_matching, "+", col, sep = " ")}
+    if(! col %in% append(c("treatment", "HW0010"), liste_outcomes)){txt_matching <- paste(txt_matching, "+", col, sep = " ")}
   }
   # On vire le premier + du début
   txt_matching <- sub(".", "", txt_matching)
   txt_matching <- sub(".", "", txt_matching)
   
-  txt_nearest <- paste("nearest_neighbor_match <- matchit(treatment ~", txt_matching, ", data=sous_data_loc, method='nearest', ratio=1, replace=F, distance = 'glm', caliper=0.2)", sep = "")
-  txt_optimal <- paste("optimal_match <- matchit(treatment ~", txt_matching, ", data=sous_data_loc, method='optimal', ratio=1, replace=F, distance = 'glm', s.weights = ~HW0010)", sep = "")
-  txt_full <- paste("full_match <- matchit(treatment ~", txt_matching, ", data=sous_data_loc, method='full', ratio=1, replace=F, distance = 'glm', caliper=0.2)", sep = "")
+  txt_nearest <- paste("nearest_neighbor_match <- matchit(treatment ~", txt_matching, ", data=sous_data_loc, method='nearest', ratio=1, replace=F, distance = 'glm', caliper=0.2, estimand = 'ATT')", sep = "")
+  txt_optimal <- paste("optimal_match <- matchit(treatment ~", txt_matching, ", data=sous_data_loc, method='optimal', ratio=1, replace=F, distance = 'glm', s.weights = ~HW0010, estimand = 'ATT')", sep = "")
+  txt_full <- paste("full_match <- matchit(treatment ~", txt_matching, ", data=sous_data_loc, method='full', ratio=1, replace=F, distance = 'glm', caliper=0.2, estimand = 'ATT')", sep = "")
   
   eval(parse(text = txt_nearest))
   eval(parse(text = txt_optimal))
@@ -644,7 +648,34 @@ faire_matching <- function(sous_data_loc, liste_outcomes = c("DA1110I"),
   dta_nearest <- match.data(nearest_neighbor_match)
   dta_optimal <- match.data(optimal_match)
   dta_full <- match.data(full_match)
-  
-  return(list(dta_nearest, dta_optimal, dta_full))
+  return(list(dta_nearest, dta_optimal, dta_full, txt_matching))
 }
 
+
+
+# calcul_ate_matching <- function(dta_loc, var_Y, txt_matching_loc){
+#   ### Pour ensuite récupérer l'ATE
+#   
+#   # pré-traitement
+#   dta_loc$treatment <- as.numeric(as.character(dta_loc$treatment))
+#   dta_loc[[var_Y]] <- as.numeric(as.character(dta_loc[[var_Y]]))
+#   # Régression
+#   tet_reg <- paste("fit_loc <- lm(",var_Y," ~ treatment * (",txt_matching_loc,"), data = dta_loc, weights = HW0010)", sep= "")
+#   eval(parse(text = tet_reg))
+#   # Récupération
+#   avg_comp_ate_loc <- avg_comparisons(fit_loc, variables = "treatment",
+#                                       vcov = ~subclass,
+#                                       newdata = subset(dta_loc, treatment == 1),
+#                                       wts = "HW0010") ### The average tratment effect on treated 
+#   avg_pred_loc <- avg_predictions(fit_loc, variables = "treatment",
+#                                   vcov = ~subclass,
+#                                   newdata = subset(dta_loc, treatment == 1),
+#                                   wts = "HW0010") ## Les moyennes dans les deux groupes pour comparer
+#   
+#   # On regroupe sous un seul data.table pour export
+#   avg_comp_ate_loc$Type <- "ATE"
+#   avg_pred_loc$Type <- "Moyennes_par_groupe"
+#   avg_final <- rbindlist(list(avg_comp_ate_loc, avg_pred_loc), fill=TRUE)
+#   
+#   return(avg_final)
+# }

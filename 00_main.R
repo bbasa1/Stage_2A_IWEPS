@@ -25,8 +25,8 @@ liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
-# pays <- "BE" # Le pays qu'on souhaite
-# num_vague <- 2 # La vague qu'on souhaite
+pays <- "BE" # Le pays qu'on souhaite
+num_vague <- 2 # La vague qu'on souhaite
 utiliser_data_sauvegardee <- TRUE # Mettre FALSE si la table concaténée pays/année n'a jamais été formée, mettre TRUE si elle a déjà été formée (permet de juste l'importer)
 # liste_pays_traces <- c("FR", 'IT', "DE", "BE", 'ES', 'PT', "HU")
 liste_pays_traces <- c("FR", 'IT', "DE", "BE")
@@ -946,6 +946,244 @@ write.xlsx(dt_prep_reg_lin, paste(repo_sorties,titre_save, sep = "/"))
 
 
 
+
+
+
+##############################################################################################################################
+################################### MATCHING ##################################
+# liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
+#                             "DA1000" = "Patrimoine physique",
+#                             "DA2100" = "Patrimoine financier",
+#                             "DL1000" = "Dettes",
+#                             "DN3001" = "Patrimoine net")
+
+# treatment = fait d'hériter ou non
+# outcome = fait d'être proprio ou pas
+# Matching fait sur = toutes les variables socio-éco qu'on avait dans les régressions
+
+liste_cols_dummies <- c("DHEDUH1", "DHGENDERH1", "DHHTYPE", "DHEMPH1", "PE0300_simpl")
+liste_modalites_ref <- c("DHGENDERH1_1", "DHEDUH1_0", "DHHTYPE_6", "DHEMPH1_1", "PE0300_simpl_10") ### On va les supprimer
+liste_outcomes <- c("DA1110I", "DA1000", "DA1120I", "DA1110")
+var_treatment <- "DOINHERIT"
+liste_cols_continues <- c("DHAGEH1", "DI2000")
+
+sous_data_loc <- data_pays[VAGUE == num_vague]
+
+liste_output <- faire_matching(sous_data_loc, liste_outcomes , var_treatment, liste_cols_dummies, liste_cols_continues, liste_modalites_ref)
+dta_nearest <- as.data.table(liste_output[1])
+dta_optimal <- as.data.table(liste_output[2]) # Le optimal est le seul à pouvoir prendre en compte les poids... J'ai envie de dire qu'il faut mieux utiliser celui-là ?
+dta_full <- as.data.table(liste_output[3])
+txt_matching <- liste_output[4]
+
+################### Première boucle : Achat d'une HMR
+var_Y <- "DA1110I" ###### C'est celle qu'on va étudier
+txt_matching_loc <- txt_matching
+
+
+# Matching nearest
+dta_loc <- dta_nearest
+# pré-traitement
+dta_loc$treatment <- as.numeric(as.character(dta_loc$treatment))
+dta_loc[[var_Y]] <- as.numeric(as.character(dta_loc[[var_Y]]))
+# Régression
+tet_reg <- paste("fit_loc <- lm(",var_Y," ~ treatment * (",txt_matching_loc,"), data = dta_loc, weights = HW0010)", sep= "")
+eval(parse(text = tet_reg))
+# Récupération
+avg_comp_ate_loc <- avg_comparisons(fit_loc, variables = "treatment",
+                                    vcov = ~subclass,
+                                    newdata = subset(dta_loc, treatment == 1),
+                                    wts = "HW0010") ### The average tratment effect on treated 
+avg_pred_loc <- avg_predictions(fit_loc, variables = "treatment",
+                                vcov = ~subclass,
+                                newdata = subset(dta_loc, treatment == 1),
+                                wts = "HW0010") ## Les moyennes dans les deux groupes pour comparer
+
+# On regroupe sous un seul data.table pour export
+avg_comp_ate_loc$Type <- "ATE"
+avg_pred_loc$Type <- "Moyennes_par_groupe"
+avg_final <- rbindlist(list(avg_comp_ate_loc, avg_pred_loc), fill=TRUE)
+avg_final_nearest <- avg_final
+
+
+
+
+# Matching optimal
+dta_loc <- dta_otpimal
+# pré-traitement
+dta_loc$treatment <- as.numeric(as.character(dta_loc$treatment))
+dta_loc[[var_Y]] <- as.numeric(as.character(dta_loc[[var_Y]]))
+# Régression
+tet_reg <- paste("fit_loc <- lm(",var_Y," ~ treatment * (",txt_matching_loc,"), data = dta_loc, weights = HW0010)", sep= "")
+eval(parse(text = tet_reg))
+# Récupération
+avg_comp_ate_loc <- avg_comparisons(fit_loc, variables = "treatment",
+                                    vcov = ~subclass,
+                                    newdata = subset(dta_loc, treatment == 1),
+                                    wts = "HW0010") ### The average tratment effect on treated 
+avg_pred_loc <- avg_predictions(fit_loc, variables = "treatment",
+                                vcov = ~subclass,
+                                newdata = subset(dta_loc, treatment == 1),
+                                wts = "HW0010") ## Les moyennes dans les deux groupes pour comparer
+
+# On regroupe sous un seul data.table pour export
+avg_comp_ate_loc$Type <- "ATE"
+avg_pred_loc$Type <- "Moyennes_par_groupe"
+avg_final <- rbindlist(list(avg_comp_ate_loc, avg_pred_loc), fill=TRUE)
+avg_final_optimal <- avg_final
+
+
+# Matching full
+dta_loc <- dta_full
+# pré-traitement
+dta_loc$treatment <- as.numeric(as.character(dta_loc$treatment))
+dta_loc[[var_Y]] <- as.numeric(as.character(dta_loc[[var_Y]]))
+# Régression
+tet_reg <- paste("fit_loc <- lm(",var_Y," ~ treatment * (",txt_matching_loc,"), data = dta_loc, weights = HW0010)", sep= "")
+eval(parse(text = tet_reg))
+# Récupération
+avg_comp_ate_loc <- avg_comparisons(fit_loc, variables = "treatment",
+                                    vcov = ~subclass,
+                                    newdata = subset(dta_loc, treatment == 1),
+                                    wts = "HW0010") ### The average tratment effect on treated 
+avg_pred_loc <- avg_predictions(fit_loc, variables = "treatment",
+                                vcov = ~subclass,
+                                newdata = subset(dta_loc, treatment == 1),
+                                wts = "HW0010") ## Les moyennes dans les deux groupes pour comparer
+
+# On regroupe sous un seul data.table pour export
+avg_comp_ate_loc$Type <- "ATE"
+avg_pred_loc$Type <- "Moyennes_par_groupe"
+avg_final <- rbindlist(list(avg_comp_ate_loc, avg_pred_loc), fill=TRUE)
+avg_final_full <- avg_final
+
+
+
+avg_final_full$Methode <- "Full"
+avg_final_nearest$Methode <- "Nearest"
+avg_final_optimal$Methode <- "Optimal"
+
+
+avg_final <- rbindlist(list(avg_final_full, avg_final_nearest, avg_final_optimal), fill=TRUE)
+
+titre_save <- paste(pays,"_V",num_vague,"_Resultats_matching_DA1110I.xlsx", sep = "")
+write.xlsx(avg_final, paste(repo_sorties,titre_save, sep = "/"))
+
+
+
+########################### Seconde boucle : valeur de la HMR
+var_Y <- "DA1110" ###### C'est celle qu'on va étudier
+txt_matching_loc <- txt_matching
+
+
+# Matching nearest
+dta_loc <- dta_nearest
+# pré-traitement
+dta_loc$treatment <- as.numeric(as.character(dta_loc$treatment))
+dta_loc[[var_Y]] <- as.numeric(as.character(dta_loc[[var_Y]]))
+# Régression
+tet_reg <- paste("fit_loc <- lm(",var_Y," ~ treatment * (",txt_matching_loc,"), data = dta_loc, weights = HW0010)", sep= "")
+eval(parse(text = tet_reg))
+# Récupération
+avg_comp_ate_loc <- avg_comparisons(fit_loc, variables = "treatment",
+                                    vcov = ~subclass,
+                                    newdata = subset(dta_loc, treatment == 1),
+                                    wts = "HW0010") ### The average tratment effect on treated 
+avg_pred_loc <- avg_predictions(fit_loc, variables = "treatment",
+                                vcov = ~subclass,
+                                newdata = subset(dta_loc, treatment == 1),
+                                wts = "HW0010") ## Les moyennes dans les deux groupes pour comparer
+
+# On regroupe sous un seul data.table pour export
+avg_comp_ate_loc$Type <- "ATE"
+avg_pred_loc$Type <- "Moyennes_par_groupe"
+avg_final <- rbindlist(list(avg_comp_ate_loc, avg_pred_loc), fill=TRUE)
+avg_final_nearest <- avg_final
+
+
+
+
+# Matching optimal
+dta_loc <- dta_otpimal
+# pré-traitement
+dta_loc$treatment <- as.numeric(as.character(dta_loc$treatment))
+dta_loc[[var_Y]] <- as.numeric(as.character(dta_loc[[var_Y]]))
+# Régression
+tet_reg <- paste("fit_loc <- lm(",var_Y," ~ treatment * (",txt_matching_loc,"), data = dta_loc, weights = HW0010)", sep= "")
+eval(parse(text = tet_reg))
+# Récupération
+avg_comp_ate_loc <- avg_comparisons(fit_loc, variables = "treatment",
+                                    vcov = ~subclass,
+                                    newdata = subset(dta_loc, treatment == 1),
+                                    wts = "HW0010") ### The average tratment effect on treated 
+avg_pred_loc <- avg_predictions(fit_loc, variables = "treatment",
+                                vcov = ~subclass,
+                                newdata = subset(dta_loc, treatment == 1),
+                                wts = "HW0010") ## Les moyennes dans les deux groupes pour comparer
+
+# On regroupe sous un seul data.table pour export
+avg_comp_ate_loc$Type <- "ATE"
+avg_pred_loc$Type <- "Moyennes_par_groupe"
+avg_final <- rbindlist(list(avg_comp_ate_loc, avg_pred_loc), fill=TRUE)
+avg_final_optimal <- avg_final
+
+
+# Matching full
+dta_loc <- dta_full
+# pré-traitement
+dta_loc$treatment <- as.numeric(as.character(dta_loc$treatment))
+dta_loc[[var_Y]] <- as.numeric(as.character(dta_loc[[var_Y]]))
+# Régression
+tet_reg <- paste("fit_loc <- lm(",var_Y," ~ treatment * (",txt_matching_loc,"), data = dta_loc, weights = HW0010)", sep= "")
+eval(parse(text = tet_reg))
+# Récupération
+avg_comp_ate_loc <- avg_comparisons(fit_loc, variables = "treatment",
+                                    vcov = ~subclass,
+                                    newdata = subset(dta_loc, treatment == 1),
+                                    wts = "HW0010") ### The average tratment effect on treated 
+avg_pred_loc <- avg_predictions(fit_loc, variables = "treatment",
+                                vcov = ~subclass,
+                                newdata = subset(dta_loc, treatment == 1),
+                                wts = "HW0010") ## Les moyennes dans les deux groupes pour comparer
+
+# On regroupe sous un seul data.table pour export
+avg_comp_ate_loc$Type <- "ATE"
+avg_pred_loc$Type <- "Moyennes_par_groupe"
+avg_final <- rbindlist(list(avg_comp_ate_loc, avg_pred_loc), fill=TRUE)
+avg_final_full <- avg_final
+
+
+
+avg_final_full$Methode <- "Full"
+avg_final_nearest$Methode <- "Nearest"
+avg_final_optimal$Methode <- "Optimal"
+
+
+avg_final <- rbindlist(list(avg_final_full, avg_final_nearest, avg_final_optimal), fill=TRUE)
+
+titre_save <- paste(pays,"_V",num_vague,"_Resultats_matching_DA1110.xlsx", sep = "")
+write.xlsx(avg_final, paste(repo_sorties,titre_save, sep = "/"))
+
+
+
+############ Memo sur les différents matching :
+# Nearest neighbor matching is a type of greedy matching. It matches the nearest control at the moment, and remove the matched control from the rest of the matching.
+# Nearest neighbor matching is fast but sensitive to the order of samples. It is not optimal for minimizing the total distance because the samples that are matched later in the process can only choose from the contorl units that have not been matched.
+
+
+# Optimal matching is also called optimal pair matching. Different from greedy matching, optimal matching minimizes the total distance across all pairs.
+# When there are not many close matches for the treatment group, optimal matching can be helpful for finding the best matches.
+
+
+# It is called full matching because all the test and control units are assigned to a subclass and are utilized in the matching.
+# It is optimal because the weighted average distances between the treated and control units in each subclass are minimized.
+# Full matching outputs weights that are computed based on subclasses. The weights can work similar to propensity score weights and be used to estimate a weighted treatment effect.
+
+
+
+
+
+
+
 ############################################################################################################################### 
 ############################## GENERATION DE CARTES D'INDICES DE FINI EN EUROPE ############################################### 
 ############################################################################################################################### 
@@ -1589,108 +1827,108 @@ dt_casted
 
 
 # table(sous_data_loc$Reg_G)
-liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
-                            "DA1000" = "Patrimoine physique",
-                            "DA2100" = "Patrimoine financier",
-                            "DL1000" = "Dettes",
-                            "DN3001" = "Patrimoine net")
-
-liste_cols_reg_poids <- c("HW0010", "Montant_heritage_1")
-sous_data_loc <- data_complete[VAGUE == num_vague & SA0100 == "BE"]
-sous_data_loc_H <- sous_data_loc[DHGENDERH1 == '1']
-sous_data_loc_F <- sous_data_loc[DHGENDERH1 == '2']
-sous_data_prop <- sous_data_loc[DA1110I == '1']
-sous_data_non_prop <- sous_data_loc[DA1110I == '0']
-
-dw <- svydesign(ids = ~1, data = sous_data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
-dw_prop <- svydesign(ids = ~1, data = sous_data_prop[,..liste_cols_reg_poids], weights = ~ HW0010)
-dw_non_prop <- svydesign(ids = ~1, data = sous_data_non_prop[,..liste_cols_reg_poids], weights = ~ HW0010)
-svyquantile(x = ~Montant_heritage_1, design = dw, na.rm = TRUE, quantiles = c(.25, .50, .75))
-svyquantile(x = ~Montant_heritage_1, design = dw_prop, na.rm = TRUE, quantiles = c(.25, .50, .75))
-svyquantile(x = ~Montant_heritage_1, design = dw_non_prop, na.rm = TRUE, quantiles = c(.25, .50, .75))
-
-
-
-sous_data_loc <- data_complete[VAGUE == num_vague & SA0100 == "IT"]
-dw <- svydesign(ids = ~1, data = sous_data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
-svymean(~Montant_heritage_1, dw, na = TRUE)
-svyquantile(x = ~Montant_heritage_1, design = dw, na.rm = TRUE, quantiles = 0.5)
-svysd(~Montant_heritage_1, dw, na = TRUE)
-
+# liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
+#                             "DA1000" = "Patrimoine physique",
+#                             "DA2100" = "Patrimoine financier",
+#                             "DL1000" = "Dettes",
+#                             "DN3001" = "Patrimoine net")
+# 
+# liste_cols_reg_poids <- c("HW0010", "Montant_heritage_1")
+# sous_data_loc <- data_complete[VAGUE == num_vague & SA0100 == "BE"]
+# sous_data_loc_H <- sous_data_loc[DHGENDERH1 == '1']
+# sous_data_loc_F <- sous_data_loc[DHGENDERH1 == '2']
+# sous_data_prop <- sous_data_loc[DA1110I == '1']
+# sous_data_non_prop <- sous_data_loc[DA1110I == '0']
+# 
+# dw <- svydesign(ids = ~1, data = sous_data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
+# dw_prop <- svydesign(ids = ~1, data = sous_data_prop[,..liste_cols_reg_poids], weights = ~ HW0010)
+# dw_non_prop <- svydesign(ids = ~1, data = sous_data_non_prop[,..liste_cols_reg_poids], weights = ~ HW0010)
+# svyquantile(x = ~Montant_heritage_1, design = dw, na.rm = TRUE, quantiles = c(.25, .50, .75))
+# svyquantile(x = ~Montant_heritage_1, design = dw_prop, na.rm = TRUE, quantiles = c(.25, .50, .75))
+# svyquantile(x = ~Montant_heritage_1, design = dw_non_prop, na.rm = TRUE, quantiles = c(.25, .50, .75))
+# 
+# 
+# 
+# sous_data_loc <- data_complete[VAGUE == num_vague & SA0100 == "IT"]
+# dw <- svydesign(ids = ~1, data = sous_data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
+# svymean(~Montant_heritage_1, dw, na = TRUE)
+# svyquantile(x = ~Montant_heritage_1, design = dw, na.rm = TRUE, quantiles = 0.5)
+# svysd(~Montant_heritage_1, dw, na = TRUE)
+# 
 
 #############
-liste_cols_reg_poids <- c("HW0010", "DA3001", "DA1000", "DA2100", "DL1000", "DN3001")
-
-faire_quantiles_pat <- function(nom_pays){
-  
-  sous_data_loc <- data_complete[VAGUE == num_vague & SA0100 == nom_pays]
-  dw <- svydesign(ids = ~1, data = sous_data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
-
-  liste_quantiles <- as.data.table(c(.01, .25, .50, .75, .99))
-  setnames(liste_quantiles, "V1", 'Quantile')
-  
-  liste_quantiles$Pat_physique <- as.data.table(svyquantile(x = ~DA1000, 
-                                                      design = dw, 
-                                                      na.rm = TRUE, 
-                                                      quantiles = c(.01, .25, .50, .75, .99))$DA1000)$quantile
-  
-  liste_quantiles$Pat_financier <- as.data.table(svyquantile(x = ~DA2100, 
-                                                      design = dw, 
-                                                      na.rm = TRUE, 
-                                                      quantiles = c(.01, .25, .50, .75, .99))$DA2100)$quantile
-  
-  liste_quantiles$Pat_brut <- as.data.table(svyquantile(x = ~DA3001, 
-                                                        design = dw, 
-                                                        na.rm = TRUE, 
-                                                        quantiles = c(.01, .25, .50, .75, .99))$DA3001)$quantile
-  
-  liste_quantiles$Dettes <- as.data.table(svyquantile(x = ~DL1000, 
-                                                      design = dw, 
-                                                      na.rm = TRUE, 
-                                                      quantiles = c(.01, .25, .50, .75, .99))$DL1000)$quantile
-  liste_quantiles$Pat_net <- as.data.table(svyquantile(x = ~DN3001, 
-                                                      design = dw, 
-                                                      na.rm = TRUE, 
-                                                      quantiles = c(.01, .25, .50, .75, .99))$DN3001)$quantile
-  return(liste_quantiles)
-}
-
-
-faire_quantiles_pat("IT")
+# liste_cols_reg_poids <- c("HW0010", "DA3001", "DA1000", "DA2100", "DL1000", "DN3001")
+# 
+# faire_quantiles_pat <- function(nom_pays){
+#   
+#   sous_data_loc <- data_complete[VAGUE == num_vague & SA0100 == nom_pays]
+#   dw <- svydesign(ids = ~1, data = sous_data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
+# 
+#   liste_quantiles <- as.data.table(c(.01, .25, .50, .75, .99))
+#   setnames(liste_quantiles, "V1", 'Quantile')
+#   
+#   liste_quantiles$Pat_physique <- as.data.table(svyquantile(x = ~DA1000, 
+#                                                       design = dw, 
+#                                                       na.rm = TRUE, 
+#                                                       quantiles = c(.01, .25, .50, .75, .99))$DA1000)$quantile
+#   
+#   liste_quantiles$Pat_financier <- as.data.table(svyquantile(x = ~DA2100, 
+#                                                       design = dw, 
+#                                                       na.rm = TRUE, 
+#                                                       quantiles = c(.01, .25, .50, .75, .99))$DA2100)$quantile
+#   
+#   liste_quantiles$Pat_brut <- as.data.table(svyquantile(x = ~DA3001, 
+#                                                         design = dw, 
+#                                                         na.rm = TRUE, 
+#                                                         quantiles = c(.01, .25, .50, .75, .99))$DA3001)$quantile
+#   
+#   liste_quantiles$Dettes <- as.data.table(svyquantile(x = ~DL1000, 
+#                                                       design = dw, 
+#                                                       na.rm = TRUE, 
+#                                                       quantiles = c(.01, .25, .50, .75, .99))$DL1000)$quantile
+#   liste_quantiles$Pat_net <- as.data.table(svyquantile(x = ~DN3001, 
+#                                                       design = dw, 
+#                                                       na.rm = TRUE, 
+#                                                       quantiles = c(.01, .25, .50, .75, .99))$DN3001)$quantile
+#   return(liste_quantiles)
+# }
+# 
+# 
+# faire_quantiles_pat("IT")
 
 # liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
 #                             "DA1000" = "Patrimoine physique",
 #                             "DA2100" = "Patrimoine financier",
 #                             "DL1000" = "Dettes",
 #                             "DN3001" = "Patrimoine net")
-
-
-liste_ident <- vague_23[DA1110I_V2 == "0" & DA1110I_V3 == "1"]$SA0110_V3
-data_vague <- data_pays[VAGUE == 3]
-data_primo_accedants <- data_pays[VAGUE == 3 & SA0110%in%liste_ident]
-nrow(data_vague)
-data_primo_accedants$col_1 <- 1 # Pour utiliser lprop et faire des % il faut deux colonnes...
-data_vague$col_1 <- 1
-data_primo_accedants$DHAGEH1 <- as.numeric(data_primo_accedants$DHAGEH1) # L'âge en numeric plus simple pour médiane et moyenne
-data_vague$DHAGEH1 <- as.numeric(data_vague$DHAGEH1)
-
-liste_cols_reg_poids <- c("HW0010", "DA1000", "DOINHERIT", "DHHTYPE", "DHGENDERH1", "DHAGEH1", "DI2000", "Annee_heritage_1", "DHEDUH1", "col_1")
-dw <- svydesign(ids = ~1, data = data_vague[,..liste_cols_reg_poids], weights = ~ HW0010)
-dw_primo <- svydesign(ids = ~1, data = data_primo_accedants[,..liste_cols_reg_poids], weights = ~ HW0010)
-
-
-svymean(~DHAGEH1, dw, na = TRUE)
-svymean(~DHAGEH1, dw_primo, na = TRUE)
-svyquantile(x = ~DI2000, design = dw, na.rm = TRUE, quantiles = 0.5)
-svyquantile(x = ~DI2000, design = dw_primo, na.rm = TRUE, quantiles = 0.5)
-lprop(svytable(~ col_1 + DHHTYPE, design=dw))
-lprop(svytable(~ col_1 + DHHTYPE, design=dw_primo))
-
-nrow(data_complete[VAGUE == 3 & SA0100== "IT"])
-
-data_complete$SA0100
-
-
+# 
+# 
+# liste_ident <- vague_23[DA1110I_V2 == "0" & DA1110I_V3 == "1"]$SA0110_V3
+# data_vague <- data_pays[VAGUE == 3]
+# data_primo_accedants <- data_pays[VAGUE == 3 & SA0110%in%liste_ident]
+# nrow(data_vague)
+# data_primo_accedants$col_1 <- 1 # Pour utiliser lprop et faire des % il faut deux colonnes...
+# data_vague$col_1 <- 1
+# data_primo_accedants$DHAGEH1 <- as.numeric(data_primo_accedants$DHAGEH1) # L'âge en numeric plus simple pour médiane et moyenne
+# data_vague$DHAGEH1 <- as.numeric(data_vague$DHAGEH1)
+# 
+# liste_cols_reg_poids <- c("HW0010", "DA1000", "DOINHERIT", "DHHTYPE", "DHGENDERH1", "DHAGEH1", "DI2000", "Annee_heritage_1", "DHEDUH1", "col_1")
+# dw <- svydesign(ids = ~1, data = data_vague[,..liste_cols_reg_poids], weights = ~ HW0010)
+# dw_primo <- svydesign(ids = ~1, data = data_primo_accedants[,..liste_cols_reg_poids], weights = ~ HW0010)
+# 
+# 
+# svymean(~DHAGEH1, dw, na = TRUE)
+# svymean(~DHAGEH1, dw_primo, na = TRUE)
+# svyquantile(x = ~DI2000, design = dw, na.rm = TRUE, quantiles = 0.5)
+# svyquantile(x = ~DI2000, design = dw_primo, na.rm = TRUE, quantiles = 0.5)
+# lprop(svytable(~ col_1 + DHHTYPE, design=dw))
+# lprop(svytable(~ col_1 + DHHTYPE, design=dw_primo))
+# 
+# nrow(data_complete[VAGUE == 3 & SA0100== "IT"])
+# 
+# data_complete$SA0100
+# 
+# 
 
 # DHHTYPE == 51, "Adulte seul.e <= 64 ans",
 # DHHTYPE == 52, "Adulte seul.e >= 65 ans",
@@ -1724,45 +1962,45 @@ data_complete$SA0100
 # 
 
 # Test du Chi2 d'indépendance
-
-
-
-
-
-
-data_loc <- data_complete[VAGUE == num_vague & SA0100 %in% c('BE', "DE", "FR", "IT")]
-x <- 'Montant_heritage_avant_achat'
-y <- "DA1110"
-color <- "SA0100"
-xlabel <- "Montant total hérité ou reçu avant achat de la HMR"
-ylabel <- "Valeur de la HMR"
-colorlabel <- "Pays"
-# melted_loc <- data_loc[Montant_heritage_avant_achat != 0]
-melted_loc <- data_loc
-
-
-ggplot(data = melted_loc, aes(x=melted_loc[[x]], y = melted_loc[[y]], color = melted_loc[[color]])) +
-  geom_point() +
-  # geom_line() +
-  geom_smooth( method = 'lm', se = TRUE, formula = y ~ x) +
-  stat_poly_eq(use_label(c("eq", "R2"))) +
-  labs(title=titre,
-       x= xlabel,
-       y= ylabel,
-       color = colorlabel) + 
-  scale_y_continuous(labels = scales::dollar_format(
-    prefix = "",
-    suffix = " €",
-    big.mark = " ",
-    decimal.mark = ",")) + 
-  scale_x_continuous(trans='identity', labels = scales::dollar_format(
-    prefix = "",
-    suffix = " €",
-    big.mark = " ",
-    decimal.mark = ","), n.breaks = 10) + 
-  scale_color_viridis(discrete = TRUE) +
-  theme(axis.text.x = element_text(angle = 22.5, vjust = 0.5, hjust=1))
-
+# 
+# 
+# 
+# 
+# 
+# 
+# data_loc <- data_complete[VAGUE == num_vague & SA0100 %in% c('BE', "DE", "FR", "IT")]
+# x <- 'Montant_heritage_avant_achat'
+# y <- "DA1110"
+# color <- "SA0100"
+# xlabel <- "Montant total hérité ou reçu avant achat de la HMR"
+# ylabel <- "Valeur de la HMR"
+# colorlabel <- "Pays"
+# # melted_loc <- data_loc[Montant_heritage_avant_achat != 0]
+# melted_loc <- data_loc
+# 
+# 
+# ggplot(data = melted_loc, aes(x=melted_loc[[x]], y = melted_loc[[y]], color = melted_loc[[color]])) +
+#   geom_point() +
+#   # geom_line() +
+#   geom_smooth( method = 'lm', se = TRUE, formula = y ~ x) +
+#   stat_poly_eq(use_label(c("eq", "R2"))) +
+#   labs(title=titre,
+#        x= xlabel,
+#        y= ylabel,
+#        color = colorlabel) + 
+#   scale_y_continuous(labels = scales::dollar_format(
+#     prefix = "",
+#     suffix = " €",
+#     big.mark = " ",
+#     decimal.mark = ",")) + 
+#   scale_x_continuous(trans='identity', labels = scales::dollar_format(
+#     prefix = "",
+#     suffix = " €",
+#     big.mark = " ",
+#     decimal.mark = ","), n.breaks = 10) + 
+#   scale_color_viridis(discrete = TRUE) +
+#   theme(axis.text.x = element_text(angle = 22.5, vjust = 0.5, hjust=1))
+# 
 
 # Annee_heritage_1 == HH0201, HH0401
 # 
@@ -1803,60 +2041,6 @@ ggplot(data = melted_loc, aes(x=melted_loc[[x]], y = melted_loc[[y]], color = me
 
 
 
-
-
-##############################################################################################################################
-################################### MATCHING ##################################
-# liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
-#                             "DA1000" = "Patrimoine physique",
-#                             "DA2100" = "Patrimoine financier",
-#                             "DL1000" = "Dettes",
-#                             "DN3001" = "Patrimoine net")
-# 
-# 
-# liste_outcomes <- c("DA1110I", "DA1000", "DA1120I")
-# var_treatment <- "DOINHERIT"
-# # treatment = fait d'hériter ou non
-# # outcome = fait d'être proprio ou pas
-# # Matching fait sur = toutes les variables socio-éco qu'on avait dans les régressions
-# 
-# 
-# liste_cols_dummies <- c("DHEDUH1", "DHGENDERH1", "DHHTYPE", "DHEMPH1", "PE0300_simpl")
-# liste_cols_continues <- c("DHAGEH1", "DI2000")
-# 
-# sous_data_loc <- data_pays[VAGUE == num_vague]
-# 
-# liste_output <- faire_matching(sous_data_loc, liste_outcomes, var_treatment, liste_cols_dummies,liste_cols_continues)
-# 
-# dta_nearest <- as.data.table(liste_output[1])
-# dta_optimal <- as.data.table(liste_output[2])
-# dta_full <- as.data.table(liste_output[3])
-# 
-# # Le optimal est le seul à pouvoir prendre en compte les poids... J'ai envie de dire qu'il faut mieux utiliser celui-là ?
-# 
-# 
-# table(dta_nearest[treatment ==1]$DA1110I)
-# table(dta_nearest[treatment ==0]$DA1110I)
-# 
-# table(dta_optimal[treatment ==1]$DA1110I)
-# table(dta_optimal[treatment ==0]$DA1110I)
-# 
-# table(dta_full[treatment ==1]$DA1110I)
-# table(dta_full[treatment ==0]$DA1110I)
-
-
-############ Memo sur les différents matching :
-# Nearest neighbor matching is a type of greedy matching. It matches the nearest control at the moment, and remove the matched control from the rest of the matching.
-# Nearest neighbor matching is fast but sensitive to the order of samples. It is not optimal for minimizing the total distance because the samples that are matched later in the process can only choose from the contorl units that have not been matched.
-
-
-# Optimal matching is also called optimal pair matching. Different from greedy matching, optimal matching minimizes the total distance across all pairs.
-# When there are not many close matches for the treatment group, optimal matching can be helpful for finding the best matches.
-
-
-# It is called full matching because all the test and control units are assigned to a subclass and are utilized in the matching.
-# It is optimal because the weighted average distances between the treated and control units in each subclass are minimized.
-# Full matching outputs weights that are computed based on subclasses. The weights can work similar to propensity score weights and be used to estimate a weighted treatment effect.
 
 
 
