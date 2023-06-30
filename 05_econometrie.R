@@ -135,16 +135,7 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
   )    
   ]
 
-  
-  #### A corriger : Pour une raison que je ne m'explique pas il ne veut pas changer le label pour ces dernières lignes il faut le faire à la main...
-  # melted_final[variable == "Reg_lin_coeff_X_Y", label_variable := "Linéaire"]
-  # melted_final[variable == "Logit_coeff_X_Y", label_variable := "Logit"]
-  # melted_final[variable == "Probit_coeff_X_Y", label_variable := "Probit"]
-  # 
-  # melted_final[variable == "Reg_lin_coeff_X_Y", label_variable := "Linéaire"]
-  # melted_final[variable == "Logit_coeff_X_Y", label_variable := "Logit"]
-  # melted_final[variable == "Probit_coeff_X_Y", label_variable := "Probit"]
-  
+
   melted_final[, Ordre_facet := factor(
     fcase(
       Statistique == "Y sur G : log(pvalue)", 1,
@@ -583,4 +574,77 @@ regression_G_heritage <- function(data_loc, montant_ini_loc, annee_min, annee_ma
   return(dt_prep_logit)
 }
 
+
+
+
+
+################################################################################ 
+######### ET UN PEU DE MATCHING ? ##############################################
+################################################################################ 
+
+faire_matching <- function(sous_data_loc, liste_outcomes = c("DA1110I"),
+                           var_treatment = "DOINHERIT",
+                           liste_cols_dummies = c("DHEDUH1", "DHGENDERH1", "DHHTYPE", "DHEMPH1", "PE0300_simpl"),
+                           liste_cols_continues = c("DHAGEH1", "DI2000")){
+  
+  ### Cette fonction fait le matching et retourne les objets associés
+  
+  liste_cols_matching <- append(c(var_treatment, "HW0010"), liste_outcomes)
+  liste_cols <- append(liste_cols_dummies, liste_cols_continues)
+  liste_cols <- append(liste_cols, liste_cols_matching)
+  
+  
+  sous_data_loc <- data_pays[VAGUE == num_vague,..liste_cols]
+  sous_data_loc$DHAGEH1 <- as.numeric(sous_data_loc$DHAGEH1)
+  sous_data_loc[PE0300_simpl == "-", PE0300_simpl := '0']
+  sous_data_loc[is.na(PE0300_simpl), PE0300_simpl := '10'] #Les gens pas en emplois sont mis dans ue catégorie à part, mais vu qu'on les capte avec la variable de statut pro...
+  sous_data_loc$PE0300_simpl <- droplevels(sous_data_loc$PE0300_simpl)
+  
+  sous_data_loc[DHEDUH1 == "-2", DHEDUH1 := '0'] #Sinon ça bug avec la modalité -1...
+  sous_data_loc[DHEDUH1 == "-1", DHEDUH1 := '0']
+  
+  
+  for (colonne in liste_cols_dummies){ # On passe en dummies les variables catégorielles
+    rs = split(seq(nrow(sous_data_loc)), sous_data_loc[, ..colonne])
+    for (n in names(rs)) set(sous_data_loc, i = rs[[n]], j = paste(colonne, n, sep = "_"), v = 1)
+  }
+  sous_data_loc[, eval(liste_cols_dummies) :=NULL] # Puis on vire les colonnes initiales
+  
+  
+  # setnames(sous_data_loc, var_outcome, "outcome")
+  setnames(sous_data_loc, var_treatment, "treatment")
+  
+  # Le passage aux dummies a mis plein de NA qu'il faut remplacer par des 0
+  # Et enfin on bascule tout en numeric
+  for (i in names(sous_data_loc)){
+    sous_data_loc[is.na(get(i)), (i):=0]
+    if(i != "treatment" & !i %in% liste_outcomes){
+      sous_data_loc[[i]] <- as.numeric(sous_data_loc[[i]])}
+  }
+  sous_data_loc$treatment <- droplevels(sous_data_loc$treatment)
+  
+  
+  liste_col_names <- colnames(sous_data_loc) # On récupère les colonnes qui serviront à faire le matching
+  txt_matching <- ""
+  for(col in liste_col_names){
+    if(! col %in% c("outcome", "treatment", "HW0010")){txt_matching <- paste(txt_matching, "+", col, sep = " ")}
+  }
+  # On vire le premier + du début
+  txt_matching <- sub(".", "", txt_matching)
+  txt_matching <- sub(".", "", txt_matching)
+  
+  txt_nearest <- paste("nearest_neighbor_match <- matchit(treatment ~", txt_matching, ", data=sous_data_loc, method='nearest', ratio=1, replace=F, distance = 'glm', caliper=0.2)", sep = "")
+  txt_optimal <- paste("optimal_match <- matchit(treatment ~", txt_matching, ", data=sous_data_loc, method='optimal', ratio=1, replace=F, distance = 'glm', s.weights = ~HW0010)", sep = "")
+  txt_full <- paste("full_match <- matchit(treatment ~", txt_matching, ", data=sous_data_loc, method='full', ratio=1, replace=F, distance = 'glm', caliper=0.2)", sep = "")
+  
+  eval(parse(text = txt_nearest))
+  eval(parse(text = txt_optimal))
+  eval(parse(text = txt_full))
+  
+  dta_nearest <- match.data(nearest_neighbor_match)
+  dta_optimal <- match.data(optimal_match)
+  dta_full <- match.data(full_match)
+  
+  return(list(dta_nearest, dta_optimal, dta_full))
+}
 

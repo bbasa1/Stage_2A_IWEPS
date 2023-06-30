@@ -25,8 +25,8 @@ liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
-pays <- "BE" # Le pays qu'on souhaite
-num_vague <- 2 # La vague qu'on souhaite
+# pays <- "BE" # Le pays qu'on souhaite
+# num_vague <- 2 # La vague qu'on souhaite
 utiliser_data_sauvegardee <- TRUE # Mettre FALSE si la table concaténée pays/année n'a jamais été formée, mettre TRUE si elle a déjà été formée (permet de juste l'importer)
 # liste_pays_traces <- c("FR", 'IT', "DE", "BE", 'ES', 'PT', "HU")
 liste_pays_traces <- c("FR", 'IT', "DE", "BE")
@@ -1807,81 +1807,56 @@ ggplot(data = melted_loc, aes(x=melted_loc[[x]], y = melted_loc[[y]], color = me
 
 ##############################################################################################################################
 ################################### MATCHING ##################################
-
-var_outcome <- "DA1110I"
-var_treatment <- "DOINHERIT"
-# treatment = fait d'hériter ou non
-# outcome = fait d'être proprio ou pas
-# Matching fait sur = toutes les variables socio-éco qu'on avait dans les régressions
-
-
-liste_cols_dummies <- c("DHEDUH1", "DHGENDERH1", "DHHTYPE", "DHEMPH1", "PE0300_simpl")
-liste_cols_continues <- c("DHAGEH1", "DI2000")
-liste_cols_matching <- c(var_treatment, var_outcome, "HW0010")
-liste_cols <- append(liste_cols_dummies, liste_cols_continues)
-liste_cols <- append(liste_cols, liste_cols_matching)
-
-
-sous_data_loc <- data_pays[VAGUE == num_vague,..liste_cols]
-sous_data_loc$DHAGEH1 <- as.numeric(sous_data_loc$DHAGEH1)
-sous_data_loc[PE0300_simpl == "-", PE0300_simpl := '0']
-sous_data_loc[is.na(PE0300_simpl), PE0300_simpl := '10'] #Les gens pas en emplois sont mis dans ue catégorie à part, mais vu qu'on les capte avec la variable de statut pro...
-sous_data_loc$PE0300_simpl <- droplevels(sous_data_loc$PE0300_simpl)
-
-sous_data_loc[DHEDUH1 == "-2", DHEDUH1 := '0'] #Sinon ça bug avec la modalité -1...
-sous_data_loc[DHEDUH1 == "-1", DHEDUH1 := '0']
-
-
-for (colonne in liste_cols_dummies){ # On passe en dummies les variables catégorielles
-  rs = split(seq(nrow(sous_data_loc)), sous_data_loc[, ..colonne])
-  for (n in names(rs)) set(sous_data_loc, i = rs[[n]], j = paste(colonne, n, sep = "_"), v = 1)
-}
-sous_data_loc[, eval(liste_cols_dummies) :=NULL] # Puis on vire les colonnes initiales
-
-# colnames(sous_data_loc)
-
-setnames(sous_data_loc, var_outcome, "outcome")
-setnames(sous_data_loc, var_treatment, "treatment")
-
-# Le passage aux dummies a mis plein de NA qu'il faut remplacer par des 0
-# Et enfin on bascule tout en numeric
-for (i in names(sous_data_loc)){
-  sous_data_loc[is.na(get(i)), (i):=0]
-  if(i != "treatment" & i != "outcome"){
-    sous_data_loc[[i]] <- as.numeric(sous_data_loc[[i]])}
-}
+# liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
+#                             "DA1000" = "Patrimoine physique",
+#                             "DA2100" = "Patrimoine financier",
+#                             "DL1000" = "Dettes",
+#                             "DN3001" = "Patrimoine net")
+# 
+# 
+# liste_outcomes <- c("DA1110I", "DA1000", "DA1120I")
+# var_treatment <- "DOINHERIT"
+# # treatment = fait d'hériter ou non
+# # outcome = fait d'être proprio ou pas
+# # Matching fait sur = toutes les variables socio-éco qu'on avait dans les régressions
+# 
+# 
+# liste_cols_dummies <- c("DHEDUH1", "DHGENDERH1", "DHHTYPE", "DHEMPH1", "PE0300_simpl")
+# liste_cols_continues <- c("DHAGEH1", "DI2000")
+# 
+# sous_data_loc <- data_pays[VAGUE == num_vague]
+# 
+# liste_output <- faire_matching(sous_data_loc, liste_outcomes, var_treatment, liste_cols_dummies,liste_cols_continues)
+# 
+# dta_nearest <- as.data.table(liste_output[1])
+# dta_optimal <- as.data.table(liste_output[2])
+# dta_full <- as.data.table(liste_output[3])
+# 
+# # Le optimal est le seul à pouvoir prendre en compte les poids... J'ai envie de dire qu'il faut mieux utiliser celui-là ?
+# 
+# 
+# table(dta_nearest[treatment ==1]$DA1110I)
+# table(dta_nearest[treatment ==0]$DA1110I)
+# 
+# table(dta_optimal[treatment ==1]$DA1110I)
+# table(dta_optimal[treatment ==0]$DA1110I)
+# 
+# table(dta_full[treatment ==1]$DA1110I)
+# table(dta_full[treatment ==0]$DA1110I)
 
 
-sous_data_loc$treatment <- droplevels(sous_data_loc$treatment)
+############ Memo sur les différents matching :
+# Nearest neighbor matching is a type of greedy matching. It matches the nearest control at the moment, and remove the matched control from the rest of the matching.
+# Nearest neighbor matching is fast but sensitive to the order of samples. It is not optimal for minimizing the total distance because the samples that are matched later in the process can only choose from the contorl units that have not been matched.
 
 
-# # Et enfin on bascule tout en numeric
-# for (i in names(sous_data_loc)){
-#   if(i != "treatment"){
-#   sous_data_loc[[i]] <- as.numeric(sous_data_loc[[i]])}}
+# Optimal matching is also called optimal pair matching. Different from greedy matching, optimal matching minimizes the total distance across all pairs.
+# When there are not many close matches for the treatment group, optimal matching can be helpful for finding the best matches.
 
-table(sous_data_loc$treatment)
 
-# sous_data_loc[, treatment := treatment - 1]# En passant un factor en numeric il passe de 0-1 en modalités en 1-2...
-
-liste_col_names <- colnames(sous_data_loc) # On récupère les colonnes qui serviront à faire le matching
-txt_matching <- ""
-for(col in liste_col_names){
-  if(! col %in% c("outcome", "treatment", "HW0010")){txt_matching <- paste(txt_matching, "+", col, sep = " ")}
-}
-# On vire le premier + du début
-txt_matching <- sub(".", "", txt_matching)
-txt_matching <- sub(".", "", txt_matching)
-
-txt <- paste("nearest_neighbor_match <- matchit(treatment ~", txt_matching, ", data=sous_data_loc, method='nearest', ratio=1, replace=F, distance = 'glm', caliper=0.2)", sep = "")
-
-eval(parse(text = txt))
-
-summary(nearest_neighbor_match, un = FALSE)
-dta_m <- match.data(nearest_neighbor_match)
-
-table(dta_m[treatment ==1]$outcome)
-table(dta_m[treatment ==0]$outcome)
+# It is called full matching because all the test and control units are assigned to a subclass and are utilized in the matching.
+# It is optimal because the weighted average distances between the treated and control units in each subclass are minimized.
+# Full matching outputs weights that are computed based on subclasses. The weights can work similar to propensity score weights and be used to estimate a weighted treatment effect.
 
 
 
@@ -1889,9 +1864,17 @@ table(dta_m[treatment ==0]$outcome)
 
 
 
+##############################################################################################################################
+##############################################################################################################################
+##############################################################################################################################
+##############################################################################################################################
 
 
 
+
+
+
+##############################################################################################################################
 # nearest_neighbor_match <- matchit(treatment ~ DHEDUH1 + DHGENDERH1 + DHHTYPE + DHEMPH1 + PE0300_simpl + DHAGEH1 + DI2000 + DHEDUH1_-1 + DHEDUH1_1 + DHEDUH1_2 + DHEDUH1_3 + DHEDUH1_5 + DHGENDERH1_1 + DHGENDERH1_2 + DHHTYPE_6 + DHHTYPE_7 + DHHTYPE_8 + DHHTYPE_9 + DHHTYPE_10 + DHHTYPE_11 + DHHTYPE_12 + DHHTYPE_13 + DHHTYPE_51 + DHHTYPE_52 + DHEMPH1_1 + DHEMPH1_2 + DHEMPH1_3 + DHEMPH1_4 + DHEMPH1_5 + PE0300_simpl_0 + PE0300_simpl_1 + PE0300_simpl_2 + PE0300_simpl_3 + PE0300_simpl_4 + PE0300_simpl_5 + PE0300_simpl_6 + PE0300_simpl_7 + PE0300_simpl_8 + PE0300_simpl_9 + PE0300_simpl_-1, data=sous_data_loc, method="nearest", ratio=1, replace=F, distance = "glm", caliper=0.2, s.weights = "HW0010")
 # DHEDUH1_
 # 
@@ -1924,137 +1907,137 @@ table(dta_m[treatment ==0]$outcome)
 # # Nearest neighbor matching is fast but sensitive to the order of samples. It is not optimal for minimizing the total distance because the samples that are matched later in the process can only choose from the contorl units that have not been matched.
 # dta_m <- match.data(nearest_neighbor_match)
 # table(dta_m$treatment)
-
-x <- "outcome"
-dta_m$HW0010 <- 1
-fill <- "treatment"
-suffix_x <- ""
-trans <- "identity"
-orientation_label <- 0
-nbins <- 50
-data_loc <- dta_m
-
-ggplot(data = dta_m,
-       mapping = aes(data_loc[[x]], weight = HW0010, fill = data_loc[[fill]], weight = HW0010)) +
-  geom_histogram(color="black", alpha=0.6, position="identity", bins=nbins) +
-  scale_x_continuous(trans=trans, labels = scales::dollar_format(
-    prefix = "",
-    suffix = suffix_x,
-    big.mark = " ",
-    decimal.mark = ","), n.breaks = 30) +
-  scale_color_brewer(palette="Dark2") +
-  labs(title=titre,
-       x= xlabel,
-       y= ylabel,
-       fill = filllabel) +
-  scale_y_continuous(labels = scales::dollar_format(
-    prefix = "",
-    suffix = "",
-    big.mark = " ",
-    decimal.mark = ",")) +
-  theme(axis.text.x = element_text(angle = orientation_label, vjust = 1, hjust=1))
-+
-  annotate(geom = "table", x = x_table, y = y_max, label = list(med), 
-           vjust = 1, hjust = 0)
-
-
-
-fn_bal <- function(dta, variable) {
-  dta$variable <- dta[, variable]
-  # if (variable == 'w3income') dta$variable <- dta$variable / 10^3
-  dta$treatment <- as.factor(dta$treatment)
-  support <- c(min(dta$variable), max(dta$variable))
-  ggplot(dta, aes(x = distance, y = variable, color = treatment)) +
-    geom_point(alpha = 0.2, size = 1.3) +
-    geom_smooth(method = "loess", se = F) +
-    xlab("Propensity score") +
-    ylab(variable) +
-    theme_bw() +
-    ylim(support)
-}
-
-
-
-library(gridExtra)
-grid.arrange(
-  fn_bal(dta_m, "DHAGEH1"),
-  fn_bal(dta_m, "DHEDUH1") + theme(legend.position = "none"),
-  fn_bal(dta_m, "DHGENDERH1"),
-  fn_bal(dta_m, "DI2000") + theme(legend.position = "none"),
-  fn_bal(dta_m, "DHHTYPE"),
-  nrow = 3, widths = c(1, 0.8)
-)
-
-
-
-
-
-
-
-
-
-
-
-# Optimal matching ==> Marche beaucoup mieux mais prend du temps...
-optimal_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="optimal", ratio=1, replace=F, distance = 'glm')
-# Summary of optimal matching results
-summary(optimal_match, un = FALSE)
-# Optimal matching is also called optimal pair matching. Different from greedy matching, optimal matching minimizes the total distance across all pairs.
-# When there are not many close matches for the treatment group, optimal matching can be helpful for finding the best matches.
-
-
-
-
-# Full matching
-full_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="full", ratio=1, replace=F, distance = 'glm')
-# Summary of full matching results
-summary(full_match, un = FALSE)
-# It is called full matching because all the test and control units are assigned to a subclass and are utilized in the matching.
-# It is optimal because the weighted average distances between the treated and control units in each subclass are minimized.
-# Full matching outputs weights that are computed based on subclasses. The weights can work similar to propensity score weights and be used to estimate a weighted treatment effect.
-
-full_match$match.matrix
-
-plot(full_match, type = "jitter", interactive = FALSE)
-plot(full_match, type = "density", interactive = FALSE,
-     which.xs = ~  DI2000 + DHHTYPE)
-plot(full_match, type = "density", interactive = FALSE,
-     which.xs = ~  DHAGEH1)
-
-
-plot(summary(full_match))
-
-
-full_match_data <- match.data(full_match)
-nrow(sous_data_loc) - nrow(full_match_data) ### Il ne manque que les unmatched !
-
-# Quid de l'effet du traitement ?
-fit <- lm(outcome ~ treatment * (DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE), data = full_match_data, weights = weights)
-
-avg_comparisons(fit,
-                variables = "treatment",
-                vcov = ~subclass,
-                newdata = subset(full_match_data, treatment == 1),
-                wts = "weights")
-
-
-
-# Genetic matching
-generic_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="genetic", pop.size=20)
-# Summary of genetic matching
-summary(generic_match, un = FALSE)
-# Genetic matching uses a generic search algorithm to find weights for each covariate to achieve optimal balance. The current matching is with replacement and the balance is evaluated using t-tests and Kolmogorov-Smirnov tests.
-
-
-
-
-
-
-
-
-
-
-
+# 
+# x <- "outcome"
+# dta_m$HW0010 <- 1
+# fill <- "treatment"
+# suffix_x <- ""
+# trans <- "identity"
+# orientation_label <- 0
+# nbins <- 50
+# data_loc <- dta_m
+# 
+# ggplot(data = dta_m,
+#        mapping = aes(data_loc[[x]], weight = HW0010, fill = data_loc[[fill]], weight = HW0010)) +
+#   geom_histogram(color="black", alpha=0.6, position="identity", bins=nbins) +
+#   scale_x_continuous(trans=trans, labels = scales::dollar_format(
+#     prefix = "",
+#     suffix = suffix_x,
+#     big.mark = " ",
+#     decimal.mark = ","), n.breaks = 30) +
+#   scale_color_brewer(palette="Dark2") +
+#   labs(title=titre,
+#        x= xlabel,
+#        y= ylabel,
+#        fill = filllabel) +
+#   scale_y_continuous(labels = scales::dollar_format(
+#     prefix = "",
+#     suffix = "",
+#     big.mark = " ",
+#     decimal.mark = ",")) +
+#   theme(axis.text.x = element_text(angle = orientation_label, vjust = 1, hjust=1))
+# +
+#   annotate(geom = "table", x = x_table, y = y_max, label = list(med), 
+#            vjust = 1, hjust = 0)
+# 
+# 
+# 
+# fn_bal <- function(dta, variable) {
+#   dta$variable <- dta[, variable]
+#   # if (variable == 'w3income') dta$variable <- dta$variable / 10^3
+#   dta$treatment <- as.factor(dta$treatment)
+#   support <- c(min(dta$variable), max(dta$variable))
+#   ggplot(dta, aes(x = distance, y = variable, color = treatment)) +
+#     geom_point(alpha = 0.2, size = 1.3) +
+#     geom_smooth(method = "loess", se = F) +
+#     xlab("Propensity score") +
+#     ylab(variable) +
+#     theme_bw() +
+#     ylim(support)
+# }
+# 
+# 
+# 
+# library(gridExtra)
+# grid.arrange(
+#   fn_bal(dta_m, "DHAGEH1"),
+#   fn_bal(dta_m, "DHEDUH1") + theme(legend.position = "none"),
+#   fn_bal(dta_m, "DHGENDERH1"),
+#   fn_bal(dta_m, "DI2000") + theme(legend.position = "none"),
+#   fn_bal(dta_m, "DHHTYPE"),
+#   nrow = 3, widths = c(1, 0.8)
+# )
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# # Optimal matching ==> Marche beaucoup mieux mais prend du temps...
+# optimal_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="optimal", ratio=1, replace=F, distance = 'glm')
+# # Summary of optimal matching results
+# summary(optimal_match, un = FALSE)
+# # Optimal matching is also called optimal pair matching. Different from greedy matching, optimal matching minimizes the total distance across all pairs.
+# # When there are not many close matches for the treatment group, optimal matching can be helpful for finding the best matches.
+# 
+# 
+# 
+# 
+# # Full matching
+# full_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="full", ratio=1, replace=F, distance = 'glm')
+# # Summary of full matching results
+# summary(full_match, un = FALSE)
+# # It is called full matching because all the test and control units are assigned to a subclass and are utilized in the matching.
+# # It is optimal because the weighted average distances between the treated and control units in each subclass are minimized.
+# # Full matching outputs weights that are computed based on subclasses. The weights can work similar to propensity score weights and be used to estimate a weighted treatment effect.
+# 
+# full_match$match.matrix
+# 
+# plot(full_match, type = "jitter", interactive = FALSE)
+# plot(full_match, type = "density", interactive = FALSE,
+#      which.xs = ~  DI2000 + DHHTYPE)
+# plot(full_match, type = "density", interactive = FALSE,
+#      which.xs = ~  DHAGEH1)
+# 
+# 
+# plot(summary(full_match))
+# 
+# 
+# full_match_data <- match.data(full_match)
+# nrow(sous_data_loc) - nrow(full_match_data) ### Il ne manque que les unmatched !
+# 
+# # Quid de l'effet du traitement ?
+# fit <- lm(outcome ~ treatment * (DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE), data = full_match_data, weights = weights)
+# 
+# avg_comparisons(fit,
+#                 variables = "treatment",
+#                 vcov = ~subclass,
+#                 newdata = subset(full_match_data, treatment == 1),
+#                 wts = "weights")
+# 
+# 
+# 
+# # Genetic matching
+# generic_match <- matchit(treatment ~ DHAGEH1 + DHEDUH1 + DHGENDERH1+ DI2000 + DHHTYPE, data=sous_data_loc, method="genetic", pop.size=20)
+# # Summary of genetic matching
+# summary(generic_match, un = FALSE)
+# # Genetic matching uses a generic search algorithm to find weights for each covariate to achieve optimal balance. The current matching is with replacement and the balance is evaluated using t-tests and Kolmogorov-Smirnov tests.
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
 
 
 
