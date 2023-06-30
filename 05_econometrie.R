@@ -423,7 +423,9 @@ effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial, titre
     liste_count <- append(liste_count, n)
     
     data_loc[, Reg_G := 0]
-    data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
+    data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_avant_achat >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
+    # data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
+    
     # data_loc[Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
     liste_effectifs_1 <- append(liste_effectifs_1, 100 * sum(data_loc$Reg_G)/ntot)
     
@@ -553,7 +555,8 @@ regression_heritage_valeur_hmr <- function(data_loc, montant_ini_loc, col_montan
   data_loc$Reg_Y <- data_loc[[col_montant_bien]]
   # data_loc[, Reg_Y := DA1110]
   data_loc[, Reg_G := 0]
-  data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
+  data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_avant_achat >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
+  # data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
   # data_loc[Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
   
 
@@ -567,7 +570,9 @@ regression_heritage_valeur_hmr <- function(data_loc, montant_ini_loc, col_montan
 
 regression_G_heritage <- function(data_loc, montant_ini_loc, annee_min, annee_max){
   data_loc[, Reg_G := 0]
-  data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
+  # data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
+  data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_avant_achat >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
+  
   # data_loc[Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
   
   denylogit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 

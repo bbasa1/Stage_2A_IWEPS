@@ -320,6 +320,9 @@ trace_boxplot <- function(data_loc, x, fill, facet, titre, titre_save, xlabel, f
     
   p
   
+  # ggplot_build(p)$data
+  
+  
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
   print(p) 
 }

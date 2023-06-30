@@ -19,9 +19,9 @@ repo_inter <- paste(repgen, "Bases_intermediaires" , sep = "/")
 
 # for(pays in c("DE", "BE", "FR", "IT")){
 
-for(pays in c("DE","FR", "BE", "IT", "PT", "ES")){
-  for(num_vague in 2:2){
-    print(paste("Pour le ", pays, " & vague ", num_vague, " : ", sep =))
+for(pays in c("DE", "BE", "FR", "IT")){
+for(num_vague in c(2,3,4,1)){
+    print(paste("Pour ", pays, " & vague ", num_vague, " :", sep =))
     try(source(paste(repo_prgm , "00_main.R" , sep = "/")))
 }}
 
