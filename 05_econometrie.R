@@ -586,16 +586,18 @@ faire_matching <- function(sous_data_loc, liste_outcomes = c("DA1110I"),
                            var_treatment = "DOINHERIT",
                            liste_cols_dummies = c("DHEDUH1", "DHGENDERH1", "DHHTYPE", "DHEMPH1", "PE0300_simpl"),
                            liste_cols_continues = c("DHAGEH1", "DI2000"), 
-                           liste_modalites_ref){
+                           liste_modalites_ref, limite_effectif_pour_matching){
   
   ### Cette fonction fait le matching et retourne les objets associés
   
+
   liste_cols_matching <- append(c(var_treatment, "HW0010"), liste_outcomes)
   liste_cols <- append(liste_cols_dummies, liste_cols_continues)
   liste_cols <- append(liste_cols, liste_cols_matching)
   
   
-  sous_data_loc <- data_pays[VAGUE == num_vague,..liste_cols]
+  sous_data_loc <- sous_data_loc[,..liste_cols]
+  sous_data_loc[get(var_treatment) == "A", eval(var_treatment) := "0"]
   try(sous_data_loc$DHAGEH1 <- as.numeric(sous_data_loc$DHAGEH1), silent = TRUE)
   try(sous_data_loc[PE0300_simpl == "-", PE0300_simpl := '0'],  silent = TRUE)
   try(sous_data_loc[is.na(PE0300_simpl), PE0300_simpl := '10'],  silent = TRUE) #Les gens pas en emplois sont mis dans ue catégorie à part, mais vu qu'on les capte avec la variable de statut pro...
@@ -642,11 +644,19 @@ faire_matching <- function(sous_data_loc, liste_outcomes = c("DA1110I"),
   txt_full <- paste("full_match <- matchit(treatment ~", txt_matching, ", data=sous_data_loc, method='full', ratio=1, replace=F, distance = 'glm', caliper=0.2, estimand = 'ATT')", sep = "")
   
   eval(parse(text = txt_nearest))
-  eval(parse(text = txt_optimal))
+  if(nrow(sous_data_loc) <= limite_effectif_pour_matching){
+    eval(parse(text = txt_optimal))
+  }else{
+    optimal_match <- 1:2
+  }
   eval(parse(text = txt_full))
   
   dta_nearest <- match.data(nearest_neighbor_match)
-  dta_optimal <- match.data(optimal_match)
+  if(nrow(sous_data_loc) <= limite_effectif_pour_matching){
+    dta_optimal <- match.data(optimal_match)
+  }else{
+    dta_optimal <- copy(dta_nearest)
+  }
   dta_full <- match.data(full_match)
   return(list(dta_nearest, dta_optimal, dta_full, txt_matching))
 }

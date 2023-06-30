@@ -36,7 +36,7 @@ montant_heritage_min <- 10000 # Le montant d'héritage au delà duquel on consid
 faire_tourner_recherche_pvalue_opti <- TRUE
 nb_points_recherche <- 100
 liste_montant_initial <- lseq(1, 500000, nb_points_recherche)
-
+limite_effectif_pour_matching <- 5000 # Au délà de cet effectif par pays et vague on ne fait pas le matching optimal sinon ça prend trop de temps... On assigne le Nearest à la place au délà
 ################################################################################
 # ============================ 02 IMPORTATION ==================================
 ################################################################################
@@ -776,7 +776,7 @@ data_loc <- melt(data_loc,
 data_loc <- nettoyage_patrimoine(data_loc)
 x <- "value_1"
 fill <- "label_patrimoine"
-titre <- paste("Distribution du patrimoine par type et par sexe de la personne de référence du ménage\n Pour la vague ",num_vague, sep = "")
+titre <- paste("Distribution du patrimoine par type et par sexe de la personne de référence du ménage\n(", nom_pays, " & vague ",num_vague, sep = "")
 titre_save <- paste(pays,"_V",num_vague,"_Boxplot_sexe_patrimoine.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <- "Sexe de la personne référence du ménage"
@@ -969,7 +969,7 @@ liste_cols_continues <- c("DHAGEH1", "DI2000")
 
 sous_data_loc <- data_pays[VAGUE == num_vague]
 
-liste_output <- faire_matching(sous_data_loc, liste_outcomes , var_treatment, liste_cols_dummies, liste_cols_continues, liste_modalites_ref)
+liste_output <- faire_matching(sous_data_loc, liste_outcomes , var_treatment, liste_cols_dummies, liste_cols_continues, liste_modalites_ref, limite_effectif_pour_matching)
 dta_nearest <- as.data.table(liste_output[1])
 dta_optimal <- as.data.table(liste_output[2]) # Le optimal est le seul à pouvoir prendre en compte les poids... J'ai envie de dire qu'il faut mieux utiliser celui-là ?
 dta_full <- as.data.table(liste_output[3])
@@ -1008,7 +1008,7 @@ avg_final_nearest <- avg_final
 
 
 # Matching optimal
-dta_loc <- dta_otpimal
+dta_loc <- dta_optimal
 # pré-traitement
 dta_loc$treatment <- as.numeric(as.character(dta_loc$treatment))
 dta_loc[[var_Y]] <- as.numeric(as.character(dta_loc[[var_Y]]))
@@ -1103,7 +1103,7 @@ avg_final_nearest <- avg_final
 
 
 # Matching optimal
-dta_loc <- dta_otpimal
+dta_loc <- dta_optimal
 # pré-traitement
 dta_loc$treatment <- as.numeric(as.character(dta_loc$treatment))
 dta_loc[[var_Y]] <- as.numeric(as.character(dta_loc[[var_Y]]))
