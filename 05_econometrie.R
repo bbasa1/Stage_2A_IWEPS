@@ -4,7 +4,7 @@
 # Ici toutes les fonctions qui permettent de sortir des résultats d'économétrie
 
 
-recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = -1, annee_max = 98, faire_tracer = TRUE, titre, titre_save, que_heritiers = TRUE, que_proprio = TRUE, que_logit = FALSE){
+recherche_p_value_otpi <- function(liste_montant_initial_loc, data_loc, annee_min = -1, annee_max = 98, faire_tracer = TRUE, titre, titre_save, que_heritiers = TRUE, que_proprio = TRUE, que_logit = FALSE, dico_modalites_ref, transformation_x='log10'){
   ## Produit la courbe de pvalue et coeff associés à G dans la régression Y sur G pour trouver la valeur du montant minimal d'héritage optimal
   ## Utilise les deux fonctions ci-dessous
   sous_data_loc <- copy(data_loc)
@@ -23,6 +23,11 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
     return()
   }
   
+  for(var in names(dico_modalites_ref)){# On met en place les modalités de référence
+    txt <- paste("sous_data_loc$", var, " <- relevel(sous_data_loc$",var,", ref ='", dico_modalites_ref[var],"' )", sep = "")
+    eval(parse(text = txt))
+  }
+  
   ### On récupère les données
   dt_tot_reg <- data.table(Reg_lin_pval = numeric(),
                            Logit_pval = numeric(),
@@ -35,9 +40,8 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
                            Logit_coeff_X_Y = numeric(),
                            Probit_coeff_X_Y = numeric()
                            )
-  for(montant_ini_loc in liste_montant_initial){
-    # print(montant_ini_loc)
-    dt_loc <- recuperation_pval(sous_data_loc, montant_ini_loc, annee_min = annee_min, annee_max = annee_max, que_logit=que_logit)
+  for(montant_ini_loc in liste_montant_initial_loc){
+    dt_loc <- recuperation_pval(sous_data_loc, montant_ini_loc, annee_min = annee_min, annee_max = annee_max, que_logit=que_logit, dico_modalites_ref)
     dt_tot_reg <- rbindlist(list(dt_tot_reg, dt_loc), fill=TRUE)
   }
   
@@ -174,9 +178,9 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
                       X = Ensemble de variables socio-économiques du ménage"
     
     if(que_logit){
-      trace_courbes(melted_loc[label_variable == "Logit" & Statistique != "Y sur G : pvalue"], x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text)
+      trace_courbes(melted_loc[label_variable == "Logit" & Statistique != "Y sur G : pvalue"], x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text, transformation_x)
     }else{
-      trace_courbes(melted_loc[Statistique != "Y sur G : pvalue"], x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text)
+      trace_courbes(melted_loc[Statistique != "Y sur G : pvalue"], x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text, transformation_x)
       
     }
     
@@ -188,7 +192,7 @@ recherche_p_value_otpi <- function(liste_montant_initial, data_loc, annee_min = 
 Lambda <- function(x){return(1/(1+exp(-x)))}
 Phi <- function(x){return(pnorm(x, 0, 1))}
 
-recuperation_pval <- function(sous_data_loc, montant_ini_loc, annee_min, annee_max, que_logit){
+recuperation_pval <- function(sous_data_loc, montant_ini_loc, annee_min, annee_max, que_logit, dico_modalites_ref){
   # Utilise la fonction ci-dessous, permet de sortir sous une forme propre la pvalue et la valeur du coefficiant associés G dans la régression de Y sur G
   output <- dependance_montant_heritage_min(sous_data_loc, montant_ini_loc, annee_min = annee_min, annee_max = annee_max, que_logit=que_logit)
   dico_sortie <- output[1]
@@ -263,6 +267,7 @@ dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, anne
   for (i in names(sous_data_loc)){
     try(sous_data_loc[[i]] <- droplevels(sous_data_loc[[i]]), silent = TRUE)
   }
+  
   
   # Etude préparatoire : éventuel problème de biais de sélection des traités
   if(!que_logit){
@@ -384,11 +389,7 @@ dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, anne
   dt_logit_X_Y <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE) 
   setnames(dt_logit_X_Y, "Pr(>|z|)", "pvalue")
   
-  
-  
-  
-  
-  
+
   return(list(dico_sortie, dt_reg_lin, dt_probit, dt_logit, dt_prep_reg_lin, dt_prep_probit, dt_prep_logit, dt_reg_lin_X_Y, dt_probit_X_Y, dt_logit_X_Y))
 }
 
@@ -397,7 +398,7 @@ dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, anne
 ################################################################################ 
 
 
-effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial, titre, titre_save, caption_text, col_montant_bien = "HB0900", annee_min = -1, annee_max=3){
+effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial_loc, titre, titre_save, caption_text, col_montant_bien = "HB0900", annee_min = -1, annee_max=3, dico_modalites_ref, transformation_x = "log10"){
   # Après la régression sur le fait d'être propriétaire, on fait une régression sur la valeur de la propriété principale
   # Avoir reçu un héritage augmente-t-il la valeur de la résidence principale ?
   
@@ -406,8 +407,8 @@ effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial, titre
   liste_count <- c() #Nb de modalités de variables socio-éco explicatives de G à plus de 1%
   liste_effectifs_1 <- c() #La fraction de ménages étant dans le groupe G=1
   ntot <- nrow(data_loc)
-  for(montant_ini_loc in liste_montant_initial){
-    sortie <- regression_heritage_valeur_hmr(data_loc, montant_ini_loc, col_montant_bien, annee_min, annee_max)
+  for(montant_ini_loc in liste_montant_initial_loc){
+    sortie <- regression_heritage_valeur_hmr(data_loc, montant_ini_loc, col_montant_bien, annee_min, annee_max, dico_modalites_ref)
     liste_pval <- append(liste_pval, sortie$pvalue)
     liste_coeff <- append(liste_coeff, sortie$Estimate)
     n <- count(regression_G_heritage(data_loc, montant_ini_loc, annee_min, annee_max)[pvalue < 0.01])$n
@@ -422,7 +423,7 @@ effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial, titre
     
   }
   
-  dt_for_plot <- as.data.table(list(liste_montant_initial, liste_pval, liste_coeff, liste_count, liste_effectifs_1))
+  dt_for_plot <- as.data.table(list(liste_montant_initial_loc, liste_pval, liste_coeff, liste_count, liste_effectifs_1))
   # dt_for_plot
   
   dt_for_plot[V2 <= 0.01, snignif := "1%"]
@@ -482,7 +483,7 @@ effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial, titre
       suffix = " €",
       big.mark = " ",
       decimal.mark = ","), n.breaks = 10) +
-    scale_x_continuous(trans='log10', labels = scales::dollar_format(
+    scale_x_continuous(trans=transformation_x, labels = scales::dollar_format(
       prefix = "",
       suffix = " €",
       big.mark = " ",
@@ -542,14 +543,17 @@ effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial, titre
 }
 
 ## Deux sous-fonctions qui font les régressions :
-regression_heritage_valeur_hmr <- function(data_loc, montant_ini_loc, col_montant_bien, annee_min, annee_max){
+regression_heritage_valeur_hmr <- function(data_loc, montant_ini_loc, col_montant_bien, annee_min, annee_max, dico_modalites_ref){
   data_loc$Reg_Y <- data_loc[[col_montant_bien]]
   # data_loc[, Reg_Y := DA1110]
   data_loc[, Reg_G := 0]
   data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_avant_achat >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
   # data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
   # data_loc[Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
-  
+  for(var in names(dico_modalites_ref)){# On met en place les modalités de référence
+    txt <- paste("data_loc$", var, " <- relevel(data_loc$",var,", ref ='", dico_modalites_ref[var],"' )", sep = "")
+    eval(parse(text = txt))
+  }
 
   liste_cols_reg_poids <- c("HW0010", "Reg_G", "Reg_Y")
   dw <- svydesign(ids = ~1, data = data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
@@ -563,7 +567,10 @@ regression_G_heritage <- function(data_loc, montant_ini_loc, annee_min, annee_ma
   data_loc[, Reg_G := 0]
   # data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
   data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_avant_achat >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
-  
+  for(var in names(dico_modalites_ref)){# On met en place les modalités de référence
+    txt <- paste("data_loc$", var, " <- relevel(data_loc$",var,", ref ='", dico_modalites_ref[var],"' )", sep = "")
+    eval(parse(text = txt))
+  }
   # data_loc[Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
   
   denylogit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 

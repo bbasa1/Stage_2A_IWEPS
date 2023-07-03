@@ -262,7 +262,7 @@ trace_distrib_normalise <- function(data_loc, x, fill, titre, titre_save, xlabel
 }
 
 
-trace_courbes <- function(melted_loc, x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text = ""){
+trace_courbes <- function(melted_loc, x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text = "", transformation_x="log10"){
   ### Trace les points contenus dans melted_loc
   
   p <- ggplot(data = melted_loc, aes(x=melted_loc[[x]], y = melted_loc[[y]], color = melted_loc[[color]])) +
@@ -274,7 +274,7 @@ trace_courbes <- function(melted_loc, x, y, color, facet, xlabel, ylabel, colorl
          y= ylabel,
          color = colorlabel) + 
     scale_y_continuous(labels = function(y) format(y, scientific = FALSE)) + 
-    scale_x_continuous(trans='log10', labels = scales::dollar_format(
+    scale_x_continuous(trans=transformation_x, labels = scales::dollar_format(
       prefix = "",
       suffix = " €",
       big.mark = " ",

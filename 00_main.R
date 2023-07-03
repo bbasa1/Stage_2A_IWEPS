@@ -25,8 +25,8 @@ liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
-pays <- "BE" # Le pays qu'on souhaite
-num_vague <- 2 # La vague qu'on souhaite
+# pays <- "BE" # Le pays qu'on souhaite
+# num_vague <- 2 # La vague qu'on souhaite
 utiliser_data_sauvegardee <- TRUE # Mettre FALSE si la table concaténée pays/année n'a jamais été formée, mettre TRUE si elle a déjà été formée (permet de juste l'importer)
 # liste_pays_traces <- c("FR", 'IT', "DE", "BE", 'ES', 'PT', "HU")
 liste_pays_traces <- c("FR", 'IT', "DE", "BE")
@@ -141,7 +141,7 @@ source(paste(repo_prgm , "03_nettoyage_preparation.R" , sep = "/"))
 
 # DHHTYPE = Household type
 # PE0300 = Job description ==> On créé la colonne PE0300_simpl qui ne garde que le premier caractère :
-#         0=Armée | 1=Manager | 2=Cadres sups | 3=Techniciens | 4=Employée de bureau | 5=agent de service et de vente | 6=Agriculture, fôret et poissons | 7=Artisans | 8=Operateurs et assembleurs de machines | 9=ouvriers
+#         0=Armée | 1=Manager | 2 = Cadres sups | 3=Techniciens | 4=Employée de bureau | 5=agent de service et de vente | 6=Agriculture, fôret et poissons | 7=Artisans | 8=Operateurs et assembleurs de machines | 9=ouvriers
 # HB0300 = Statut de la résidence principale : 1=Proprio entier | 2=Proprio partiel | 3=Locataire | 4=Usage gratuit (inclu usufruit)
 # DODSTOTAL = Ratio paiement des dettes total du ménage/salaire mensuel net ==> Inclu TOUS les prêts (maison, voiture, intérêts, ...)
 # DL2110 = Remboursement mensuel pour le prêt HMR
@@ -801,7 +801,13 @@ liste_chemins <- append(liste_chemins, titre_save)
 ######################### On passe tout ça sous forme de fonction pour voir facilement la dépendance avec le montant minimal d'héritage ################
 source(paste(repo_prgm , "05_econometrie.R" , sep = "/"))
 
+dico_modalites_ref <- c("DHAGEH1B" = "25", "DHGENDERH1" = "1", "DHHTYPE" = "6", "DHEMPH1" = "1", "PE0300_simpl" = '4') # Pour la régression G/X
+
+
 if(faire_tourner_recherche_pvalue_opti){
+  ### Une première fois sur toute la plage de valeur
+  
+  
   # D'abord avec Régression linéaire, probit et logit
   data_loc <- copy(data_pays)[VAGUE == num_vague]
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po.pdf", sep = "")
@@ -810,9 +816,11 @@ if(faire_tourner_recherche_pvalue_opti){
   que_heritiers <- FALSE
   que_proprio <- FALSE
   que_logit <- FALSE
+  #"DHAGEH1B", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE", "DHEMPH1", "PE0300_simpl")
+  # Âge = 25-29 ans | Genre = Homme | DHHTYPE = Couple moins 65 ans sans enfant | DHEMPH1 = Employé | PE0300_simpl = Employée de bureau
   if(!all(is.na(data_loc$Montant_heritage_1))){ #En Italie pour certaines vagues ce n'est pas renseigné...
     liste_chemins <- append(liste_chemins, titre_save)
-    recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+    recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit, dico_modalites_ref)
   }
 
   data_loc <- copy(data_pays)[VAGUE == num_vague]
@@ -824,7 +832,21 @@ if(faire_tourner_recherche_pvalue_opti){
   que_logit <- TRUE
   if(!all(is.na(data_loc$Montant_heritage_1))){ #En Italie pour certaines vagues ce n'est pas renseigné...
     liste_chemins <- append(liste_chemins, titre_save)
-    recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit)
+    recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit, dico_modalites_ref)
+  }
+  
+  ### Puis on zoom sur la partie intéressante : entre 5 000 et 100 000 euros
+  liste_montant_initial_loc <- seq(5000, 100000, length.out = nb_points_recherche)
+  data_loc <- copy(data_pays)[VAGUE == num_vague]
+  titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po_logit_zoom.pdf", sep = "")
+  titre_save <- paste(repo_sorties, titre_save, sep ='/')
+  titre <- paste("Résultats des régressions de Y sur G (", nom_pays, " & vague ",num_vague,")", sep = "")
+  que_heritiers <- FALSE
+  que_proprio <- FALSE
+  que_logit <- TRUE
+  if(!all(is.na(data_loc$Montant_heritage_1))){ #En Italie pour certaines vagues ce n'est pas renseigné...
+    liste_chemins <- append(liste_chemins, titre_save)
+    recherche_p_value_otpi(liste_montant_initial_loc, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio, que_logit, dico_modalites_ref, transformation_x = "identity")
   }
 }
 
@@ -840,11 +862,13 @@ sous_data_loc[, Reg_G :=as.numeric(DOINHERIT) - 1]
 sous_data_loc[Reg_G > 1, Reg_G := 0]
 # table(sous_data_loc$Reg_G)
 
-
 # table(sous_data_loc$Reg_G, sous_data_loc$Reg_Y)
 
 sous_data_loc <- ISCO_simplifie(sous_data_loc)
-
+for(var in names(dico_modalites_ref)){# On met en place les modalités de référence
+  txt <- paste("sous_data_loc$", var, " <- relevel(sous_data_loc$",var,", ref ='", dico_modalites_ref[var],"' )", sep = "")
+  eval(parse(text = txt))
+}
 
 denyprobit <- glm(Reg_Y ~ Reg_G, 
                   family = binomial(link = "logit"), 
@@ -895,9 +919,17 @@ titre_save <- paste(repo_sorties, titre_save, sep ='/')
 titre <- paste("Effet du fait de recevoir un don ou \nun héritage sur la valeur de la résidence principale (", nom_pays, " & vague ",num_vague,")", sep = "")
 if(!all(is.na(data_loc$Montant_heritage_1))){
   liste_chemins <- append(liste_chemins, titre_save)
-  effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial, titre, titre_save, caption_text, "HB0900", annee_min = annee_min, annee_max=annee_max)
+  effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial, titre, titre_save, caption_text, "HB0900", annee_min = annee_min, annee_max=annee_max, dico_modalites_ref)
 }
 
+
+titre_save <- paste(pays,"_V",num_vague,"_effet_heritage_val_HMR_HB0900_zoom.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+titre <- paste("Effet du fait de recevoir un don ou \nun héritage sur la valeur de la résidence principale (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!all(is.na(data_loc$Montant_heritage_1))){
+  liste_chemins <- append(liste_chemins, titre_save)
+  effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial_loc, titre, titre_save, caption_text, "HB0900", annee_min = annee_min, annee_max=annee_max, dico_modalites_ref, transformation_x = "identity")
+}
 
 
 
@@ -915,8 +947,10 @@ sous_data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_1
 # data_complete$SA0100
 sous_data_loc <- ISCO_simplifie(sous_data_loc)
 
-# sous_data_loc$SA0100
-
+for(var in names(dico_modalites_ref)){# On met en place les modalités de référence
+  txt <- paste("sous_data_loc$", var, " <- relevel(sous_data_loc$",var,", ref ='", dico_modalites_ref[var],"' )", sep = "")
+  eval(parse(text = txt))
+}
 liste_cols_reg_poids <- c("HW0010", "Reg_G", "Reg_Y")
 dw <- svydesign(ids = ~1, data = sous_data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
 mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G, design = dw)
@@ -1172,7 +1206,7 @@ write.xlsx(avg_final, paste(repo_sorties,titre_save, sep = "/"))
 
 # Optimal matching is also called optimal pair matching. Different from greedy matching, optimal matching minimizes the total distance across all pairs.
 # When there are not many close matches for the treatment group, optimal matching can be helpful for finding the best matches.
-
+# Algo 
 
 # It is called full matching because all the test and control units are assigned to a subclass and are utilized in the matching.
 # It is optimal because the weighted average distances between the treated and control units in each subclass are minimized.
