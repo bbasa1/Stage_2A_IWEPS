@@ -30,7 +30,7 @@
 # d = derivated variables files ==> Celui qu'on va principalement utiliser
 
 
-importation_toutes_vagues <- function(num_table_loc){
+importation_toutes_vagues <- function(num_table_loc=1){
   ###### On prépare la boucle avec la première importation
   num_vague <- 1
   path_d <- paste(sous_repo_data,"/d",num_table_loc,".csv", sep = "")
@@ -89,28 +89,38 @@ importation_toutes_vagues <- function(num_table_loc){
   }
   data_perso <- data_perso[,..liste_cols_core_household_new]
   
-  # data_derivated$SURVEY
-  # nrow(data_house)
-  # # colnames(data_perso)
-  # colnames(data_complete)[colnames(data_complete) %like% ".x"]
-  # # c("SA0010","SA0100", "IM0100")
-  # nrow(data_complete)
-  # data_house$IM0100
-  # merge(data_derivated, data_house, by= c("ID", "SA0100", "SA0010", "HW0010"))$IM0100
-  # 
-  # table(data_complete$ID.x == data_complete$ID.y)
-  # head(data_complete$ID.y)
-  # head(data_complete$ID.x)
-  # head(data_perso$RA0100)
-  # head(data_derivated$SA0010)
-  # 
-  # RA0100
-  # data_perso$RA0100
+
   
+  ###### La table non-core 
+  path_nc <- paste(sous_repo_data,"/hn",num_table_loc,".csv", sep = "")
+  data_non_core <- read_csv(path_nc[num_vague], 
+                        locale = locale(encoding ="UTF-8"),
+                        show_col_types = FALSE)
+  
+  data_non_core <- as.data.table(data_non_core)
+  
+  liste_cols_core_household <- colnames(data_non_core)
+  for(nom_col in liste_cols_core_household){
+    try(setnames(data_non_core, nom_col, toupper(nom_col)), silent=TRUE)
+  }
+  liste_cols_core_household_new <- toupper(liste_cols_core_household)
+  
+  for(var in liste_cols_core_household_new){
+    if(is.null(data_non_core[[var]])){ #C'est ce qui concerne le past. Mais pour la première vague forcément il n'y en n'a pas...
+      data_non_core[, eval(var) := NaN]
+    }
+  }
+  data_non_core <- data_non_core[,..liste_cols_core_household_new]
+  
+
+
   # Première jointure dérivates / household
   data_complete <- merge(data_derivated, data_house, by= c("ID", "SA0100", "SA0010", "HW0010", "IM0100", "SURVEY"))
   # Seconde jointure on ajoute perso ==> Que sur les personnes de référence
   data_complete <- merge(data_complete, data_perso[RA0100 == 1], by= c("SA0010","SA0100", "IM0100", "SURVEY"))
+  # Troisième jointure on ajoute non core variable
+  data_complete <- merge(data_complete, data_non_core, by= c("SA0010","SA0100", "IM0100", "SURVEY"))
+  
   data_complete[, VAGUE := 1]
   intersection_colnames <- intersect(liste_var_interet, colnames(data_complete))
   data_complete <- data_complete[,..intersection_colnames]
@@ -179,12 +189,37 @@ importation_toutes_vagues <- function(num_table_loc){
     }
     data_perso <- data_perso[,..liste_cols_core_household_new]
     
+    #non-core
+    ###### La table non-core 
+    path_nc <- paste(sous_repo_data,"/hn",num_table_loc,".csv", sep = "")
+    data_non_core <- read_csv(path_nc[num_vague], 
+                              locale = locale(encoding ="UTF-8"),
+                              show_col_types = FALSE)
+    
+    data_non_core <- as.data.table(data_non_core)
+    
+    liste_cols_core_household <- colnames(data_non_core)
+    for(nom_col in liste_cols_core_household){
+      try(setnames(data_non_core, nom_col, toupper(nom_col)), silent=TRUE)
+    }
+    liste_cols_core_household_new <- toupper(liste_cols_core_household)
+    
+    for(var in liste_cols_core_household_new){
+      if(is.null(data_non_core[[var]])){ #C'est ce qui concerne le past. Mais pour la première vague forcément il n'y en n'a pas...
+        data_non_core[, eval(var) := NaN]
+      }
+    }
+    data_non_core <- data_non_core[,..liste_cols_core_household_new]
+    
+    
     # Merge et concat
     # Première jointure dérivates / household
     data_complete_loc <- merge(data_derivated, data_house, by= c("ID", "SA0100", "SA0010", "HW0010", "IM0100", "SURVEY"))
     # Seconde jointure on ajoute perso ==> Que sur les personnes de référence
     data_complete_loc <- merge(data_complete_loc, data_perso[RA0100 == 1], by= c("SA0010","SA0100", "IM0100", "SURVEY"))
-
+    # Troisième jointure on ajoute non core variable
+    data_complete_loc <- merge(data_complete_loc, data_non_core, by= c("SA0010","SA0100", "IM0100", "SURVEY"))
+    
     data_complete_loc[, VAGUE := num_vague]
     intersection_colnames <- intersect(liste_var_interet, colnames(data_complete_loc))
     data_complete_loc <- data_complete_loc[,..intersection_colnames]

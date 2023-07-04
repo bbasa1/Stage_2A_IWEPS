@@ -416,6 +416,7 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
   # Pour une variable binaire (propriétaire/non propriétaire, ou héritier/non héritier par exemple) trace la distribution des populations concernées pour pouvoir les comparer
   # Nettoyage préalable pour éviter les modalités en trop
   try(data_loc[DOEINHERIT == "A", DOEINHERIT := "NAN"], silent = TRUE)
+  try(data_loc[DOINHERIT == "A", DOINHERIT := "NAN"], silent = TRUE)
   
   f_dowle2 <- function(DT){
     for (i in names(DT))
@@ -426,7 +427,7 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
   data_loc$DOEINHERIT <- droplevels(data_loc$DOEINHERIT) #Il met parfois "A" dans cette variable pour dire NAN
   data_loc$DA1120I <- droplevels(data_loc$DA1120I) 
   data_loc$DHEMPH1 <- droplevels(data_loc$DHEMPH1) 
-  data_loc$PE0300_simpl <- droplevels(data_loc$PE0300_simpl) #On vire les gens qui ne sont pas en emploi
+  try(data_loc$PE0300_simpl <- droplevels(data_loc$PE0300_simpl), silent=TRUE) #On vire les gens qui ne sont pas en emploi
   
   data_loc$DHEDUH1 <- as.numeric(data_loc$DHEDUH1)
   data_loc[DHEDUH1 <= 1, DHEDUH1 := 1] #Idem pour l'éducation parfois des modalités sont rajoutées
@@ -449,20 +450,20 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
                            # N.total = numeric(),
                            Variable = factor(),
                            Vague = factor())
-  for(i in 2:4){
-    for(var in names(liste_variables_loc)){
-      txt <- paste("as.data.table(svytable(~ ",var_diff_loc," +",var,", dw_V",i,"))", sep = "")
-      dt_loc <- eval(parse(text = txt))
-      dt_loc <- reshape(dt_loc, idvar = var, timevar = var_diff_loc, direction = "wide")
-      setnames(dt_loc, "N.0", "Non_prop")
-      setnames(dt_loc, "N.1", "Prop")
-      setnames(dt_loc, var, "Valeur")
-      dt_loc[, Variable := var]
-      dt_loc[, Vague := i]
-      
-      dt_tableau <- rbindlist(list(dt_tableau, dt_loc), fill=TRUE)
-    }
+  # for(i in 2:4){
+  for(var in names(liste_variables_loc)){
+    txt <- paste("as.data.table(svytable(~ ",var_diff_loc," +",var,", dw_V",num_vague,"))", sep = "")
+    dt_loc <- eval(parse(text = txt))
+    dt_loc <- reshape(dt_loc, idvar = var, timevar = var_diff_loc, direction = "wide")
+    setnames(dt_loc, "N.0", "Non_prop")
+    setnames(dt_loc, "N.1", "Prop")
+    setnames(dt_loc, var, "Valeur")
+    dt_loc[, Variable := var]
+    dt_loc[, Vague := num_vague]
+    
+    dt_tableau <- rbindlist(list(dt_tableau, dt_loc), fill=TRUE)
   }
+  # }
   dt_tableau[, Total := Non_prop + Prop]
   
   # On melt pour avoir le bon format
@@ -568,11 +569,7 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
   
-  if(retourner_base){
-    return(data_pour_plot)
-  }else{
-    return(TRUE)
-  }
+  return(data_pour_plot)
 }
 
 
@@ -738,6 +735,19 @@ nettoyage_type_menage <- function(data_for_plot_loc, var_sum){ # Renome propreme
   data_for_plot_loc$DHHTYPE <- paste(data_for_plot_loc$DHHTYPE, data_for_plot_loc$Nb_personnes_conc)
   return(data_for_plot_loc)
 }
+
+nettoyage_HB0300 <- function(data_loc){
+  data_loc[, label_HB0300 := factor(
+    fcase(
+      HB0300 == 1, "Entièrement propriétaire",
+      HB0300 == 2, "Partiellement propriétaire",
+      HB0300 == 3, "Locataire",
+      HB0300 == 4, "Usage gratuit/usufruit"
+    )
+  )]
+  return(data_loc)
+}
+
 
 
 

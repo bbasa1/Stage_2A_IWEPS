@@ -206,17 +206,12 @@ trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, y
 
 
 
-trace_distrib_normalise <- function(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel,facet, trans="log10", nbins = 100, suffix_x = " €", orientation_label=45){
+trace_distrib_normalise <- function(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel,facet, trans="log10", nbins = 100, suffix_x = " €", orientation_label=45, xlim = c()){
   #Trace la distribution de la variable, mais normalisée pour sommer à 1
   
   p <- ggplot(data = data_loc,
               mapping = aes(data_loc[[x]], weight = HW0010, fill = data_loc[[fill]], weight = HW0010)) +
     geom_histogram(aes(y=..density..), color="black", alpha=0.75, position="dodge", bins=nbins) +
-    scale_x_continuous(trans=trans, labels = scales::dollar_format(
-      prefix = "",
-      suffix = suffix_x,
-      big.mark = " ",
-      decimal.mark = ","), n.breaks = 20) +
     scale_fill_viridis(discrete = TRUE) +
     labs(title=titre,
          x= xlabel,
@@ -229,6 +224,24 @@ trace_distrib_normalise <- function(data_loc, x, fill, titre, titre_save, xlabel
       decimal.mark = ",")) +
     theme(axis.text.x = element_text(angle = orientation_label, vjust = 1, hjust=1)) +
     facet_wrap(~factor(.data[[facet]]), ncol = 2)
+  
+  if(length(xlim) == 2){
+    p <- p +
+      scale_x_continuous(trans=trans, limits = xlim, labels = scales::dollar_format(
+        prefix = "",
+        suffix = suffix_x,
+        big.mark = " ",
+        decimal.mark = ","), n.breaks = 20)
+  }else{
+    p <- p +
+      scale_x_continuous(trans=trans, labels = scales::dollar_format(
+        prefix = "",
+        suffix = suffix_x,
+        big.mark = " ",
+        decimal.mark = ","), n.breaks = 20)
+  }
+  
+
   # +
   #   geom_vline(xintercept = mean(data_loc[[x]]),        # Add line for mean
   #              col = "red",
@@ -293,16 +306,18 @@ trace_courbes <- function(melted_loc, x, y, color, facet, xlabel, ylabel, colorl
 trace_boxplot <- function(data_loc, x, fill, facet, titre, titre_save, xlabel, filllabel, xlim = c(0,70), suffix_x = ""){
   # Trace un boxplot : Carré = Q25, Q50 et Q75
   
-  # On commence par préparer une case "Ensemble" 
-  data_loc$Ensemble <- "Ensemble"
-  melted_loc <- melt(data_loc, 
-                     id.vars = c(x, fill, "HW0010"), 
-                     measure.vars  = c(facet, "Ensemble"),
-                     variable.name = "variable",
-                     value.name    = "value")
-  facet_trace <- "value"
-
-    p <- ggplot(melted_loc, aes(x = melted_loc[[x]], fill = melted_loc[[fill]], weight = HW0010)) +
+  if(str_length(facet) > 0){# Alors on facet
+    
+    # On commence par préparer une case "Ensemble" 
+    data_loc$Ensemble <- "Ensemble"
+    melted_loc <- melt(data_loc, 
+                       id.vars = c(x, fill, "HW0010"), 
+                       measure.vars  = c(facet, "Ensemble"),
+                       variable.name = "variable",
+                       value.name    = "value")
+    facet_trace <- "value"
+  
+        p <- ggplot(melted_loc, aes(x = melted_loc[[x]], fill = melted_loc[[fill]], weight = HW0010)) +
     geom_boxplot(color="black", outlier.alpha = 0.35)+
     scale_fill_viridis(discrete=TRUE) +
     labs(title=titre,
@@ -317,7 +332,25 @@ trace_boxplot <- function(data_loc, x, fill, facet, titre, titre_save, xlabel, f
     facet_wrap(~factor(.data[[facet_trace]]), scales='free') +
     coord_flip() +
     theme(axis.text.x=element_blank())  #remove x axis labels
-    
+  }else{
+    data_loc[[x]] <- as.numeric(data_loc[[x]] )
+    p <- ggplot(data_loc, aes(x = data_loc[[x]], fill = data_loc[[fill]], weight = HW0010)) +
+      geom_boxplot(color="black", outlier.alpha = 0.35)+
+      scale_fill_viridis(discrete=TRUE) +
+      labs(title=titre,
+           x= xlabel,
+           fill = filllabel) +
+      scale_x_continuous(n.breaks = 20, limits = xlim,
+                         labels = scales::dollar_format(
+                           prefix = "",
+                           suffix = suffix_x,
+                           big.mark = " ",
+                           decimal.mark = ",")) +
+      coord_flip() +
+      theme(axis.text.x=element_blank())  #remove x axis labels
+  }
+
+
   p
   
   # ggplot_build(p)$data

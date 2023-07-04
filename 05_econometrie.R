@@ -8,6 +8,7 @@ recherche_p_value_otpi <- function(liste_montant_initial_loc, data_loc, annee_mi
   ## Produit la courbe de pvalue et coeff associés à G dans la régression Y sur G pour trouver la valeur du montant minimal d'héritage optimal
   ## Utilise les deux fonctions ci-dessous
   sous_data_loc <- copy(data_loc)
+  sous_data_loc$DHAGEH1 <- as.numeric(sous_data_loc$DHAGEH1)
   
   
   if(que_heritiers){
@@ -23,11 +24,13 @@ recherche_p_value_otpi <- function(liste_montant_initial_loc, data_loc, annee_mi
     return()
   }
   
-  for(var in names(dico_modalites_ref)){# On met en place les modalités de référence
-    txt <- paste("sous_data_loc$", var, " <- relevel(sous_data_loc$",var,", ref ='", dico_modalites_ref[var],"' )", sep = "")
-    eval(parse(text = txt))
+  if(length(dico_modalites_ref) > 0){
+    for(var in names(dico_modalites_ref)){# On met en place les modalités de référence
+      txt <- paste("sous_data_loc$", var, " <- relevel(sous_data_loc$",var,", ref ='", dico_modalites_ref[var],"' )", sep = "")
+      eval(parse(text = txt))
+    }
   }
-  
+
   ### On récupère les données
   dt_tot_reg <- data.table(Reg_lin_pval = numeric(),
                            Logit_pval = numeric(),
@@ -41,7 +44,7 @@ recherche_p_value_otpi <- function(liste_montant_initial_loc, data_loc, annee_mi
                            Probit_coeff_X_Y = numeric()
                            )
   for(montant_ini_loc in liste_montant_initial_loc){
-    dt_loc <- recuperation_pval(sous_data_loc, montant_ini_loc, annee_min = annee_min, annee_max = annee_max, que_logit=que_logit, dico_modalites_ref)
+    dt_loc <- recuperation_pval(sous_data_loc, montant_ini_loc, annee_min = annee_min, annee_max = annee_max, que_logit=que_logit)
     dt_tot_reg <- rbindlist(list(dt_tot_reg, dt_loc), fill=TRUE)
   }
   
@@ -49,6 +52,12 @@ recherche_p_value_otpi <- function(liste_montant_initial_loc, data_loc, annee_mi
   dt_tot_reg[, Logit_delta_ATE := Lambda(Logit_coeff + Logit_coeff_0) -   Lambda(Logit_coeff_0)]
   dt_tot_reg[, Probit_delta_ATE := Phi(Probit_coeff + Probit_coeff_0) -   Phi(Probit_coeff_0)]
   dt_tot_reg[, Reg_lin_delta_ATE := Reg_lin_coeff]
+  
+  # On calcule la variation relative du coeff de beta_G du passage de la régression Y/(1,G) à Y/(1,G,X)
+  dt_tot_reg[, Logit_variation_relative_beta_g := 100*(Logit_coeff - Logit_coeff_X_Y)/Logit_coeff]
+  dt_tot_reg[, Probit_variation_relative_beta_g := (Probit_coeff - Probit_coeff_X_Y)/Probit_coeff]
+  dt_tot_reg[, Reg_lin_variation_relative_beta_g := (Reg_lin_coeff - Reg_lin_coeff_X_Y)/Reg_lin_coeff]
+  
   
   ### On met en forme
   melted_pval <- melt(dt_tot_reg,
@@ -100,12 +109,19 @@ recherche_p_value_otpi <- function(liste_montant_initial_loc, data_loc, annee_mi
                            value.name    = "value")
   melted_delta_ATE$Statistique <- "Effet moyen du traitement G sur Y"
   
+  melted_variation_relative_beta_g <- melt(dt_tot_reg,
+                                       id.vars = "Montant_initial",
+                                       measure.vars = c("Reg_lin_variation_relative_beta_g", "Logit_variation_relative_beta_g", "Probit_variation_relative_beta_g"),
+                                       variable.name = "variable",
+                                       value.name    = "value")
+  # melted_variation_relative_beta_g[value >= 100, value := 100] # On borne parce que sinon c'est illisible...
+  # melted_variation_relative_beta_g[value <= - 100, value := - 100]
+  melted_variation_relative_beta_g$Statistique <- "Evolution relative du coeff associé à G dans la régression Y/G\nlorsqu'on ajoute X en variable explicative (%)"
+  
+  
 
   
-  # Lambda(beta_0 + beta_G) - Lambda(beta_0)
-  
-  
-  melted_final <- rbindlist(list(melted_pval, melted_coeff, melted_count, melted_pval_log, melted_coeff_log, melted_coeff_X_Y, melted_delta_ATE), fill=TRUE)
+  melted_final <- rbindlist(list(melted_pval, melted_coeff, melted_count, melted_pval_log, melted_coeff_log, melted_coeff_X_Y, melted_delta_ATE, melted_variation_relative_beta_g), fill=TRUE)
   melted_final$Statistique <- as.factor(melted_final$Statistique)
   
   table(melted_final$variable)
@@ -134,7 +150,10 @@ recherche_p_value_otpi <- function(liste_montant_initial_loc, data_loc, annee_mi
       variable == "Probit_coeff_X_Y", "Probit",
       variable == "Logit_delta_ATE", "Logit",
       variable == "Reg_lin_delta_ATE", "Linéaire",
-      variable == "Probit_delta_ATE", "Probit"
+      variable == "Probit_delta_ATE", "Probit",
+      variable == "Logit_variation_relative_beta_g", "Logit",
+      variable == "Reg_lin_variation_relative_beta_g", "Linéaire",
+      variable == "Probit_variation_relative_beta_g", "Probit"
     )
   )    
   ]
@@ -148,13 +167,25 @@ recherche_p_value_otpi <- function(liste_montant_initial_loc, data_loc, annee_mi
       Statistique == "Y sur G : Coefficiant", 4,
       Statistique == "Y sur G : Odd ratio", 5,
       Statistique == "Effet moyen du traitement G sur Y", 6,
-      Statistique == "Y sur (X,G) : Coefficiant associé à G",7 
+      Statistique == "Y sur (X,G) : Coefficiant associé à G",7,
+      Statistique == "Evolution relative du coeff associé à G dans la régression Y/G\nlorsqu'on ajoute X en variable explicative (%)",8 
     )
   )    
   ]  
   
   setorder(melted_final, cols = "Ordre_facet")  # Reorder data.table
   
+  ## Dé-comment ce qu'on veut tracer
+  stat_a_tracer <- c(
+    "Y sur G : log(pvalue)",
+    # "Y sur G : pvalue",
+    "G sur X : Nombre de modalités significatives à 1%",
+    "Y sur G : Coefficiant",
+    "Y sur G : Odd ratio",
+    "Effet moyen du traitement G sur Y",
+    # "Y sur (X,G) : Coefficiant associé à G",
+    "Evolution relative du coeff associé à G dans la régression Y/G\nlorsqu'on ajoute X en variable explicative (%)"
+  )
   
   # table(melted_final$Statistique)
 
@@ -178,9 +209,9 @@ recherche_p_value_otpi <- function(liste_montant_initial_loc, data_loc, annee_mi
                       X = Ensemble de variables socio-économiques du ménage"
     
     if(que_logit){
-      trace_courbes(melted_loc[label_variable == "Logit" & Statistique != "Y sur G : pvalue"], x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text, transformation_x)
+      trace_courbes(melted_loc[label_variable == "Logit" & Statistique %in% stat_a_tracer], x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text, transformation_x)
     }else{
-      trace_courbes(melted_loc[Statistique != "Y sur G : pvalue"], x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text, transformation_x)
+      trace_courbes(melted_loc[Statistique %in% stat_a_tracer], x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text, transformation_x)
       
     }
     
@@ -192,7 +223,7 @@ recherche_p_value_otpi <- function(liste_montant_initial_loc, data_loc, annee_mi
 Lambda <- function(x){return(1/(1+exp(-x)))}
 Phi <- function(x){return(pnorm(x, 0, 1))}
 
-recuperation_pval <- function(sous_data_loc, montant_ini_loc, annee_min, annee_max, que_logit, dico_modalites_ref){
+recuperation_pval <- function(sous_data_loc, montant_ini_loc, annee_min, annee_max, que_logit){
   # Utilise la fonction ci-dessous, permet de sortir sous une forme propre la pvalue et la valeur du coefficiant associés G dans la régression de Y sur G
   output <- dependance_montant_heritage_min(sous_data_loc, montant_ini_loc, annee_min = annee_min, annee_max = annee_max, que_logit=que_logit)
   dico_sortie <- output[1]
@@ -271,13 +302,13 @@ dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, anne
   
   # Etude préparatoire : éventuel problème de biais de sélection des traités
   if(!que_logit){
-    liste_cols_reg_poids <- c("HW0010", "Reg_G", "DHAGEH1B", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE", "DHEMPH1", "PE0300_simpl")
+    liste_cols_reg_poids <- c("HW0010", "Reg_G", "DHAGEH1", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE", "DHEMPH1", "PE0300_simpl")
     dw <- svydesign(ids = ~1, data = sous_data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
-    mysvyglm <- svyglm(formula = Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, design = dw)
+    mysvyglm <- svyglm(formula = Reg_G ~ DHAGEH1 + c(DHAGEH1*DHAGEH1) + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, design = dw)
     dt_prep_reg_lin <- as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE)  
     setnames(dt_prep_reg_lin, "Pr(>|t|)", "pvalue")
     
-    denyprobit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
+    denyprobit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHAGEH1 + c(DHAGEH1*DHAGEH1) + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
                     family = binomial(link = "probit"), 
                     data = sous_data_loc)
     dt_prep_probit <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)
@@ -301,7 +332,7 @@ dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, anne
   }
   
   
-  denylogit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
+  denylogit <- glm(Reg_G ~ DHAGEH1 + c(DHAGEH1*DHAGEH1) + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
                    family = binomial(link = "logit"), 
                    data = sous_data_loc)
   dt_prep_logit <- as.data.table(summary(denylogit)$coefficients, keep.rownames = TRUE)
@@ -353,11 +384,11 @@ dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, anne
   if(!que_logit){
     liste_cols_reg_poids <- c("Reg_Y", "HW0010", "Reg_G", "DHAGEH1B", "DHEDUH1", "DHGENDERH1", "DI2000", "DHHTYPE", "DHEMPH1", "PE0300_simpl")
     dw <- svydesign(ids = ~1, data = sous_data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
-    mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, design = dw)
+    mysvyglm <- svyglm(formula = Reg_Y ~ Reg_G + DHAGEH1 + c(DHAGEH1*DHAGEH1) + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, design = dw)
     dt_reg_lin_X_Y <- as.data.table(summary(mysvyglm)$coefficients, keep.rownames = TRUE)  
     setnames(dt_reg_lin_X_Y, "Pr(>|t|)", "pvalue")
     
-    denyprobit <- glm(Reg_Y ~ Reg_G + DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
+    denyprobit <- glm(Reg_Y ~ Reg_G + DHAGEH1 + c(DHAGEH1*DHAGEH1) + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
                       family = binomial(link = "probit"), 
                       data = sous_data_loc)
     dt_probit_X_Y <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE)  
@@ -383,7 +414,7 @@ dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, anne
   
   
   
-  denyprobit <- glm(Reg_Y ~ Reg_G + DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
+  denyprobit <- glm(Reg_Y ~ Reg_G + DHAGEH1 + c(DHAGEH1*DHAGEH1) + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
                     family = binomial(link = "logit"), 
                     data = sous_data_loc)
   dt_logit_X_Y <- as.data.table(summary(denyprobit)$coefficients, keep.rownames = TRUE) 
@@ -398,7 +429,7 @@ dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, anne
 ################################################################################ 
 
 
-effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial_loc, titre, titre_save, caption_text, col_montant_bien = "HB0900", annee_min = -1, annee_max=3, dico_modalites_ref, transformation_x = "log10"){
+effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial_loc, titre, titre_save, caption_text, col_montant_bien = "HB0900", annee_min = -1, annee_max=3, dico_modalites_ref, transformation_x = "log10", faire_reg_lin = FALSE){
   # Après la régression sur le fait d'être propriétaire, on fait une régression sur la valeur de la propriété principale
   # Avoir reçu un héritage augmente-t-il la valeur de la résidence principale ?
   
@@ -407,8 +438,18 @@ effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial_loc, t
   liste_count <- c() #Nb de modalités de variables socio-éco explicatives de G à plus de 1%
   liste_effectifs_1 <- c() #La fraction de ménages étant dans le groupe G=1
   ntot <- nrow(data_loc)
+  
+  
+  if(length(dico_modalites_ref) > 0){
+    for(var in names(dico_modalites_ref)){# On met en place les modalités de référence
+      txt <- paste("sous_data_loc$", var, " <- relevel(sous_data_loc$",var,", ref ='", dico_modalites_ref[var],"' )", sep = "")
+      eval(parse(text = txt))
+    }
+  }
+  
+  
   for(montant_ini_loc in liste_montant_initial_loc){
-    sortie <- regression_heritage_valeur_hmr(data_loc, montant_ini_loc, col_montant_bien, annee_min, annee_max, dico_modalites_ref)
+    sortie <- regression_heritage_valeur_hmr(data_loc, montant_ini_loc, col_montant_bien, annee_min, annee_max)
     liste_pval <- append(liste_pval, sortie$pvalue)
     liste_coeff <- append(liste_coeff, sortie$Estimate)
     n <- count(regression_G_heritage(data_loc, montant_ini_loc, annee_min, annee_max)[pvalue < 0.01])$n
@@ -463,8 +504,7 @@ effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial_loc, t
   size <- "Effectifs"
   sizelabel <- "% de ménages\nayant reçu un héritage ou un don\nsignificatif"
   
-  # formula <- y ~ exp(x)
-  
+
   p <- ggplot(data = dt_for_plot, aes(x=dt_for_plot[[x]], y = dt_for_plot[[y]])) +
     geom_point(aes(color = dt_for_plot[[color]], shape = dt_for_plot[[shape]], size = dt_for_plot[[size]])) +
     labs(title=titre,
@@ -473,11 +513,6 @@ effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial_loc, t
          color = colorlabel,
          shape=shapelabel,
          size=sizelabel) +
-    # geom_smooth(method="lm", formula = formula) +
-    # stat_regline_equation(
-    #   aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~")),
-    #   formula = formula
-    # ) +
     scale_y_continuous(labels = scales::dollar_format(
       prefix = "",
       suffix = " €",
@@ -492,6 +527,14 @@ effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial_loc, t
     theme(axis.text.x = element_text(angle = 22.5, vjust = 0.5, hjust=1)) +
     labs(caption = caption_text)
   
+  if(faire_reg_lin){
+    p <- p +
+      geom_smooth(method="lm", formula = y ~ x) +
+      stat_regline_equation(
+        aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~")),
+        formula = y ~ x
+      )
+  }
 
 
   # melted_loc <- melt(dt_for_plot,
@@ -543,17 +586,14 @@ effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial_loc, t
 }
 
 ## Deux sous-fonctions qui font les régressions :
-regression_heritage_valeur_hmr <- function(data_loc, montant_ini_loc, col_montant_bien, annee_min, annee_max, dico_modalites_ref){
+regression_heritage_valeur_hmr <- function(data_loc, montant_ini_loc, col_montant_bien, annee_min, annee_max){
   data_loc$Reg_Y <- data_loc[[col_montant_bien]]
   # data_loc[, Reg_Y := DA1110]
   data_loc[, Reg_G := 0]
   data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_avant_achat >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
   # data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
   # data_loc[Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
-  for(var in names(dico_modalites_ref)){# On met en place les modalités de référence
-    txt <- paste("data_loc$", var, " <- relevel(data_loc$",var,", ref ='", dico_modalites_ref[var],"' )", sep = "")
-    eval(parse(text = txt))
-  }
+
 
   liste_cols_reg_poids <- c("HW0010", "Reg_G", "Reg_Y")
   dw <- svydesign(ids = ~1, data = data_loc[,..liste_cols_reg_poids], weights = ~ HW0010)
@@ -567,13 +607,9 @@ regression_G_heritage <- function(data_loc, montant_ini_loc, annee_min, annee_ma
   data_loc[, Reg_G := 0]
   # data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
   data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_avant_achat >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
-  for(var in names(dico_modalites_ref)){# On met en place les modalités de référence
-    txt <- paste("data_loc$", var, " <- relevel(data_loc$",var,", ref ='", dico_modalites_ref[var],"' )", sep = "")
-    eval(parse(text = txt))
-  }
   # data_loc[Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
   
-  denylogit <- glm(Reg_G ~ DHAGEH1B + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
+  denylogit <- glm(Reg_G ~ DHAGEH1 + c(DHAGEH1*DHAGEH1) + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
                    family = binomial(link = "logit"), 
                    data = data_loc)
   dt_prep_logit <- as.data.table(summary(denylogit)$coefficients, keep.rownames = TRUE)
@@ -696,3 +732,25 @@ faire_matching <- function(sous_data_loc, liste_outcomes = c("DA1110I"),
 #   
 #   return(avg_final)
 # }
+
+
+### Fonction pour extraire les modalités de référence après régression
+refCat <- function(model, var) {
+  cs <- attr(model.matrix(model), "contrasts")[[var]]
+  if (is.character(cs)) {
+    if (cs == "contr.treatment")
+      ref <- 1
+    else stop("No treatment contrast")
+  }  
+  else {
+    zeroes <- !cs
+    ones <- cs == 1
+    stopifnot(all(zeroes | ones))
+    cos <- colSums(ones)
+    stopifnot(all(cos == 1))
+    ros <- rowSums(ones)
+    stopifnot(sum(!ros) == 1 && sum(ros) != ncol(cs))
+    ref <- which(!ros)
+  }
+  return(levels(model$data[[var]])[ref])  
+}  
