@@ -25,8 +25,8 @@ liste_sous_fichiers_data <- c("HFCS_UDB_1_5_ASCII", "HFCS_UDB_2_4_ASCII", "HFCS_
 sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
-pays <- "IT" # Le pays qu'on souhaite
-num_vague <- 3 # La vague qu'on souhaite
+# pays <- "BE" # Le pays qu'on souhaite
+# num_vague <- 3 # La vague qu'on souhaite
 utiliser_data_sauvegardee <- TRUE # Mettre FALSE si la table concaténée pays/année n'a jamais été formée, mettre TRUE si elle a déjà été formée (permet de juste l'importer)
 # liste_pays_traces <- c("FR", 'IT', "DE", "BE", 'ES', 'PT', "HU")
 liste_pays_traces <- c("FR", 'IT', "DE", "BE")
@@ -41,6 +41,7 @@ liste_montant_initial_zoom2 <- seq(5000, 100000, length.out = nb_points_recherch
 
 limite_effectif_pour_matching <- 50000 # Au délà de cet effectif par pays et vague on ne fait pas le matching optimal sinon ça prend trop de temps... On assigne le Nearest à la place au délà
 faire_matching_bool <- FALSE
+faire_titre_graph <- FALSE # Pour ne pas mettre de titre sur les figures (par ex pour les intégrer à un LATEX)
 ################################################################################
 # ============================ 02 IMPORTATION ==================================
 ################################################################################
@@ -233,6 +234,8 @@ liste_chemins <- c()
 # Patrimoine net
 var_decile <- "DNTOP10"
 titre <- paste("Répartition du patrimoine net, normalisé par sexe (", nom_pays, "& vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Patrimoine_net_sexe.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <-"Quantile de patrimoine net"
@@ -245,6 +248,8 @@ graphique_repartition_pat_quantile_sexe(data_loc, var_decile,var_normalisation, 
 # Patrimoine brut
 var_decile <- "DATOP10"
 titre <- paste("Répartition du patrimoine brut, normalisé par sexe (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Patrimoine_brut_sexe.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <-"Quantile de patrimoine brut"
@@ -257,6 +262,8 @@ graphique_repartition_pat_quantile_sexe(data_loc, var_decile,var_normalisation, 
 # Dettes
 var_decile <- "DLTOP10"
 titre <- paste("Répartition des dettes, normalisé par sexe (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Patrimoine_dettes_sexe.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <-"Quantile de dettes"
@@ -277,13 +284,15 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DL1000" = "Dettes",
                             "DN3001" = "Patrimoine net")
 
-titre_fig <- paste("Fonction de répartition de la richesse détenue par les ménages (", nom_pays, " & vague ",num_vague,")", sep = "")
+titre <- paste("Fonction de répartition de la richesse détenue par les ménages (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Concentration_patrimoine_par_type.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 data_loc <- data_pays[VAGUE == num_vague]
 liste_chemins <- append(liste_chemins, titre_save)
 
-graphique_contration_patrimoine(data_pays ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save)
+graphique_contration_patrimoine(data_pays ,nb_quantiles, liste_type_patrimoines, titre, titre_save)
 
 
 
@@ -296,6 +305,8 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
 
 data_loc <- data_pays[VAGUE == num_vague]
 titre <- paste("Variance du patrimoine détenu par les ménages\nIntervalles de confiance à 95% (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_variance_patrimoine.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 liste_chemins <- append(liste_chemins, titre_save)
@@ -307,6 +318,8 @@ graphique_variance_pat_age(data_loc, liste_type_patrimoines, titre, titre_save)
 
 ######################### Tracé : le date d'achat de la HMR - la date de l'héritage
 titre <- paste("Distribution de la variable :\ndate d'aquisition de la résidence principale actuelle - date du premier don ou héritage reçu\n(", nom_pays, "& vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 xlabel <- "Année (coupé à 50) "
 ylabel <- "Nombre de ménages"
 filllabel <- "Niveau d'éducation\nde la personne de\nréférence du ménage"
@@ -324,6 +337,8 @@ trace_distrib_variable(data_loc, x, fill, xlabel, ylabel,filllabel, titre, titre
 
 
 titre <- paste("Distribution de la variable :\ndate d'aquisition de la résidence principale actuelle - date du premier don ou héritage reçu\n (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 xlabel <- "Année (coupé à 50) "
 ylabel <- "Nombre de ménages"
 filllabel <- NaN
@@ -354,30 +369,34 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
                             "DI2000" = "Revenu net du ménage")
 nb_quantiles <- 100
 
-titre_fig <- paste("Evolution des rangs d'appartenance des ménages entre les différentes vagues (", nom_pays, ")", sep = "")
+titre <- paste("Evolution des rangs d'appartenance des ménages entre les différentes vagues (", nom_pays, ")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_evolution_rang_appartenance.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 faire_rang = TRUE
 
 if(nrow(vague_123) > 0){
   liste_chemins <- append(liste_chemins, titre_save)
-  graphique_evolution_position_vagues(vague_123 ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save, faire_rang, "123")
+  graphique_evolution_position_vagues(vague_123 ,nb_quantiles, liste_type_patrimoines, titre, titre_save, faire_rang, "123")
 }else if(nrow(vague_23) > 0){
   liste_chemins <- append(liste_chemins, titre_save)
-  graphique_evolution_position_vagues(vague_23 ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save, faire_rang, "23")
+  graphique_evolution_position_vagues(vague_23 ,nb_quantiles, liste_type_patrimoines, titre, titre_save, faire_rang, "23")
 }
 
-titre_fig <- paste("Evolution des patrimoines des ménages entre les différentes vagues (", nom_pays, ")", sep = "")
+titre <- paste("Evolution des patrimoines des ménages entre les différentes vagues (", nom_pays, ")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_evolution_pat_appartenance.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 faire_rang = FALSE
 
 if(nrow(vague_123) > 0){
   liste_chemins <- append(liste_chemins, titre_save)
-  graphique_evolution_position_vagues(vague_123 ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save, faire_rang, "123")
+  graphique_evolution_position_vagues(vague_123 ,nb_quantiles, liste_type_patrimoines, titre, titre_save, faire_rang, "123")
 }else if(nrow(vague_23) > 0){
   liste_chemins <- append(liste_chemins, titre_save)
-  graphique_evolution_position_vagues(vague_23 ,nb_quantiles, liste_type_patrimoines, titre_fig, titre_save, faire_rang, "23")
+  graphique_evolution_position_vagues(vague_23 ,nb_quantiles, liste_type_patrimoines, titre, titre_save, faire_rang, "23")
 }
 
 ######### Evolution du patrimoine des ménages entre les vagues ##############
@@ -389,6 +408,8 @@ liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
 
 liste_quantiles <- seq(0.2, 0.8, 0.2)
 titre <- paste("Quantiles de l'évolution du patrimoine des ménages entre les vagues (", nom_pays, ") \n", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_quantiles_evolution_richesse_panel.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 
@@ -427,6 +448,8 @@ var_diff_loc = "DA1110I"
 liste_legendes_loc = c("Non_prop" = "Non propriétaires", "Prop" = "Propriétaires","Total" = "Total")
 data_loc <- data_pays[VAGUE == num_vague]
 titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui sont propriétaires de leur résidence principale, \net ceux qui ne le sont pas (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
@@ -447,6 +470,8 @@ xlabel <- "Revenu net annuel du ménage"
 ylabel <- "Nombre de ménages"
 filllabel <- "Ménage propriétaire\nde sa résidence\nprincipale"
 titre <- paste("Distribution des revenus net annuels du ménage,\npour les ménages propriétaires de leur résidence principale et pour les non propriétaires (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop_distrib_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 if(!all(is.na(data_loc[[fill]]))){
@@ -479,6 +504,8 @@ var_diff_loc = "DOINHERIT"
 liste_legendes_loc = c("Non_prop" = "Non héritier", "Prop" = "Héritier","Total" = "Total")
 data_loc <- data_pays[VAGUE == num_vague]
 titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui ont eu un héritage, \net ceux qui n'en ont pas eu (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Differences_heritiers_non_heritiers.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
@@ -497,6 +524,8 @@ xlabel <- "Revenu net annuel du ménage"
 ylabel <- "Nombre de ménages"
 filllabel <- "Ménage héritier"
 titre <- paste("Distribution des revenus net annuels du ménage,\npour les ménages qui ont eu un héritage, \net ceux qui n'en ont pas eu (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Differences_heritiers_non_heritiers_distrib_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 if(!all(is.na(data_loc[[fill]]))){
@@ -526,6 +555,8 @@ var_diff_loc = "DOEINHERIT"
 liste_legendes_loc = c("Non_prop" = "Ne s'attend pas à hériter", "Prop" = "S'attend à hériter","Total" = "Total")
 data_loc <- data_pays[VAGUE == num_vague]
 titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui attendent un héritage, \net ceux qui n'en attendent pas (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Differences_attendent_her_non_attendent_her.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
@@ -547,6 +578,8 @@ xlabel <- "Revenu net annuel du ménage"
 ylabel <- "Nombre de ménages"
 filllabel <- "Ménage qui s'attend\nà recevoir\nhéritage ou don"
 titre <- paste("Distribution des revenus net annuels du ménage,\npour les ménages qui attendent un héritage, \net ceux qui n'en attendent pas (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Differences_attendent_her_non_attendent_her_distrib_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 if(!all(is.na(data_loc[[fill]]))){
@@ -574,6 +607,8 @@ var_diff_loc = "DA1120I"
 liste_legendes_loc = c("Non_prop" = "Non possédants", "Prop" = "Possédants","Total" = "Total")
 data_loc <- data_pays[VAGUE == num_vague]
 titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui possèdent d'autres biens immobiliers que leur HMR,\net les ménages qui n'en possèdent pas (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_res_sec_non_prop.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
@@ -593,6 +628,8 @@ xlabel <- "Revenu net annuel du ménage"
 ylabel <- "Nombre de ménages"
 filllabel <- "Ménage propriétaire\nd'autres biens\nimmobiliers que leur\nrésidence principale"
 titre <- paste("Distribution des revenus net annuels du ménage,\npour les ménages qui possèdent d'autres biens immobiliers que leur HMR,\net les ménages qui n'en possèdent pas (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_res_sec_non_prop_distrib_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 if(!all(is.na(data_loc[[fill]]))){
@@ -622,6 +659,8 @@ liste_variables_loc <-c(
 var_diff_loc = "Surcharge_logement"
 liste_legendes_loc = c("Non_prop" = "Pas de surcharge", "Prop" = "Surcharge","Total" = "Total")
 titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui sont en surcharge de logement,\net les ménages qui ne sont pas en surcharge\nUn ménage est en surcharge si le coût final de son logement représente plus de 40% de ses revenus (Eurostat)\n(", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Differences_surcharge_non_surcharge.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
@@ -655,10 +694,12 @@ liste_variables_loc <-c(
 var_diff_loc = "HNB2010I"
 liste_legendes_loc = c("Non_revenus" = "Ne tire pas de revenus immobilier", "Revenus" = "Tire des revenus immobilier","Total" = "Total")
 titre <- paste("Distribution de différentes variables socio-économiques \npour les ménages qui touchent des revenus locatifs d'autres résidences immobilières que leur HMR, et pour les autres\n(", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Differences_multiprop_non_multiprop.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 drop_inactifs <- TRUE
-if(!all(is.na(data_loc[[var_diff_loc]]))){
+if(!all(is.na(data_loc[[var_diff_loc]])) & !all(data_loc[[var_diff_loc]] == 0)){
   prop_non_prop <- trace_distribution_X_non_X(data_loc, liste_variables_loc, titre, titre_save, num_vague, var_diff_loc, liste_legendes_loc, drop_inactifs)
   if(any(class(prop_non_prop) == "data.frame")){ # Si le tracé a pu se faire
     liste_chemins <- append(liste_chemins, titre_save)
@@ -677,6 +718,8 @@ xlabel <- "Charge du logement "
 ylabel <- "Nombre de ménages"
 filllabel <- "Ménage propriétaire\nde sa résidence\nprincipale"
 titre <- paste("Distribution des dépenses de logement mensuels du ménage,\npour les ménages propriétaires de leur résidence principale et pour les non propriétaires\n(remboursement du prêt, ou loyer, les ménages dépensant 0 sont mis à 1 euros de dépense/mois)\n(", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop_distrib_depense_log.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 faire_tableau <- FALSE
@@ -696,6 +739,8 @@ xlabel <- "Charge du logement en % du revenu net (borné à 100%)"
 ylabel <- "Nombre de ménages"
 filllabel <- "Ménage propriétaire\nde sa résidence\nprincipale"
 titre <- paste("Distribution des dépenses de logement mensuels du ménage, en % du revenu net\npour les ménages propriétaires de leur résidence principale et pour les non propriétaires\n(remboursement du prêt, ou loyer)\n(", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Differences_prop_non_prop_distrib_depense_prct_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 faire_tableau <- FALSE
@@ -711,6 +756,8 @@ data_loc <- nettoyage_DA1110I(data_loc)
 x <- "Charge_logement_salaire"
 fill <- "label_SA0100"
 titre <- paste("Distribution des dépenses de logement mensuels du ménage, en % du revenu net\npour les ménages propriétaires de leur résidence principale et pour les non propriétaires\n(remboursement du prêt, ou loyer)\n(vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Boxplot_distrib_depense_prct_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <- "% du revenu net dépensé pour se loger (bloqué à 100%)"
@@ -734,6 +781,8 @@ x <- "Montant_heritage_1"
 fill <- "label_SA0100"
 limits_x <- 1000000
 titre <- paste("Distribution du montant du premier héritage ou don reçu par les ménages\n Pour la vague ",num_vague, sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Distrib_montant_heritage.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 ylabel <- "Densité"
@@ -762,6 +811,8 @@ x <- "Age_heritage_1"
 fill <- "label_SA0100"
 limits_x <- 1000000
 titre <- paste("Distribution de l'âge de la personne référence du ménage lors de la réception du premier héritage ou du premier don\n Pour la vague ",num_vague, sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Distrib_age_heritage.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 ylabel <- "Densité"
@@ -780,6 +831,8 @@ if(!all(is.na(data_loc$Age_heritage_1))){
 x <- "Age_heritage_1"
 fill <- "label_SA0100"
 titre <- paste("Distribution de l'âge de la personne référence du ménage lors de la réception du premier héritage ou du premier don\npour les ménages propriétaires de leur résidence principale, et pour les non propriétaires\n Pour la vague ",num_vague, sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Boxplot_age_heritage.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <- "Âge de la personne référence du ménage"
@@ -799,6 +852,8 @@ x <- "HB0900"
 fill <- "label_SA0100"
 xlim <- c(0,600000)
 titre <- paste("Distribution de la valeur de la résidence principale pour les ménages propriétaires\nPour la vague ",num_vague, sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Distrib_valeur_HMR.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 ylabel <- "Densité"
@@ -817,6 +872,8 @@ if(!all(is.na(data_proprio$HB0900))){
 x <- "HB0900"
 fill <- "label_SA0100"
 titre <- paste("Distribution de la valeur de la résidence principale pour les ménages propriétaires\nPour la vague ",num_vague, sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Boxplot_valeur_HMR.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <- "Valeur de la résidence principale (bloqué à 600 000 €)"
@@ -847,6 +904,8 @@ data_loc <- nettoyage_patrimoine(data_loc)
 x <- "value_1"
 fill <- "label_patrimoine"
 titre <- paste("Distribution du patrimoine par type et par sexe de la personne de référence du ménage\n(", nom_pays, " & vague ",num_vague, sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Boxplot_sexe_patrimoine.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <- "Sexe de la personne référence du ménage"
@@ -866,6 +925,8 @@ x <- "DHAGEH1"
 fill <- "label_HB0300"
 facet <- "Usage du logement"
 titre <- paste("Distribution de l'âge de la personne référence du ménage en fonction de l'occupation de son logement\n(", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 titre_save <- paste(pays,"_V",num_vague,"_Boxplot_usage_age.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <- "Age de la personne de référence"
@@ -916,6 +977,8 @@ if(faire_tourner_recherche_pvalue_opti){
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po_logit.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
   titre <- paste("Résultats des régressions de Y sur G (", nom_pays, " & vague ",num_vague,")", sep = "")
+  if(!faire_titre_graph){titre <- ""}
+  
   que_heritiers <- FALSE
   que_proprio <- FALSE
   que_logit <- TRUE
@@ -929,6 +992,8 @@ if(faire_tourner_recherche_pvalue_opti){
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po_logit_zoom1.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
   titre <- paste("Résultats des régressions de Y sur G (", nom_pays, " & vague ",num_vague,")", sep = "")
+  if(!faire_titre_graph){titre <- ""}
+  
   que_heritiers <- FALSE
   que_proprio <- FALSE
   que_logit <- TRUE
@@ -942,6 +1007,8 @@ if(faire_tourner_recherche_pvalue_opti){
   titre_save <- paste(pays,"_V",num_vague,"_pval_coeff_G_reg_Y_sur_G_toute_po_logit_zoom2.pdf", sep = "")
   titre_save <- paste(repo_sorties, titre_save, sep ='/')
   titre <- paste("Résultats des régressions de Y sur G (", nom_pays, " & vague ",num_vague,")", sep = "")
+  if(!faire_titre_graph){titre <- ""}
+  
   que_heritiers <- FALSE
   que_proprio <- FALSE
   que_logit <- TRUE
@@ -1019,6 +1086,8 @@ data_loc <- copy(data_pays[VAGUE == num_vague & DA1110I == '1']) # Que les propr
 titre_save <- paste(pays,"_V",num_vague,"_effet_heritage_val_HMR_HB0900.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 titre <- paste("Effet du fait de recevoir un don ou \nun héritage sur la valeur de la résidence principale (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 if(!all(is.na(data_loc$Montant_heritage_1))){
   liste_chemins <- append(liste_chemins, titre_save)
   effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial, titre, titre_save, caption_text, "HB0900", annee_min = annee_min, annee_max=annee_max, dico_modalites_ref, transformation_x = "log10")
@@ -1029,6 +1098,8 @@ if(!all(is.na(data_loc$Montant_heritage_1))){
 titre_save <- paste(pays,"_V",num_vague,"_effet_heritage_val_HMR_HB0900_zoom1.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 titre <- paste("Effet du fait de recevoir un don ou \nun héritage sur la valeur de la résidence principale (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 if(!all(is.na(data_loc$Montant_heritage_1))){
   liste_chemins <- append(liste_chemins, titre_save)
   effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial_zoom1, titre, titre_save, caption_text, "HB0900", annee_min = annee_min, annee_max=annee_max, dico_modalites_ref, transformation_x = "identity", faire_reg_lin = TRUE)
@@ -1039,6 +1110,8 @@ if(!all(is.na(data_loc$Montant_heritage_1))){
 titre_save <- paste(pays,"_V",num_vague,"_effet_heritage_val_HMR_HB0900_zoom2.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 titre <- paste("Effet du fait de recevoir un don ou \nun héritage sur la valeur de la résidence principale (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
 if(!all(is.na(data_loc$Montant_heritage_1))){
   liste_chemins <- append(liste_chemins, titre_save)
   effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial_zoom2, titre, titre_save, caption_text, "HB0900", annee_min = annee_min, annee_max=annee_max, dico_modalites_ref, transformation_x = "identity", faire_reg_lin = TRUE)
@@ -1399,6 +1472,8 @@ for(type_pat in names(liste_type_patrimoines)){
   titre_save <- paste(repo_sorties_initial, titre_save, sep ='/')
   liste_chemins <- append(liste_chemins, titre_save)
   titre <- paste("Carte d'Europe des indices de Gini : ",liste_type_patrimoines[type_pat],"\n Pour la vague 3", sep = "")
+  if(!faire_titre_graph){titre <- ""}
+  
   map_path <- "C:/Users/Benjamin/Desktop/IWEPS/Data/Data_intermediaire/world-administrative-boundaries.geojson" # A priori à ne pas toucher
 
   py_run_file(paste(repo_prgm, "/Map_Gini_EU_rstudio.py", sep = ""))
@@ -1487,7 +1562,20 @@ pdf_combine(liste_chemins, output = titre_save)
 # 
 # dt_casted
 
+# sous_dt <- data_complete[, .N, by = c( "SA0100", "VAGUE")]
+# setorder(sous_dt, SA0100)
+# data_complete[, .N, by = c("VAGUE")]
+# nrow(data_)
 # 
+# nrow(vague_12)
+# nrow(vague_123)
+# nrow(vague_23)
+# nrow(vague_234)
+# nrow(vague_1234)
+# 
+# 
+# table(data_complete$SA0200)
+
 # sous_data <- data_complete[VAGUE == 3 & SA0100 == "IT"]
 # dw <- svydesign(ids = ~1, data = sous_data, weights = ~ sous_data$HW0010)
 # 
@@ -2454,9 +2542,17 @@ lprop(svytable(~ col_1 + DHGENDERH1, design=dw_prop))
 
 
 
+reg <- 2.72
+mat <- 1.99
+(reg - mat)/reg
 
+x1 <- 41000
+x2 <- 11761
+x3 <- 15975
+x4 <- 22754
 
-
+mean(c(x1, x2, x3, x4))
+sqrt(var(c(x1, x2, x3, x4)))
 
 
 

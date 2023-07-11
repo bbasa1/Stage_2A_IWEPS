@@ -438,6 +438,7 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
   # table(data_loc$DHEDUH1)
 
   # On prépare les tables d'effectifs de ménages
+  dw_V1 <- svydesign(ids = ~1, data = data_loc[VAGUE == 1], weights = ~ HW0010)
   dw_V2 <- svydesign(ids = ~1, data = data_loc[VAGUE == 2], weights = ~ HW0010)
   dw_V3 <- svydesign(ids = ~1, data = data_loc[VAGUE == 3], weights = ~ HW0010)
   dw_V4 <- svydesign(ids = ~1, data = data_loc[VAGUE == 4], weights = ~ HW0010)

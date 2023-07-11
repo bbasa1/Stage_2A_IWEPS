@@ -9,18 +9,6 @@
 # ATTENTION : On fusionne code housold uniquement sur les variables années et pays, sinon on ne garde que derivated variables
 # ATTENTION : Les noms de colonnes sont globalement passées en majuscule à cause de la dernière vague d'enquête qui met tout en majuscule
 
-# liste_cols_core_household <- c("sa0010", # household identification number
-#                                "sa0100", # country
-#                                "sa0200", # survey vintage
-#                                "id",
-#                                "sa0210", # Vintage of last interview (household)
-#                                "SA0110", # Past household ID
-#                                "hb0700", # year of property acquisition
-#                                "HH0201", # year gift/inheritance received
-#                                "HH0202",
-#                                "FHH0203"
-#                                ) ### A mettre en minuscule
-
 
 # Importation des données
 # h = core household files ==> On en a besoin pour connaître l'année
