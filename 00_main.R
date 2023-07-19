@@ -26,7 +26,7 @@ sous_repo_data <- paste(repo_data, liste_sous_fichiers_data, sep = "/")
 
 
 # pays <- "BE" # Le pays qu'on souhaite
-# num_vague <- 3 # La vague qu'on souhaite
+# num_vague <- 2 # La vague qu'on souhaite
 utiliser_data_sauvegardee <- TRUE # Mettre FALSE si la table concaténée pays/année n'a jamais été formée, mettre TRUE si elle a déjà été formée (permet de juste l'importer)
 # liste_pays_traces <- c("FR", 'IT', "DE", "BE", 'ES', 'PT', "HU")
 liste_pays_traces <- c("FR", 'IT', "DE", "BE")
@@ -50,7 +50,7 @@ num_vague_max <- 4 ### Le nombre de vague qu'on veut concaténer ATTENTION la de
 liste_var_continues <- c("HH0401", "HH0402", "HH0403", "HH0201", "HH0202", "HH0203",
                          "HB0700","HW0010", "DA1000", "DA2100", "DA3001", "DI2000", "DI2100",
                          "DL1000", "DN3001", "DNFPOS", "DNHW", "DOGIFTINHER", "DA1120", "DA1110",
-                         "DL2110", "HB2300", "HB0500", "HB0900", "HNB2010")
+                         "DL2110", "HB2300", "HB0500", "HB0900", "HNB2010", "HB2410")
 liste_var_categorielles <- c("SA0100","DHHTYPE","DOINHERIT", "DA1110I","SA0110","SA0210",
                              "SA0010" ,"DATOP10", "DHAGEH1", "DHEDUH1", "DHGENDERH1",
                              "DITOP10", "DLTOP10", "DNTOP10", "DOEINHERIT", "VAGUE",
@@ -61,7 +61,8 @@ liste_var_categorielles <- c("SA0100","DHHTYPE","DOINHERIT", "DA1110I","SA0110",
                              "HH0302E", "HH0302F", "HH0302H", "HH0302I", "HH0302J",
                              "HH0303A", "HH0303B", "HH0303C", "HH0303D",
                              "HH0303E", "HH0303F", "HH0303H", "HH0303I", "HH0303J",
-                             "PE0300", "HB0300")
+                             "PE0300", "HB0300",
+                             "HB2501", "HB2502", "HB2503")
 liste_var_interet <- union(liste_var_continues, liste_var_categorielles)
 
 
@@ -70,7 +71,7 @@ if(utiliser_data_sauvegardee){ # Bon autant juste importer la dable si elle est 
   load(file = paste(repo_data, "/Data_intermediaire/data_complete.Rdata", sep = ""))
   print("Table importée !")
 }else{
-  data_complete <- importation_toutes_vagues(num_table_loc = 1)
+  data_complete <- importation_toutes_vagues(num_table_loc = 2)
   save(data_complete, file = paste(repo_data, "/Data_intermediaire/data_complete.Rdata", sep = ""))
   print("Table créé et sauvegardée !")
 }
@@ -156,6 +157,7 @@ source(paste(repo_prgm , "03_nettoyage_preparation.R" , sep = "/"))
 # HB0900 = Valeur TOTALE du logement ==> Même si détenud qu'à 50/50 avec le conjoint par ex 
 # HB2410 = number of properties other than household main residence ==> PBM : les immeubles contenant plusieurs appartements peuvent être comptés comme 1
 # HNB2010 = Revenu tiré des location des autres biens immobiliers par mois
+# HB2501, HB2502, HB2503 = Le type d'autres propriétés détenues = 1 House or flat | 2 - Apartment building | 3 - Industrial building/warehouse | 4 - Building plot/estate, field, garden, forest, and arable land | 5 - Garage | 6 - Shop | 7 - Office | 8 - Hotel | 9 - Farm | 10 - Other (SPECIFY)
 
 intersection <- intersect(liste_var_interet, colnames(data_complete))
 if(length(setdiff(liste_var_interet, intersection)) > 0){
@@ -206,6 +208,9 @@ data_complete[is.na(DA2100), DA2100 := 0]
 data_complete[is.na(DL1000), DL1000 := 0]
 data_complete[is.na(DN3001), DN3001 := 0]
 
+# On ajoute 1 pour compter la résidence principale
+data_complete[, HB2410_corr := HB2410]
+data_complete[DA1110I == "1", HB2410_corr := HB2410_corr + 1]
 
 data_pays <- data_complete[SA0100 == pays]
 
@@ -937,6 +942,73 @@ liste_chemins <- append(liste_chemins, titre_save)
 
 
 
+
+##### Quid des multi-propriétaires ? 
+# DATOP10 = Patrimoine brut
+# DITOP10 = Revenu net
+# DLTOP10 = dettes
+# DNTOP10 = Patrimoine net
+
+# Patrimoine brut
+nom_decile <- "DATOP10"
+titre_save <- paste(pays,"_V",num_vague,"_decomposition_deciles_pat_brut_fnt_nb_props.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+titre <- paste("Nombre de propriétés immobilières détenues par les ménages\nen fonction du décile de patrimoine brut (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
+data_loc <- data_pays[VAGUE == num_vague]
+y <- 'HB2410_corr'
+filllabel <- "Nombre de propriétés immobilières\ndétenues par les ménages"
+xlabel <- "Décile de patrimoine brut"
+trace_decomposition_fnt_decile(data_loc, nom_decile, titre_save, titre, y, filllabel, xlabel)
+liste_chemins <- append(liste_chemins, titre_save)
+
+
+# Dettes
+nom_decile <- "DLTOP10"
+titre_save <- paste(pays,"_V",num_vague,"_decomposition_deciles_dettes_fnt_nb_props.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+titre <- paste("Nombre de propriétés immobilières détenues par les ménages\nen fonction du décile de dettes (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
+data_loc <- data_pays[VAGUE == num_vague]
+y <- 'HB2410_corr'
+filllabel <- "Nombre de propriétés immobilières\ndétenues par les ménages"
+xlabel <- "Décile de dette"
+trace_decomposition_fnt_decile(data_loc, nom_decile, titre_save, titre, y, filllabel, xlabel)
+liste_chemins <- append(liste_chemins, titre_save)
+
+# Patrimoine net
+nom_decile <- "DNTOP10"
+titre_save <- paste(pays,"_V",num_vague,"_decomposition_deciles_pat_net_fnt_nb_props.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+titre <- paste("Nombre de propriétés immobilières détenues par les ménages\nen fonction du décile de patrimoine net (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
+data_loc <- data_pays[VAGUE == num_vague]
+y <- 'HB2410_corr'
+filllabel <- "Nombre de propriétés immobilières\ndétenues par les ménages"
+xlabel <- "Décile de patrimoine net"
+trace_decomposition_fnt_decile(data_loc, nom_decile, titre_save, titre, y, filllabel, xlabel)
+liste_chemins <- append(liste_chemins, titre_save)
+
+# Revenu
+nom_decile <- "DITOP10"
+titre_save <- paste(pays,"_V",num_vague,"_decomposition_deciles_revenu_fnt_nb_props.pdf", sep = "")
+titre_save <- paste(repo_sorties, titre_save, sep ='/')
+titre <- paste("Nombre de propriétés immobilières détenues par les ménages\nen fonction du décile de revenu brut (", nom_pays, " & vague ",num_vague,")", sep = "")
+if(!faire_titre_graph){titre <- ""}
+
+data_loc <- data_pays[VAGUE == num_vague]
+y <- 'HB2410_corr'
+filllabel <- "Nombre de propriétés immobilières\ndétenues par les ménages"
+xlabel <- "Décile de revenu net"
+trace_decomposition_fnt_decile(data_loc, nom_decile, titre_save, titre, y, filllabel, xlabel)
+liste_chemins <- append(liste_chemins, titre_save)
+
+
+# DI2000 = DI1100 + DI1200 + DI1300 + DI1400 + DI1500 + DI1600 + DI1700 + DI1800
+# Revenu employé + revenu d'indépendant + from real estate property + revenu du pat financ + des pensions + des aides sociales + des virement réguliers privés + des autres ressources
 ################################################################################
 # ========================= 05 ECONOMETRIE =====================================
 ################################################################################
@@ -1536,14 +1608,53 @@ pdf_combine(liste_chemins, output = titre_save)
 # # colnames(data_pays)
 # 
 # 
-# var <- "Surcharge_logement"
-# data_loc <- data_complete[VAGUE == 2 & SA0100 == "BE"]
+# var <- "DOINHERIT"
+# data_loc <- data_complete[VAGUE == 2 & SA0100 == "FR"]
 # locvar <- tableau_binaire(var, data_loc, count_na = TRUE) # TOUJOURS 1 = Non, 2 = Oui
 # locvar
 # 
-# data_complete$DHAGEH1B
+# 
+# data_complete[, DOINHERIT_corr := "0"]
+# data_complete[!is.na(Annee_heritage_1), DOINHERIT_corr := "1"]
+# 
+# table(data_complete[VAGUE == 2 & SA0100 == "DE"]$DOINHERIT_corr)
+# table(data_complete[VAGUE == 2 & SA0100 == "DE"]$DOINHERIT)
+# 
+# sum(data_complete[VAGUE == 2 & SA0100 == pays_loc & (DOINHERIT == "1" | DOEINHERIT == "1")]$HW0010)/sum(data_complete[VAGUE == 2 & SA0100 == pays_loc]$HW0010)
 # 
 # 
+# pays_loc <- 'BE'
+# nrow(data_complete[VAGUE == 2 & SA0100 == pays_loc & (DOINHERIT == "1" | DOEINHERIT == "1")])/nrow(data_complete[VAGUE == 2 & SA0100 == pays_loc])
+# sum(data_complete[VAGUE == 2 & SA0100 == pays_loc & (DOINHERIT == "1" | DOEINHERIT == "1")]$HW0010)/sum(data_complete[VAGUE == 2 & SA0100 == pays_loc]$HW0010)
+# 
+# table(data_loc$DOINHERIT)
+#  
+# 
+# table(data_complete[VAGUE == 2]$SA0100)
+# 
+# table(data_complete[SA0100 == 'ES']$VAGUE)
+# data_complete[VAGUE == 2 & SA0100 == "E1"]$DOINHERIT
+# 
+# 
+# data_complete[VAGUE == 2, median(Montant_heritage_1, na.rm = TRUE), by = SA0100]
+# 
+# estim_BE <- c(49737, NA, 36131, 8800)
+# estim_DE <- c(27580, NA, NA, 69000)
+# estim_FR <- c(36184, 40476, 35698, 57000)
+# estim_IT <- c(29794, NA, NA, 11000)
+# 
+# 
+# estim_BE <- c(49737, 12151, 36131, 8800)
+# estim_DE <- c(27580, 70179, 78674, 69000)
+# estim_FR <- c(36184, 40476, 35698, 57000)
+# estim_IT <- c(29794, 11681, 23618, 11000)
+# 
+# 
+# mean(estim_IT)
+# 2*sqrt(var(estim_IT))
+
+
+
 # sous_data <- data_complete[SA0100 == "BE" & VAGUE == num_vague,]
 # dw <- svydesign(ids = ~1, data = sous_data, weights = ~ sous_data$HW0010)
 # 
@@ -2529,30 +2640,51 @@ lprop(svytable(~ col_1 + DHGENDERH1, design=dw_prop))
 # summary(generic_match, un = FALSE)
 # # Genetic matching uses a generic search algorithm to find weights for each covariate to achieve optimal balance. The current matching is with replacement and the balance is evaluated using t-tests and Kolmogorov-Smirnov tests.
 # 
+
+
+
+# HNB2010 = le revenu tiré des autres res
+# HB2410 = Nombre d'autres propriétés que la HMR ATTENTION : 1 immeuble compte +1
+# HB2501, HB2502, HB2503 = Le type d'autres propriétés détenues = 1 House or flat | 2 - Apartment building | 3 - Industrial building/warehouse | 4 - Building plot/estate, field, garden, forest, and arable land | 5 - Garage | 6 - Shop | 7 - Office | 8 - Hotel | 9 - Farm | 10 - Other (SPECIFY)
+# data_pays[, menage_rentier := FALSE]
+# data_pays[HNB2010 >= 0.5*DI2000, menage_rentier := TRUE]
 # 
 # 
+# table(data_pays$menage_rentier)
 # 
 # 
+# data_pays$DI2000
 # 
+# summary(data_complete[SA0100 == "IT"]$HNB2010)
 # 
+# data_complete$SA0100
 # 
+# table(data_pays$HB2410)
 # 
+# data_pays[, menage_multiprop := "0"]
+# data_pays[HB2410 >= 12]
 # 
+# data_pays[]
+# 
+# menages_multiprops <- data_
 # 
 
 
 
-reg <- 2.72
-mat <- 1.99
-(reg - mat)/reg
 
-x1 <- 41000
-x2 <- 11761
-x3 <- 15975
-x4 <- 22754
+# reg <- 2.72
+# mat <- 1.99
+# (reg - mat)/reg
+# 
+# x1 <- 41000
+# x2 <- 11761
+# x3 <- 15975
+# x4 <- 22754
+# 
+# mean(c(x1, x2, x3, x4))
+# sqrt(var(c(x1, x2, x3, x4)))
 
-mean(c(x1, x2, x3, x4))
-sqrt(var(c(x1, x2, x3, x4)))
+
 
 
 

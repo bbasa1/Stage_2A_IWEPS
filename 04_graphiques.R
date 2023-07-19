@@ -359,3 +359,30 @@ trace_boxplot <- function(data_loc, x, fill, facet, titre, titre_save, xlabel, f
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
   print(p) 
 }
+
+
+
+trace_decomposition_fnt_decile <- function(data_loc, nom_decile, titre_save, titre, y, filllabel, xlabel){
+  # Cette fonction trace la décomposition suivant une variable fill et une variable x
+  
+  data_loc[is.na(get(y)), eval(y) := 0] # On met à 0 pour ne pas avoir de NA qui se balade
+  x <- nom_decile
+  fill <- y
+  ylabel <- ""
+  
+  data_loc <- data_loc[order(data_loc[[y]]), ]
+  data_loc[[y]] <- as.factor(data_loc[[y]])
+  
+  p <- ggplot(data_loc, aes(x = data_loc[[x]], fill = data_loc[[fill]], weight = HW0010)) + 
+    geom_histogram(color="black", alpha = 0.75, stat="count", position = "fill") +
+    scale_fill_viridis(discrete = TRUE) +
+    labs(title=titre,
+         x= xlabel,
+         y= ylabel,
+         fill = filllabel) +
+    scale_y_continuous(labels = percent(c(0, 0.25, 0.5, 0.75, 1))) +
+    theme(axis.text.x = element_text(angle = 0, vjust = 0.5))  
+  
+  ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
+  print(p) 
+}
