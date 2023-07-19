@@ -4,7 +4,7 @@
 # Ici toutes les fonctions qui permettent de sortir des résultats d'économétrie
 
 
-recherche_p_value_otpi <- function(liste_montant_initial_loc, data_loc, annee_min = -1, annee_max = 98, faire_tracer = TRUE, titre, titre_save, que_heritiers = TRUE, que_proprio = TRUE, que_logit = FALSE, dico_modalites_ref, transformation_x='log10'){
+recherche_p_value_otpi <- function(liste_montant_initial_loc, data_loc, annee_min = -1, annee_max = 98, faire_tracer = TRUE, titre, titre_save, que_heritiers = TRUE, que_proprio = TRUE, que_logit = FALSE, dico_modalites_ref, transformation_x='log10', afficher_texte_graphiques_econo=TRUE){
   ## Produit la courbe de pvalue et coeff associés à G dans la régression Y sur G pour trouver la valeur du montant minimal d'héritage optimal
   ## Utilise les deux fonctions ci-dessous
   sous_data_loc <- copy(data_loc)
@@ -207,6 +207,7 @@ recherche_p_value_otpi <- function(liste_montant_initial_loc, data_loc, annee_mi
     caption_text <- "Y = Fait d'être propriétaire\n
                       G = Fait de recevoir un héritage ou un don supérieur au montant minimal\n
                       X = Ensemble de variables socio-économiques du ménage"
+    if(!afficher_texte_graphiques_econo){caption_text <- ""} # On n'affiche le texte que si on en a besoin
     
     if(que_logit){
       trace_courbes(melted_loc[label_variable == "Logit" & Statistique %in% stat_a_tracer], x, y, color, facet, xlabel, ylabel, colorlabel, titre, titre_save, caption_text, transformation_x)
@@ -429,7 +430,7 @@ dependance_montant_heritage_min <- function(sous_data_loc, montant_ini_loc, anne
 ################################################################################ 
 
 
-effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial_loc, titre, titre_save, caption_text, col_montant_bien = "HB0900", annee_min = -1, annee_max=3, dico_modalites_ref, transformation_x = "log10", faire_reg_lin = FALSE){
+effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial_loc, titre, titre_save, caption_text, col_montant_bien = "HB0900", annee_min = -1, annee_max=3, dico_modalites_ref, transformation_x = "log10", faire_reg_lin = FALSE, afficher_texte_graphiques_econo=TRUE){
   # Après la régression sur le fait d'être propriétaire, on fait une régression sur la valeur de la propriété principale
   # Avoir reçu un héritage augmente-t-il la valeur de la résidence principale ?
   
@@ -497,8 +498,7 @@ effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial_loc, t
                    G = Fait de recevoir un héritage ou un don supérieur au montant minimal et précédent l'achat\n
                    X = Ensemble de variables socio-économiques du ménage", sep = '')
   }
-  
-
+  if(!afficher_texte_graphiques_econo){caption_text <- ""} # On n'affiche le texte que si on en a besoin
   
 
   size <- "Effectifs"
@@ -524,7 +524,8 @@ effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial_loc, t
       big.mark = " ",
       decimal.mark = ","), n.breaks = 10) +
     scale_color_viridis(discrete = TRUE) +
-    theme(axis.text.x = element_text(angle = 22.5, vjust = 0.5, hjust=1)) +
+    theme(axis.text.x = element_text(angle = 22.5, vjust = 0.5, hjust=1),
+          text = element_text(size = 17)) +
     labs(caption = caption_text)
   
   if(faire_reg_lin){
@@ -537,49 +538,6 @@ effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial_loc, t
   }
 
 
-  # melted_loc <- melt(dt_for_plot,
-  #                    id.vars = c("Montant_initial", "snignif", "Nb_modalite"),
-  #                    measure.vars = c("Y sur G : pvalue", "Y sur G : coefficiant", "G sur X : Nombre de variables dignificatives à 1%"),
-  #                    variable.name = "variable",
-  #                    value.name    = "value")
-  # 
-  # 
-  # x <- "Montant_initial"
-  # y <- 'value'
-  # shape <- "snignif"
-  # shapelabel <- "Significativité du coefficiant"
-  # color <- "Nb_modalite"
-  # colorlabel <- "Nombre de modalités de X\nexplicatives de G à 1%"
-  # facet <- "variable"
-  # xlabel <- "Montant d'héritage minimal pouvant être considéré comme conséquant"
-  # ylabel <- ""
-  # caption_text <- "Y = Valeur en euro de la résidence principale\n
-  #                     G = Fait de recevoir un héritage ou un don supérieur au montant minimal\n
-  #                     X = Ensemble de variables socio-économiques du ménage"
-  # 
-  # 
-  # 
-  # 
-  # p <- ggplot(data = melted_loc, aes(x=melted_loc[[x]], y = melted_loc[[y]], color = melted_loc[[color]], shape = melted_loc[[shape]])) +
-  #   geom_point() +
-  #   # geom_line() +
-  #   # geom_smooth( method = 'gam', se = FALSE, span = 0.3) +
-  #   labs(title=titre,
-  #        x= xlabel,
-  #        y= ylabel,
-  #        color = colorlabel,
-  #        shape=shapelabel) + 
-  #   scale_y_continuous(labels = function(y) format(y, scientific = FALSE)) + 
-  #   scale_x_continuous(trans='log10', labels = scales::dollar_format(
-  #     prefix = "",
-  #     suffix = " €",
-  #     big.mark = " ",
-  #     decimal.mark = ","), n.breaks = 10) + 
-  #   scale_color_viridis(discrete = TRUE) +
-  #   theme(axis.text.x = element_text(angle = 22.5, vjust = 0.5, hjust=1)) +
-  #   facet_wrap(~factor(melted_loc[[facet]]),  scales = "free", ncol = 2) +
-  #   labs(caption = caption_text)
-  # 
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
   print(p)  
@@ -588,11 +546,8 @@ effet_heritage_sur_valeur_HMR <- function(data_loc, liste_montant_initial_loc, t
 ## Deux sous-fonctions qui font les régressions :
 regression_heritage_valeur_hmr <- function(data_loc, montant_ini_loc, col_montant_bien, annee_min, annee_max){
   data_loc$Reg_Y <- data_loc[[col_montant_bien]]
-  # data_loc[, Reg_Y := DA1110]
   data_loc[, Reg_G := 0]
   data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_avant_achat >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
-  # data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
-  # data_loc[Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
 
 
   liste_cols_reg_poids <- c("HW0010", "Reg_G", "Reg_Y")
@@ -605,10 +560,8 @@ regression_heritage_valeur_hmr <- function(data_loc, montant_ini_loc, col_montan
 
 regression_G_heritage <- function(data_loc, montant_ini_loc, annee_min, annee_max){
   data_loc[, Reg_G := 0]
-  # data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
   data_loc[Annee_achat_heritage %in% annee_min:annee_max & Montant_heritage_avant_achat >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
-  # data_loc[Montant_heritage_1 >= montant_ini_loc, Reg_G := 1] # Reçu un héritage avant l'achat
-  
+
   denylogit <- glm(Reg_G ~ DHAGEH1 + c(DHAGEH1*DHAGEH1) + DHEDUH1 + DHGENDERH1 + DI2000 + DHHTYPE + DHEMPH1 + PE0300_simpl, 
                    family = binomial(link = "logit"), 
                    data = data_loc)
@@ -703,35 +656,6 @@ faire_matching <- function(sous_data_loc, liste_outcomes = c("DA1110I"),
   dta_full <- match.data(full_match)
   return(list(dta_nearest, dta_optimal, dta_full, txt_matching))
 }
-
-
-
-# calcul_ate_matching <- function(dta_loc, var_Y, txt_matching_loc){
-#   ### Pour ensuite récupérer l'ATE
-#   
-#   # pré-traitement
-#   dta_loc$treatment <- as.numeric(as.character(dta_loc$treatment))
-#   dta_loc[[var_Y]] <- as.numeric(as.character(dta_loc[[var_Y]]))
-#   # Régression
-#   tet_reg <- paste("fit_loc <- lm(",var_Y," ~ treatment * (",txt_matching_loc,"), data = dta_loc, weights = HW0010)", sep= "")
-#   eval(parse(text = tet_reg))
-#   # Récupération
-#   avg_comp_ate_loc <- avg_comparisons(fit_loc, variables = "treatment",
-#                                       vcov = ~subclass,
-#                                       newdata = subset(dta_loc, treatment == 1),
-#                                       wts = "HW0010") ### The average tratment effect on treated 
-#   avg_pred_loc <- avg_predictions(fit_loc, variables = "treatment",
-#                                   vcov = ~subclass,
-#                                   newdata = subset(dta_loc, treatment == 1),
-#                                   wts = "HW0010") ## Les moyennes dans les deux groupes pour comparer
-#   
-#   # On regroupe sous un seul data.table pour export
-#   avg_comp_ate_loc$Type <- "ATE"
-#   avg_pred_loc$Type <- "Moyennes_par_groupe"
-#   avg_final <- rbindlist(list(avg_comp_ate_loc, avg_pred_loc), fill=TRUE)
-#   
-#   return(avg_final)
-# }
 
 
 ### Fonction pour extraire les modalités de référence après régression

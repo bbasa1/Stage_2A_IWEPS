@@ -163,7 +163,7 @@ graphique_variance_pat_age <- function(data_loc, liste_type_patrimoines_loc, tit
   fill <- "variable"
   xlabel <-"Tranche d'âge de la personne de référence du ménage"
   ylabel <-"Variance du patrimoine (échelle log)"
-  filllabel <- "Type de patrimoine"
+  filllabel <- "Type de pat."
   data_loc <- merged_melted[variable != "Effectifs"]
   
   trace_barplot_log(data_loc, x,sortby_x, y, fill, xlabel, ylabel,filllabel, titre, titre_save)
@@ -263,24 +263,24 @@ graphique_evolution_position_vagues <- function(data_vagues, nb_quantiles, liste
   if(vagues_dispo == "123"){
     x <- "Rang_V1"
       if(faire_rang){
-      xlabel <- "Quantile de patrimoine à la vague 1"
-      ylabel <- "Quantile de patrimoine aux vagues 2 et 3"
+      xlabel <- "Quantile de\npatrimoine V1"
+      ylabel <- "Quantile de\npatrimoine V2 et V3"
     }else{
-      xlabel <- "Patrimoine à la vague 1"
-      ylabel <- "Patrimoine aux vagues 2 et 3"
+      xlabel <- "Patrimoine\nà la vague 1"
+      ylabel <- "Patrimoine\naux vagues 2 et 3"
     }
-    sizelabel <- "Poids du ménage à la vague 1"
+    sizelabel <- "Poids du\nménage V1"
     size <- "HW0010_V1"
   }else{
     x <- "Rang_V2"
     if(faire_rang){
-      xlabel <- "Quantile de patrimoine à la vague 2"
-      ylabel <- "Quantile de patrimoine à la vague 3"
+      xlabel <- "Quantile de\npatrimoine V2"
+      ylabel <- "Quantile de\npatrimoine V3"
     }else{
-      xlabel <- "Patrimoine à la vague 2"
-      ylabel <- "Patrimoine à la vague 3"
+      xlabel <- "Patrimoine\nà la vague 2"
+      ylabel <- "Patrimoine\nà la vague 3"
     }
-    sizelabel <- "Poids du ménage à la vague 2"
+    sizelabel <- "Poids du\nménage V2"
     size <- "HW0010_V2"
   }
 
@@ -304,7 +304,8 @@ graphique_evolution_position_vagues <- function(data_vagues, nb_quantiles, liste
            color = colorlabel,
            size = sizelabel) +
       facet_wrap(~factor(.data[[facet]]), ncol = 2) +
-      scale_size(range = c(1,3))
+      scale_size(range = c(1,3)) +
+      theme(text = element_text(size = 25))
     }else{
       # Il faut passer en échelle log sinon c'est illisible
       if(vagues_dispo == "123"){
@@ -334,10 +335,11 @@ graphique_evolution_position_vagues <- function(data_vagues, nb_quantiles, liste
           suffix = " €",
           big.mark = " ",
           decimal.mark = ",")) +
-        labs(caption = "Les ménages ayant un patrimoine négatif se sont vu assigner un patrimoine de 1€") +
+        labs(caption = "Les ménages ayant un patrimoine négatif\nse sont vu assigner un patrimoine de 1€") +
         theme(legend.text = element_text(angle = 0, vjust = 0.7, hjust = 0),
               axis.text.x = element_text(angle = 45, vjust = 0.5),
-              legend.position = "right")
+              legend.position = "right",
+              text = element_text(size = 25))
       
       }
   
@@ -405,7 +407,8 @@ graphique_evolution_pat_entre_vagues <- function(data_loc, liste_type_patrimoine
     geom_line() +
     labs(title=titre,
          x= xlabel,
-         y= ylabel) 
+         y= ylabel) +
+    theme(text = element_text(size = 25))
   print(p)
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
 }
@@ -511,8 +514,8 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
   melted[Variable == "PE0300_simpl" & Valeur_num == 1, Valeur := "Manager"]
   melted[Variable == "PE0300_simpl" & Valeur_num == 2, Valeur := "Cadre sup"]
   melted[Variable == "PE0300_simpl" & Valeur_num == 3, Valeur := "Technicien"]
-  melted[Variable == "PE0300_simpl" & Valeur_num == 4, Valeur := "Employé.e\nde bureau"]
-  melted[Variable == "PE0300_simpl" & Valeur_num == 5, Valeur := "Service\n/vente"]
+  melted[Variable == "PE0300_simpl" & Valeur_num == 4, Valeur := "Employé.e de bureau"]
+  melted[Variable == "PE0300_simpl" & Valeur_num == 5, Valeur := "Service/vente"]
   melted[Variable == "PE0300_simpl" & Valeur_num == 6, Valeur := "Cadre agricole"]
   melted[Variable == "PE0300_simpl" & Valeur_num == 7, Valeur := "Artisan"]
   melted[Variable == "PE0300_simpl" & Valeur_num == 8, Valeur := "Machiniste"]
@@ -562,7 +565,8 @@ trace_distribution_X_non_X <- function(data_loc, liste_variables_loc, titre, tit
       big.mark = " ",
       decimal.mark = ",")) + 
     scale_fill_viridis(discrete = TRUE) +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), 
+          text = element_text(size = 16)) +
     facet_wrap(~factor(.data[[facet]]), ncol = 2, scales="free") +
     labs(caption = "")
   

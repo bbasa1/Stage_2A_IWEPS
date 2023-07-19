@@ -210,6 +210,7 @@ data_complete[is.na(DN3001), DN3001 := 0]
 
 # On ajoute 1 pour compter la résidence principale
 data_complete[, HB2410_corr := HB2410]
+data_complete[is.na(HB2410), HB2410_corr := 0]
 data_complete[DA1110I == "1", HB2410_corr := HB2410_corr + 1]
 
 data_pays <- data_complete[SA0100 == pays]
@@ -302,11 +303,11 @@ graphique_contration_patrimoine(data_pays ,nb_quantiles, liste_type_patrimoines,
 
 
 ############################## Dispersion du patrimoine en fonction de l'âge
-liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
-                            "DA1000" = "Patrimoine physique",
-                            "DA2100" = "Patrimoine financier",
+liste_type_patrimoines <- c("DA3001" = "Pat. brut",
+                            "DA1000" = "Pat. physique",
+                            "DA2100" = "Pat. financier",
                             "DL1000" = "Dettes",
-                            "DN3001" = "Patrimoine net")
+                            "DN3001" = "Pat. net")
 
 data_loc <- data_pays[VAGUE == num_vague]
 titre <- paste("Variance du patrimoine détenu par les ménages\nIntervalles de confiance à 95% (", nom_pays, " & vague ",num_vague,")", sep = "")
@@ -334,7 +335,7 @@ x <- "Annee_achat_heritage"
 fill <- "label_education"
 liste_breaks_fill <- c('< Brevet', 'Brevet', 'Bac', '> Bac')
 data_loc <- data_pays[VAGUE == num_vague]
-liste_breaks_x <- seq(-50, 50, 2)
+liste_breaks_x <- seq(-50, 50, 5)
 limits_x <- c(-50,50)
 liste_chemins <- append(liste_chemins, titre_save)
 
@@ -353,7 +354,7 @@ x <- "Annee_achat_heritage"
 fill <- NaN
 liste_breaks_fill <- NaN
 data_loc <- data_pays[VAGUE == num_vague]
-liste_breaks_x <- seq(-50, 50, 2)
+liste_breaks_x <- seq(-50, 50, 5)
 limits_x <- c(-50,50)
 liste_chemins <- append(liste_chemins, titre_save)
 
@@ -437,12 +438,12 @@ if(nrow(vague_123) > 0){
 liste_variables_loc <-c(
   # "DITOP10" = "Décile de revenu",
   # "DLTOP10" = "Décile de dette",
-  "DNTOP10" = "Décile de patrimoine net",
+  # "DNTOP10" = "Décile de patrimoine net",
   "DOEINHERIT" = "S'attend à hériter",
   "DOINHERIT" = "A hérité",
   "DHEDUH1" = "Niveau d'éducation",
   "DHAGEH1" = "Tranche d'âge",
-  "DATOP10" = "Décile de patrimoine brut",
+  # "DATOP10" = "Décile de patrimoine brut",
   "DHGENDERH1" = 'Sexe',
   "DA1120I" = "Propriétaire d'autres biens immobiliers",
   "DHEMPH1" = "Statut professionel",
@@ -492,12 +493,12 @@ if(!all(is.na(data_loc[[fill]]))){
 liste_variables_loc <-c(
   # "DITOP10" = "Décile de revenu",
   # "DLTOP10" = "Décile de dette",
-  "DNTOP10" = "Décile de patrimoine net",
+  # "DNTOP10" = "Décile de patrimoine net",
   "DOEINHERIT" = "S'attend à hériter",
   # "DOINHERIT" = "A hérité",
   "DHEDUH1" = "Niveau d'éducation",
   "DHAGEH1" = "Tranche d'âge",
-  "DATOP10" = "Décile de patrimoine brut",
+  # "DATOP10" = "Décile de patrimoine brut",
   "DHGENDERH1" = 'Sexe',
   "DA1110I" = "Est propriétaire de sa résidence principale",
   "DA1120I" = "Propriétaire d'autres biens immobiliers",
@@ -544,12 +545,12 @@ if(!all(is.na(data_loc[[fill]]))){
 liste_variables_loc <-c(
   # "DITOP10" = "Décile de revenu",
   # "DLTOP10" = "Décile de dette",
-  "DNTOP10" = "Décile de patrimoine net",
+  # "DNTOP10" = "Décile de patrimoine net",
   # "DOEINHERIT" = "S'attend à hériter",
   "DOINHERIT" = "A hérité",
   "DHEDUH1" = "Niveau d'éducation",
   "DHAGEH1" = "Tranche d'âge",
-  "DATOP10" = "Décile de patrimoine brut",
+  # "DATOP10" = "Décile de patrimoine brut",
   "DHGENDERH1" = 'Sexe',
   "DA1110I" = "Est propriétaire de sa résidence principale",
   "DA1120I" = "Propriétaire d'autres biens immobiliers",
@@ -597,12 +598,12 @@ if(!all(is.na(data_loc[[fill]]))){
 liste_variables_loc <-c(
   # "DITOP10" = "Décile de revenu",
   # "DLTOP10" = "Décile de dette",
-  "DNTOP10" = "Décile de patrimoine net",
+  # "DNTOP10" = "Décile de patrimoine net",
   "DOEINHERIT" = "S'attend à hériter",
   "DOINHERIT" = "A hérité",
   "DHEDUH1" = "Niveau d'éducation",
   "DHAGEH1" = "Tranche d'âge",
-  "DATOP10" = "Décile de patrimoine brut",
+  # "DATOP10" = "Décile de patrimoine brut",
   "DHGENDERH1" = 'Sexe',
   "DA1110I" = "Est propriétaire de sa résidence principale",
   "DHEMPH1" = "Statut professionel",
@@ -650,12 +651,12 @@ data_loc <- nettoyage_Surcharge(data_loc)
 liste_variables_loc <-c(
   # "DITOP10" = "Décile de revenu",
   # "DLTOP10" = "Décile de dette",
-  "DNTOP10" = "Décile de patrimoine net",
+  # "DNTOP10" = "Décile de patrimoine net",
   "DOEINHERIT" = "S'attend à hériter",
   "DOINHERIT" = "A hérité",
   "DHEDUH1" = "Niveau d'éducation",
   "DHAGEH1" = "Tranche d'âge",
-  "DATOP10" = "Décile de patrimoine brut",
+  # "DATOP10" = "Décile de patrimoine brut",
   "DHGENDERH1" = 'Sexe',
   "DA1110I" = "Est propriétaire de sa résidence principale",
   "DHEMPH1" = "Statut professionel",
@@ -765,7 +766,7 @@ if(!faire_titre_graph){titre <- ""}
 
 titre_save <- paste(pays,"_V",num_vague,"_Boxplot_distrib_depense_prct_revenu.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-xlabel <- "% du revenu net dépensé pour se loger (bloqué à 100%)"
+xlabel <- "% du revenu net dépensé\npour se loger (bloqué à 100%)"
 filllabel <- "Pays"
 facet <- "label_DA1110I"
 
@@ -794,7 +795,7 @@ ylabel <- "Densité"
 xlabel <- "Montant du premier héritage reçu chronologiquement par le ménage"
 filllabel <- "Pays"
 facet <- "label_SA0100"
-nbins <- 75
+nbins <- 50
 
 if(!all(is.na(data_loc$Montant_heritage_1))){
   trace_distrib_normalise(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel,facet, trans="log10", nbins)
@@ -881,7 +882,7 @@ if(!faire_titre_graph){titre <- ""}
 
 titre_save <- paste(pays,"_V",num_vague,"_Boxplot_valeur_HMR.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-xlabel <- "Valeur de la résidence principale (bloqué à 600 000 €)"
+xlabel <- "Valeur de la résidence principale\n(bloqué à 600 000 €)"
 filllabel <- "Pays"
 facet <- ""
 xlim <- c(0,600000)
@@ -891,20 +892,22 @@ liste_chemins <- append(liste_chemins, titre_save)
 
 
 ############################## La distribution des patrimoines suivant le sexe
-liste_type_patrimoines <- c("DA3001" = "Patrimoine brut",
-                            "DA1000" = "Patrimoine physique",
-                            "DA2100" = "Patrimoine financier",
+liste_type_patrimoines <- c("DA3001" = "Pat. brut",
+                            "DA1000" = "Pat. physique",
+                            "DA2100" = "Pat. financier",
                             "DL1000" = "Dettes",
-                            "DN3001" = "Patrimoine net")
+                            "DN3001" = "Pat. net")
 
 data_loc <- data_pays[VAGUE == num_vague]
 data_loc <- nettoyage_sexe(data_loc)
+
 data_loc <- melt(data_loc, 
                  id.vars = , c("HW0010", "Sexe"),
                  measure.vars  = names(liste_type_patrimoines),
                  variable.name = "patrimoine",
                  value.name    = "value_1")
 
+data_loc[, value_1 := value_1/1000] # On parle en k-euros pour alléger la figure
 data_loc <- nettoyage_patrimoine(data_loc)
 x <- "value_1"
 fill <- "label_patrimoine"
@@ -914,10 +917,10 @@ if(!faire_titre_graph){titre <- ""}
 titre_save <- paste(pays,"_V",num_vague,"_Boxplot_sexe_patrimoine.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <- "Sexe de la personne référence du ménage"
-filllabel <- "Type de patrimoine"
+filllabel <- "Type de pat."
 facet <- "Sexe"
 
-trace_boxplot(data_loc, x, fill, facet, titre, titre_save, xlabel, filllabel, xlim = c(-10000, 1000000), suffix_x = " €")
+trace_boxplot(data_loc, x, fill, facet, titre, titre_save, xlabel, filllabel, xlim = c(-10, 1000), suffix_x = "k€")
 liste_chemins <- append(liste_chemins, titre_save)
 
 
@@ -935,7 +938,7 @@ if(!faire_titre_graph){titre <- ""}
 titre_save <- paste(pays,"_V",num_vague,"_Boxplot_usage_age.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
 xlabel <- "Age de la personne de référence"
-filllabel <- "Pays"
+filllabel <- "Usage"
 facet <- ""
 trace_boxplot(data_loc, x, fill, facet, titre, titre_save, xlabel, filllabel, xlim = c(10,95), suffix_x = " ans")
 liste_chemins <- append(liste_chemins, titre_save)
@@ -953,14 +956,14 @@ liste_chemins <- append(liste_chemins, titre_save)
 nom_decile <- "DATOP10"
 titre_save <- paste(pays,"_V",num_vague,"_decomposition_deciles_pat_brut_fnt_nb_props.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-titre <- paste("Nombre de propriétés immobilières détenues par les ménages\nen fonction du décile de patrimoine brut (", nom_pays, " & vague ",num_vague,")", sep = "")
+titre <- paste("Décomposition des quantiles de patrimoine brut\nen fonction du nombre de biens immobiliers détenus (", nom_pays, " & vague ",num_vague,")", sep = "")
 if(!faire_titre_graph){titre <- ""}
-
 data_loc <- data_pays[VAGUE == num_vague]
-y <- 'HB2410_corr'
-filllabel <- "Nombre de propriétés immobilières\ndétenues par les ménages"
+filllabel <- "Nombre de propriétés\ndétenues par les ménages"
 xlabel <- "Décile de patrimoine brut"
-trace_decomposition_fnt_decile(data_loc, nom_decile, titre_save, titre, y, filllabel, xlabel)
+ylabel <- "Fraction des ménages du décile"
+
+trace_decomposition_fnt_decile(data_loc, nom_decile, titre_save, titre, filllabel, xlabel)
 liste_chemins <- append(liste_chemins, titre_save)
 
 
@@ -968,42 +971,37 @@ liste_chemins <- append(liste_chemins, titre_save)
 nom_decile <- "DLTOP10"
 titre_save <- paste(pays,"_V",num_vague,"_decomposition_deciles_dettes_fnt_nb_props.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-titre <- paste("Nombre de propriétés immobilières détenues par les ménages\nen fonction du décile de dettes (", nom_pays, " & vague ",num_vague,")", sep = "")
+titre <- paste("Décomposition des quantiles de dettes\nen fonction du nombre de biens immobiliers détenus (", nom_pays, " & vague ",num_vague,")", sep = "")
 if(!faire_titre_graph){titre <- ""}
-
 data_loc <- data_pays[VAGUE == num_vague]
-y <- 'HB2410_corr'
-filllabel <- "Nombre de propriétés immobilières\ndétenues par les ménages"
+filllabel <- "Nombre de propriétés\ndétenues par les ménages"
 xlabel <- "Décile de dette"
-trace_decomposition_fnt_decile(data_loc, nom_decile, titre_save, titre, y, filllabel, xlabel)
+trace_decomposition_fnt_decile(data_loc, nom_decile, titre_save, titre, filllabel, xlabel)
 liste_chemins <- append(liste_chemins, titre_save)
+
 
 # Patrimoine net
 nom_decile <- "DNTOP10"
 titre_save <- paste(pays,"_V",num_vague,"_decomposition_deciles_pat_net_fnt_nb_props.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-titre <- paste("Nombre de propriétés immobilières détenues par les ménages\nen fonction du décile de patrimoine net (", nom_pays, " & vague ",num_vague,")", sep = "")
+titre <- paste("Décomposition des quantiles de patrimoine net\nen fonction du nombre de biens immobiliers détenus (", nom_pays, " & vague ",num_vague,")", sep = "")
 if(!faire_titre_graph){titre <- ""}
-
 data_loc <- data_pays[VAGUE == num_vague]
-y <- 'HB2410_corr'
-filllabel <- "Nombre de propriétés immobilières\ndétenues par les ménages"
+filllabel <- "Nombre de propriétés\ndétenues par les ménages"
 xlabel <- "Décile de patrimoine net"
-trace_decomposition_fnt_decile(data_loc, nom_decile, titre_save, titre, y, filllabel, xlabel)
+trace_decomposition_fnt_decile(data_loc, nom_decile, titre_save, titre, filllabel, xlabel)
 liste_chemins <- append(liste_chemins, titre_save)
 
 # Revenu
 nom_decile <- "DITOP10"
 titre_save <- paste(pays,"_V",num_vague,"_decomposition_deciles_revenu_fnt_nb_props.pdf", sep = "")
 titre_save <- paste(repo_sorties, titre_save, sep ='/')
-titre <- paste("Nombre de propriétés immobilières détenues par les ménages\nen fonction du décile de revenu brut (", nom_pays, " & vague ",num_vague,")", sep = "")
+titre <- paste("Décomposition des quantiles de revenus net\nen fonction du nombre de biens immobiliers détenus (", nom_pays, " & vague ",num_vague,")", sep = "")
 if(!faire_titre_graph){titre <- ""}
-
 data_loc <- data_pays[VAGUE == num_vague]
-y <- 'HB2410_corr'
-filllabel <- "Nombre de propriétés immobilières\ndétenues par les ménages"
+filllabel <- "Nombre de propriétés\ndétenues par les ménages"
 xlabel <- "Décile de revenu net"
-trace_decomposition_fnt_decile(data_loc, nom_decile, titre_save, titre, y, filllabel, xlabel)
+trace_decomposition_fnt_decile(data_loc, nom_decile, titre_save, titre, filllabel, xlabel)
 liste_chemins <- append(liste_chemins, titre_save)
 
 
@@ -1027,6 +1025,8 @@ dico_modalites_ref <- c("DHGENDERH1" = "1", "DHHTYPE" = "6", "DHEMPH1" = "1", "P
 # dico_modalites_ref <- c()
 
 data_pays$DHAGEH1 <- as.numeric(data_pays$DHAGEH1)
+
+afficher_texte_graphiques_econo <- FALSE # Mettre TRUE pour afficher un texte qui rappelle les définitions de X, G et Y
 
 if(faire_tourner_recherche_pvalue_opti){
   ### Une première fois sur toute la plage de valeur
@@ -1056,7 +1056,7 @@ if(faire_tourner_recherche_pvalue_opti){
   que_logit <- TRUE
   if(!all(is.na(data_loc$Montant_heritage_1))){ #En Italie pour certaines vagues ce n'est pas renseigné...
     liste_chemins <- append(liste_chemins, titre_save)
-    recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit, dico_modalites_ref)
+    recherche_p_value_otpi(liste_montant_initial, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit, dico_modalites_ref, afficher_texte_graphiques_econo=afficher_texte_graphiques_econo)
   }
   
   ## Un premier zoom
@@ -1071,7 +1071,7 @@ if(faire_tourner_recherche_pvalue_opti){
   que_logit <- TRUE
   if(!all(is.na(data_loc$Montant_heritage_1))){ #En Italie pour certaines vagues ce n'est pas renseigné...
     liste_chemins <- append(liste_chemins, titre_save)
-    recherche_p_value_otpi(liste_montant_initial_zoom1, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit, dico_modalites_ref)
+    recherche_p_value_otpi(liste_montant_initial_zoom1, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio,  que_logit, dico_modalites_ref, afficher_texte_graphiques_econo=afficher_texte_graphiques_econo)
   }
   
   ### Puis un second zoom
@@ -1086,7 +1086,7 @@ if(faire_tourner_recherche_pvalue_opti){
   que_logit <- TRUE
   if(!all(is.na(data_loc$Montant_heritage_1))){ #En Italie pour certaines vagues ce n'est pas renseigné...
     liste_chemins <- append(liste_chemins, titre_save)
-    recherche_p_value_otpi(liste_montant_initial_zoom2, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio, que_logit, dico_modalites_ref, transformation_x = "identity")
+    recherche_p_value_otpi(liste_montant_initial_zoom2, data_loc, annee_min = annee_min, annee_max = annee_max, faire_tracer = TRUE, titre, titre_save, que_heritiers,que_proprio, que_logit, dico_modalites_ref, transformation_x = "identity", afficher_texte_graphiques_econo=afficher_texte_graphiques_econo)
   }
 }
 
@@ -1162,7 +1162,7 @@ if(!faire_titre_graph){titre <- ""}
 
 if(!all(is.na(data_loc$Montant_heritage_1))){
   liste_chemins <- append(liste_chemins, titre_save)
-  effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial, titre, titre_save, caption_text, "HB0900", annee_min = annee_min, annee_max=annee_max, dico_modalites_ref, transformation_x = "log10")
+  effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial, titre, titre_save, caption_text, "HB0900", annee_min = annee_min, annee_max=annee_max, dico_modalites_ref, transformation_x = "log10", afficher_texte_graphiques_econo=afficher_texte_graphiques_econo)
 }
 
 
@@ -1174,7 +1174,7 @@ if(!faire_titre_graph){titre <- ""}
 
 if(!all(is.na(data_loc$Montant_heritage_1))){
   liste_chemins <- append(liste_chemins, titre_save)
-  effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial_zoom1, titre, titre_save, caption_text, "HB0900", annee_min = annee_min, annee_max=annee_max, dico_modalites_ref, transformation_x = "identity", faire_reg_lin = TRUE)
+  effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial_zoom1, titre, titre_save, caption_text, "HB0900", annee_min = annee_min, annee_max=annee_max, dico_modalites_ref, transformation_x = "identity", faire_reg_lin = TRUE, afficher_texte_graphiques_econo=afficher_texte_graphiques_econo)
 }
 
 
@@ -1186,7 +1186,7 @@ if(!faire_titre_graph){titre <- ""}
 
 if(!all(is.na(data_loc$Montant_heritage_1))){
   liste_chemins <- append(liste_chemins, titre_save)
-  effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial_zoom2, titre, titre_save, caption_text, "HB0900", annee_min = annee_min, annee_max=annee_max, dico_modalites_ref, transformation_x = "identity", faire_reg_lin = TRUE)
+  effet_heritage_sur_valeur_HMR(data_loc, liste_montant_initial_zoom2, titre, titre_save, caption_text, "HB0900", annee_min = annee_min, annee_max=annee_max, dico_modalites_ref, transformation_x = "identity", faire_reg_lin = TRUE, afficher_texte_graphiques_econo=afficher_texte_graphiques_econo)
 }
 
 ##################################################### Sauvegarde des données dans le cas montant_heritage_min = 0
@@ -2687,4 +2687,26 @@ lprop(svytable(~ col_1 + DHGENDERH1, design=dw_prop))
 
 
 
+
+
+# HB2410 = number of properties other than household main residence ==> PBM : les immeubles contenant plusieurs appartements peuvent être comptés comme 1
+# HNB2010 = Revenu tiré des location des autres biens immobiliers par mois
+# HB2501, HB2502, HB2503 = Le type d'autres propriétés détenues = 1 House or flat | 2 - Apartment building | 3 - Industrial building/warehouse | 4 - Building plot/estate, field, garden, forest, and arable land | 5 - Garage | 6 - Shop | 7 - Office | 8 - Hotel | 9 - Farm | 10 - Other (SPECIFY)
+
+
+
+# sous_data <- data_complete[SA0100 == "BE" & VAGUE == num_vague,]
+sous_data <- data_complete[VAGUE == 2 & SA0100 %in% c("DE", "BE", "IT", "FR"),]
+sous_data$SA0100 <- as.factor(as.character(sous_data$SA0100))
+sous_data[HB2410_corr >= 4, HB2410_corr := 10]
+dw <- svydesign(ids = ~1, data = sous_data, weights = ~ sous_data$HW0010)
+
+# table(sous_data$HB2410_corr)
+
+t(lprop(svytable(~ SA0100 + HB2410_corr, dw)))
+
+dt <- as.data.table(100*svytable(~ SA0100 + HB2410_corr, dw)/sum(sous_data$HW0010))
+# dt_casted <- dcast(dt, DHHTYPE ~ DA1110I,)
+# setnames(dt_casted, "0", "Non")
+# setnames(dt_casted, "1", "Oui")
 

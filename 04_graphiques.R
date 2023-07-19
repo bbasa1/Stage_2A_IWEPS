@@ -12,7 +12,8 @@ trace_barplot <- function(data_loc, x, sortby_x, y, fill, xlabel, ylabel, titre,
     scale_y_continuous(limits = c(0, xlim_sup), labels = function(y) format(y, scientific = FALSE)) + 
     scale_fill_viridis(discrete = TRUE) +
     scale_color_viridis() +
-    theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+    theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1),
+          text = element_text(size = 25))
   
   # p
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
@@ -29,7 +30,8 @@ trace_barplot_avec_facet <- function(data_loc, x, sortby_x, y, fill, xlabel, yla
       scale_y_continuous(limits = c(0, xlim_sup), labels = function(y) format(y, scientific = FALSE)) + 
       scale_fill_viridis(discrete = TRUE) +
       scale_color_viridis() +
-      theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1),
+            text = element_text(size = 20)) +
       facet_grid(~factor(.data[[facet]], levels = ordre_facet))
   }else{
     p <- ggplot(data = data_loc, aes(x = reorder(.data[[x]], .data[[sortby_x]]), y = .data[[y]], fill = .data[[fill]])) +
@@ -40,7 +42,8 @@ trace_barplot_avec_facet <- function(data_loc, x, sortby_x, y, fill, xlabel, yla
       scale_y_continuous(limits = c(0, xlim_sup), labels = function(y) format(y, scientific = FALSE)) + 
       scale_fill_viridis(discrete = TRUE) +
       scale_color_viridis() +
-      theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1),
+            text = element_text(size = 20)) +
       facet_wrap(~factor(.data[[facet]]), ncol = 2)
   }
   
@@ -60,7 +63,9 @@ trace_barplot_log <- function(data_loc, x,sortby_x, y, fill, xlabel, ylabel,fill
            fill = filllabel) + 
       scale_y_continuous(trans='log10', labels = function(y) format(y, scientific = TRUE)) + 
       scale_fill_viridis(discrete = TRUE) +
-      scale_color_viridis(discrete = TRUE)
+      scale_color_viridis(discrete = TRUE) +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1), 
+            text = element_text(size = 22))
     
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
   print(p)
@@ -96,8 +101,13 @@ trace_concentration <- function(data_melted_loc, x, y, color, xlabel, ylabel,col
     ) +
     scale_color_viridis_d() +
     theme(legend.text = element_text(angle = 0, vjust = 0.7, hjust = 0),
-          axis.text.x = element_text(angle = 45, vjust = 0.5),
-          legend.position = "right") +
+          axis.text.x = element_text(angle = 0, vjust = 0.5),
+          legend.position = "right", 
+          # legend.text = element_text(size=30),
+          # legend.title = element_text(size=30),
+          # legend.key.size = unit(2, 'cm')
+          text = element_text(size = 25)
+          ) +
     geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
     annotate(geom = "table", x = 12.5, y = 100, label = list(x_table), 
              vjust = 1, hjust = 0)
@@ -128,7 +138,8 @@ trace_distrib_variable <- function(data_loc, x, fill, xlabel, ylabel,filllabel, 
         suffix = "",
         big.mark = " ",
         decimal.mark = ",")) +
-      theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) + 
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.5),
+            text = element_text(size = 25)) + 
       annotate("text", x=-25, y = Inf, vjust = 15, label= "Achat immobilier plus ancien", size=5) +
       annotate("text", x=25, y = Inf, vjust = 15, label= "Réception de l'héritage plus ancien", size=5)
     
@@ -147,7 +158,8 @@ trace_distrib_variable <- function(data_loc, x, fill, xlabel, ylabel,filllabel, 
         suffix = "",
         big.mark = " ",
         decimal.mark = ",")) +
-      theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.5),
+            text = element_text(size = 25)) +
       annotate("text", x=-25, y = Inf, vjust = 15, label= "Achat immobilier plus ancien", size=5) +
       annotate("text", x=25, y = Inf, vjust = 15, label= "Réception de l'héritage plus ancien", size=5)
   }
@@ -194,7 +206,8 @@ trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, y
         suffix = "",
         big.mark = " ",
         decimal.mark = ",")) +
-    theme(axis.text.x = element_text(angle = orientation_label, vjust = 1, hjust=1)) +
+    theme(axis.text.x = element_text(angle = orientation_label, vjust = 1, hjust=1),
+          text = element_text(size = 20)) +
     annotate(geom = "table", x = x_table, y = y_max, label = list(med), 
              vjust = 1, hjust = 0)
   
@@ -222,7 +235,8 @@ trace_distrib_normalise <- function(data_loc, x, fill, titre, titre_save, xlabel
       suffix = "",
       big.mark = " ",
       decimal.mark = ",")) +
-    theme(axis.text.x = element_text(angle = orientation_label, vjust = 1, hjust=1)) +
+    theme(axis.text.x = element_text(angle = orientation_label, vjust = 1, hjust=1),
+          text = element_text(size = 20)) +
     facet_wrap(~factor(.data[[facet]]), ncol = 2)
   
   if(length(xlim) == 2){
@@ -240,34 +254,6 @@ trace_distrib_normalise <- function(data_loc, x, fill, titre, titre_save, xlabel
         big.mark = " ",
         decimal.mark = ","), n.breaks = 20)
   }
-  
-
-  # +
-  #   geom_vline(xintercept = mean(data_loc[[x]]),        # Add line for mean
-  #              col = "red",
-  #              lwd = 2,
-  #              linetype = 'twodash') +
-  #   annotate("text",                        # Add text for mean
-  #            x = mean(data_loc[[x]]) * 1.1,
-  #            y = y_text,
-  #            label = paste("Moyenne =", round(mean(data_loc[[x]]))),
-  #            col = "red",
-  #            size = 3, 
-  #            angle = 90) +
-  # 
-  # geom_vline(xintercept = median(data_loc[[x]]),        # Add line for median
-  #            col = "blue",
-  #            lwd = 2,
-  #            linetype = 'twodash') +
-  #   annotate("text",                        # Add text for median
-  #            x = mean(data_loc[[x]]) * (1/1.1),
-  #            y = y_text,
-  #            label = paste("Médiane =", round(median(data_loc[[x]]))),
-  #            col = "blue",
-  #            size = 3, 
-  #            angle = 90)
-  
-  p
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
   print(p) 
@@ -293,7 +279,8 @@ trace_courbes <- function(melted_loc, x, y, color, facet, xlabel, ylabel, colorl
       big.mark = " ",
       decimal.mark = ","), n.breaks = 10) + 
     scale_color_viridis(discrete = TRUE) +
-    theme(axis.text.x = element_text(angle = 22.5, vjust = 0.5, hjust=1)) +
+    theme(axis.text.x = element_text(angle = 22.5, vjust = 0.5, hjust=1),
+          text = element_text(size = 17)) +
     facet_wrap(~factor(melted_loc[[facet]]),  scales = "free", ncol = 2) +
     labs(caption = caption_text)
   
@@ -331,7 +318,8 @@ trace_boxplot <- function(data_loc, x, fill, facet, titre, titre_save, xlabel, f
                          decimal.mark = ",")) +
     facet_wrap(~factor(.data[[facet_trace]]), scales='free') +
     coord_flip() +
-    theme(axis.text.x=element_blank())  #remove x axis labels
+    theme(axis.text.x=element_blank(),
+          text = element_text(size = 25))  #remove x axis labels
   }else{
     data_loc[[x]] <- as.numeric(data_loc[[x]] )
     p <- ggplot(data_loc, aes(x = data_loc[[x]], fill = data_loc[[fill]], weight = HW0010)) +
@@ -347,14 +335,9 @@ trace_boxplot <- function(data_loc, x, fill, facet, titre, titre_save, xlabel, f
                            big.mark = " ",
                            decimal.mark = ",")) +
       coord_flip() +
-      theme(axis.text.x=element_blank())  #remove x axis labels
+      theme(axis.text.x=element_blank(),
+            text = element_text(size = 25))  #remove x axis labels
   }
-
-
-  p
-  
-  # ggplot_build(p)$data
-  
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
   print(p) 
@@ -362,26 +345,34 @@ trace_boxplot <- function(data_loc, x, fill, facet, titre, titre_save, xlabel, f
 
 
 
-trace_decomposition_fnt_decile <- function(data_loc, nom_decile, titre_save, titre, y, filllabel, xlabel){
+trace_decomposition_fnt_decile <- function(data_loc, nom_decile, titre_save, titre, filllabel, xlabel){
   # Cette fonction trace la décomposition suivant une variable fill et une variable x
+ 
+  fill <- 'HB2410_corr'
+  data_for_plot <- data_loc[, sum(HW0010), by = c("HB2410_corr", nom_decile)]
+  data_for_plot[[fill]] <- as.factor(data_for_plot[[fill]])
+  tot_weight_decile <- data_loc[, sum(HW0010), by = eval(nom_decile)]
+  setnames(tot_weight_decile, "V1", 'tot_decile')
+  data_for_plot <- merge(data_for_plot, tot_weight_decile, on = nom_decile)
+  data_for_plot[, V1_corr := 100*V1/tot_decile]
   
-  data_loc[is.na(get(y)), eval(y) := 0] # On met à 0 pour ne pas avoir de NA qui se balade
-  x <- nom_decile
-  fill <- y
-  ylabel <- ""
-  
-  data_loc <- data_loc[order(data_loc[[y]]), ]
-  data_loc[[y]] <- as.factor(data_loc[[y]])
-  
-  p <- ggplot(data_loc, aes(x = data_loc[[x]], fill = data_loc[[fill]], weight = HW0010)) + 
-    geom_histogram(color="black", alpha = 0.75, stat="count", position = "fill") +
-    scale_fill_viridis(discrete = TRUE) +
+  p <- ggplot(data = data_for_plot, aes(x = .data[[nom_decile]], y = V1_corr, fill = .data[[fill]])) +
+    geom_bar(stat="identity") + 
     labs(title=titre,
          x= xlabel,
          y= ylabel,
-         fill = filllabel) +
-    scale_y_continuous(labels = percent(c(0, 0.25, 0.5, 0.75, 1))) +
-    theme(axis.text.x = element_text(angle = 0, vjust = 0.5))  
+         fill = filllabel) + 
+    scale_y_continuous(
+      labels = scales::dollar_format(
+        prefix = "",
+        suffix = " %",
+        big.mark = " ",
+        decimal.mark = ",")
+    ) +
+    scale_fill_viridis(discrete = TRUE) +
+    scale_color_viridis() +
+    theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=1),
+          text = element_text(size = 25))
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")
   print(p) 
