@@ -116,7 +116,7 @@ recherche_p_value_otpi <- function(liste_montant_initial_loc, data_loc, annee_mi
                                        value.name    = "value")
   # melted_variation_relative_beta_g[value >= 100, value := 100] # On borne parce que sinon c'est illisible...
   # melted_variation_relative_beta_g[value <= - 100, value := - 100]
-  melted_variation_relative_beta_g$Statistique <- "Evolution relative du coeff associé à G dans la régression Y/G\nlorsqu'on ajoute X en variable explicative (%)"
+  melted_variation_relative_beta_g$Statistique <- "Evolution relative du coeff. associé à G\ndans la régression Y/G\nlorsqu'on ajoute X en variable explicative (%)"
   
   
 

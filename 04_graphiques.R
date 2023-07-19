@@ -219,7 +219,7 @@ trace_distrib_simple <- function(data_loc, x, fill, titre, titre_save, xlabel, y
 
 
 
-trace_distrib_normalise <- function(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel,facet, trans="log10", nbins = 100, suffix_x = " €", orientation_label=45, xlim = c()){
+trace_distrib_normalise <- function(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel,facet, trans="log10", nbins = 100, suffix_x = " €", orientation_label=45, xlim = c(), n_breaks = 20){
   #Trace la distribution de la variable, mais normalisée pour sommer à 1
   
   p <- ggplot(data = data_loc,
@@ -245,14 +245,16 @@ trace_distrib_normalise <- function(data_loc, x, fill, titre, titre_save, xlabel
         prefix = "",
         suffix = suffix_x,
         big.mark = " ",
-        decimal.mark = ","), n.breaks = 20)
+        decimal.mark = ","),
+        n.breaks=n_breaks)
   }else{
     p <- p +
       scale_x_continuous(trans=trans, labels = scales::dollar_format(
         prefix = "",
         suffix = suffix_x,
         big.mark = " ",
-        decimal.mark = ","), n.breaks = 20)
+        decimal.mark = ","),
+        n.breaks=n_breaks)
   }
   
   ggsave(titre_save, p ,  width = 297, height = 210, units = "mm")

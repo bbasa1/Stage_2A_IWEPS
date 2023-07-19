@@ -795,10 +795,11 @@ ylabel <- "Densité"
 xlabel <- "Montant du premier héritage reçu chronologiquement par le ménage"
 filllabel <- "Pays"
 facet <- "label_SA0100"
-nbins <- 50
+nbins <- 75
+n_breaks <- 15
 
 if(!all(is.na(data_loc$Montant_heritage_1))){
-  trace_distrib_normalise(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel,facet, trans="log10", nbins)
+  trace_distrib_normalise(data_loc, x, fill, titre, titre_save, xlabel, ylabel, filllabel,facet, trans="log10", nbins=nbins, n_breaks=n_breaks)
   liste_chemins <- append(liste_chemins, titre_save)
 }
 
